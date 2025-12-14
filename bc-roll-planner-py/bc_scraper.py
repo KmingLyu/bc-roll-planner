@@ -1,5 +1,5 @@
 """
-取得 https://bc.godfat.org/ 上 upcoming events
+取得 https://bc.godfat.org/ 上的資料，
 並提供可擴充的 Scraper class（未來可加入貓咪列表等功能）
 """
 

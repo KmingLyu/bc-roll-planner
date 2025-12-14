@@ -138,7 +138,10 @@ class BattleCatsScraper:
 
         # 常見結構：<select class="events"> ... <optgroup label="Upcoming:"> <option ...>
         # 用 contains 的方式抓，容錯比較好
-        options = soup.select("select.events optgroup option")
+        # 這個抓不太到，再研究看看
+        # options = soup.select("select.events optgroup option")
+        # 用更寬鬆的 selector
+        options = soup.select('.events optgroup[label="Upcoming:"] option')
 
         out: List[Event] = []
         seen = set()

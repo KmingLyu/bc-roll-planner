@@ -130,7 +130,7 @@ class BattleCatsScraper:
 
     def get_upcoming_events(self) -> List[Event]:
         """
-        抓 Upcoming events：盡量用較寬鬆 selector，避免網站 HTML 小改就壞。
+        抓 Upcoming events
         """
         url = f"{self.base_url}/?lang={self.lang}&ui={self.ui}"
         html = self.fetch_html(url)
@@ -156,6 +156,38 @@ class BattleCatsScraper:
             parent = opt.find_parent("optgroup")
             label = (parent.get("label") or "") if parent else ""
             if "Upcoming" not in label:
+                continue
+
+            key = (value, name)
+            if key in seen:
+                continue
+            seen.add(key)
+
+            start_date, end_date = self._extract_dates_from_event_name(name)
+            out.append(Event(value=value, name=name, start_date=start_date, end_date=end_date))
+
+        return out
+
+    def get_past_events(self, limit: int = 10) -> List[Event]:
+        """
+        抓 Past events
+        """
+        url = f"{self.base_url}/?lang={self.lang}&ui={self.ui}"
+        html = self.fetch_html(url)
+        soup = self.make_soup(html)
+
+        options = soup.select('.events optgroup[label="Past:"] option')
+
+        out: List[Event] = []
+        seen = set()
+
+        for opt in options:
+            if len(out) >= limit:
+                break
+
+            value = (opt.get("value") or "").strip()
+            name = self.normalize_text(opt.get_text(" ", strip=True))
+            if not value or not name:
                 continue
 
             key = (value, name)

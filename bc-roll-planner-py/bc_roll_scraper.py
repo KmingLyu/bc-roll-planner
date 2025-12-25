@@ -112,7 +112,9 @@ class BattleCatsScraper:
     # Events
     # -------------------------
     @staticmethod
-    def _extract_dates_from_event_name(name: str) -> Tuple[Optional[str], Optional[str]]:
+    def _extract_dates_from_event_name(
+        name: str,
+    ) -> Tuple[Optional[str], Optional[str]]:
         parts = (name or "").split()
         if not parts:
             return None, None
@@ -164,7 +166,9 @@ class BattleCatsScraper:
             seen.add(key)
 
             start_date, end_date = self._extract_dates_from_event_name(name)
-            out.append(Event(value=value, name=name, start_date=start_date, end_date=end_date))
+            out.append(
+                Event(value=value, name=name, start_date=start_date, end_date=end_date)
+            )
 
         return out
 
@@ -196,7 +200,9 @@ class BattleCatsScraper:
             seen.add(key)
 
             start_date, end_date = self._extract_dates_from_event_name(name)
-            out.append(Event(value=value, name=name, start_date=start_date, end_date=end_date))
+            out.append(
+                Event(value=value, name=name, start_date=start_date, end_date=end_date)
+            )
 
         return out
 
@@ -208,7 +214,10 @@ class BattleCatsScraper:
         找包含 'Guaranteed' / 'Alt.' 這些表頭的 table（最接近你貼的那張）
         """
         for table in soup.find_all("table"):
-            headers = [self.normalize_text(th.get_text(" ", strip=True)).lower() for th in table.find_all("th")]
+            headers = [
+                self.normalize_text(th.get_text(" ", strip=True)).lower()
+                for th in table.find_all("th")
+            ]
             header_line = " ".join(headers)
             if "guaranteed" in header_line and "alt" in header_line:
                 return table
@@ -300,8 +309,14 @@ class BattleCatsScraper:
         nodes: Dict[str, PositionNode] = {}
 
         # 先找出所有 base key（suffix == "" 的）
-        base_ids = sorted([pid for pid, c in raw_cells.items() if c.suffix == "" and c.track in ("A", "B")],
-                          key=lambda x: (raw_cells[x].pos, raw_cells[x].track))
+        base_ids = sorted(
+            [
+                pid
+                for pid, c in raw_cells.items()
+                if c.suffix == "" and c.track in ("A", "B")
+            ],
+            key=lambda x: (raw_cells[x].pos, raw_cells[x].track),
+        )
 
         for base_id in base_ids:
             base_cell = raw_cells[base_id]
@@ -314,6 +329,8 @@ class BattleCatsScraper:
                 action="normal",
                 to=next_pos_id(pos, track),
                 cat=base_cell.cat,
+                rolls=1,
+                advance=1,
                 cost_rolls=1,
                 note="normal roll",
                 ref_from=base_cell.ref_from,
@@ -324,13 +341,28 @@ class BattleCatsScraper:
             g_id = f"{base_id}G"
             g_cell = raw_cells.get(g_id)
             if g_cell and g_cell.cat:
-                to = g_cell.jump_to or infer_guaranteed_to(pos, track)
+                # to = g_cell.jump_to or infer_guaranteed_to(pos, track)
+                # 優先序：
+                # 1) 若有明確箭頭 "-> 12A"（jump_to），用它
+                # 2) 否則若在格內看到 "<- 12A"（ref_from），你已確認它代表保底結束位置，使用它
+                # 3) 最後才用 fallback 推導
+                to = (
+                    g_cell.jump_to or g_cell.ref_from or infer_guaranteed_to(pos, track)
+                )
                 edges["guaranteed"] = Edge(
                     action="guaranteed",
                     to=to,
                     cat=g_cell.cat,
+                    rolls=11,
+                    advance=10,
                     cost_rolls=11,
-                    note=g_cell.jump_to and f"guaranteed {g_cell.jump_to}" or "guaranteed (inferred)",
+                    note=(
+                        g_cell.jump_to
+                        and f"guaranteed {g_cell.jump_to}"
+                        or g_cell.ref_from
+                        and f"guaranteed (ref_from {g_cell.ref_from})"
+                        or "guaranteed (inferred)"
+                    ),
                     ref_from=g_cell.ref_from,
                     source_pick_id=g_id,
                 )
@@ -345,8 +377,12 @@ class BattleCatsScraper:
                     action="switch_track",
                     to=to,
                     cat=r_cell.cat,
+                    rolls=1,
+                    advance=1,
                     cost_rolls=1,
-                    note=r_cell.jump_to and f"switch_track {r_cell.jump_to}" or "switch_track (fallback)",
+                    note=r_cell.jump_to
+                    and f"switch_track {r_cell.jump_to}"
+                    or "switch_track (fallback)",
                     ref_from=r_cell.ref_from,
                     source_pick_id=r_id,
                 )
@@ -355,16 +391,23 @@ class BattleCatsScraper:
                 id=base_id,
                 pos=pos,
                 track=track,
-                rarity=(base_cell.rarity if base_cell.rarity in ("rare", "supa", "uber_fest", "supa_fest") else None),
+                rarity=(
+                    base_cell.rarity
+                    if base_cell.rarity in ("rare", "supa", "uber_fest", "supa_fest")
+                    else None
+                ),
                 edges=edges,
             )
 
-        return TrackGraph(seed=seed, count=count, event=event, nodes=nodes, raw_cells=raw_cells)
+        return TrackGraph(
+            seed=seed, count=count, event=event, nodes=nodes, raw_cells=raw_cells
+        )
 
     # -------------------------
     # Utility: export
     # -------------------------
     def export_graph_json(self, graph: TrackGraph, path: str) -> None:
         from bc_roll_models import graph_to_dict
+
         with open(path, "w", encoding="utf-8") as f:
             json.dump(graph_to_dict(graph), f, ensure_ascii=False, indent=2)

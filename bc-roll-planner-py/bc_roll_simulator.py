@@ -50,6 +50,7 @@ class DrawRecord:
     # guaranteed 指的是「有 AG 的 10連」才會多出的第 11 隻(來源: 起點的 G 欄)
     used: Literal["normal", "switch_track", "guaranteedzuzu0"]
 
+    # 這裡不用Cat物件, 直接拆成欄位方便輸出
     cat_id: Optional[int]
     cat_name: str
     cat_desc: str
@@ -62,32 +63,6 @@ class DrawRecord:
 
 class SimulationError(RuntimeError):
     pass
-
-
-# -------------------------
-# Method 解析(讓你輸入比較彈性)
-# -------------------------
-def normalize_method(method: str) -> Method:
-    s = (method or "").strip().lower()
-    aliases = {
-        "1抽": "single",
-        "single": "single",
-        "1": "single",
-        "one": "single",
-        # 0連抽(是否保底由起點是否有 AG 決定)
-        "10連抽": "ten",
-        "10連": "ten",
-        "ten": "ten",
-        # 保留相容: 就算輸入「10連抽保底」也當作 10連抽
-        # (但模擬時不會強制要求一定有 AG)
-        "10連抽保底": "ten",
-        "11連": "ten",
-    }
-    if s not in aliases:
-        raise SimulationError(
-            f"未知抽法 method={method!r}, 可用: single / ten(或 1抽 / 10連抽 等別名)"
-        )
-    return aliases[s]  # type: ignore
 
 
 # -------------------------
@@ -111,9 +86,15 @@ def choose_edge_for_single_draw(
     normal_cat_id = normal.cat.id if normal.cat else None
     switch = edges.get("switch_track")
 
-    if switch and prev_cat_id is not None and normal_cat_id is not None:
-        if normal_cat_id == prev_cat_id:
-            return switch, "switch_track"
+    if (
+        # 換線條件：連續兩張相同的rare
+        node.rarity == "rare"
+        and switch
+        and prev_cat_id is not None
+        and normal_cat_id is not None
+        and normal_cat_id == prev_cat_id
+    ):
+        return switch, "switch_track"
 
     return normal, "normal"
 
@@ -143,7 +124,7 @@ def simulate(
         1) 一律做 10 次「單抽規則」(每次可能 normal 或 switch_track)
         2) 若「10連起點」存在 guaranteed edge(也就是 AG), 則:
            - 追加第 11 隻(起點的 G 欄)
-           - 最終停點: 使用 guaranteed edge.to(若沒有 to 就 fallback +1 換線)
+           - 最終停點: 使用 guaranteed edge.to(若沒有 to 就 fallback +1 換線，但基本上會有)
         3) 若起點沒有 AG: 代表此卡池無保底, 10連就只抽 10 隻, 停在第10抽的落點
     """
     cursor = parse_pos_id(start_pos_id)
@@ -160,6 +141,7 @@ def simulate(
         graph = graphs_by_event[act.event_value]
         method = act.method
 
+        # 單抽
         if method == "single":
             node = graph.nodes.get(cursor.id)
             if not node:
@@ -191,6 +173,7 @@ def simulate(
             cursor = parse_pos_id(edge.to)
             prev_cat_id = cid
 
+        # 10連抽
         elif method == "ten":
             # ten 的「起點」很重要: 是否有 AG/guaranteed, 就看這格
             start_cursor = cursor
@@ -263,6 +246,10 @@ def simulate(
                     cursor = parse_pos_id(final_to)
                 else:
                     # fallback: +1 並換線(保底常見行為)
+                    # 印出警告訊息，因為基本上都有 to，不應該走到這裡
+                    print(
+                        f"[Warning] [{act.event_value}] guaranteed edge 沒有 to，使用 fallback +1 換線"
+                    )
                     cursor = Cursor(
                         pos=cursor.pos + 1, track=("B" if cursor.track == "A" else "A")
                     )
@@ -292,6 +279,10 @@ def parse_actions(raw: List[Dict[str, Any]]) -> List[SimAction]:
         ev = str(item.get("event_value") or "").strip()
         if not ev:
             raise SimulationError(f"actions[{i}] 缺少 event_value")
-        method = normalize_method(str(item.get("method") or ""))
+        method = item.get("method")
+        if method not in ("single", "ten"):
+            raise SimulationError(
+                f"actions[{i}].method 必須是 'single' 或 'ten', 但得到 {method!r}"
+            )
         out.append(SimAction(event_value=ev, method=method))
     return out

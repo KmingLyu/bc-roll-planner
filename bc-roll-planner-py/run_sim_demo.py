@@ -10,7 +10,12 @@ from wcwidth import wcswidth
 
 from bc_roll_scraper import BattleCatsScraper
 from bc_roll_models import Event, TrackGraph
-from bc_roll_simulator import simulate, parse_actions, SimulationError
+from bc_roll_simulator import (
+    simulate,
+    parse_actions,
+    estimate_required_counts,
+    SimulationError,
+)
 
 
 def pad_disp(text: str, width: int) -> str:
@@ -118,7 +123,12 @@ def main() -> int:
         description="示範：取得即將到來的活動 -> 建立圖形 -> 模擬 -> 印出結果"
     )
     ap.add_argument("--seed", default="1234", help="種子碼 (預設: 1234)")
-    ap.add_argument("--count", type=int, default=80, help="格數 (預設: 80)")
+    ap.add_argument(
+        "--count",
+        type=int,
+        default=None,
+        help="查詢/建圖要展開的抽數(count)。不填則依 plan 自動計算最小值",
+    )
     ap.add_argument("--start", default="1A", help="起始位置編號 (預設: 1A)")
     ap.add_argument("--lang", default="tw", help="語言設定 (預設: tw)")
     ap.add_argument("--ui", default="tw", help="介面語言 (預設: tw)")
@@ -150,7 +160,7 @@ def main() -> int:
     print("\n=== Using plan file ===")
     print_action_plan(plan)
 
-    # 1) 找 upcoming events（用來補 name / 日期；找不到也沒關係）
+    # 找 upcoming events（用來補 name / 日期；找不到也沒關係）
     upcoming = scraper.get_upcoming_events()
     if not upcoming:
         print(
@@ -161,7 +171,13 @@ def main() -> int:
         print_events(upcoming, max_rows=40)
         upcoming_map = {e.value: e for e in upcoming}
 
-    # 2) 建 graphs(每個 event 一張)
+    # 解析 plan 成 actions
+    actions = parse_actions(plan)
+
+    # 自動估算需要的 count
+    count = args.count if args.count is not None else estimate_required_counts(actions)
+
+    # 建 graphs(每個 event 一張)
     graphs_by_event: Dict[str, TrackGraph] = {}
     print("\n=== Build graphs ===")
 
@@ -170,13 +186,12 @@ def main() -> int:
         ev = upcoming_map.get(v) or Event(
             value=v, name=v, start_date=None, end_date=None
         )
-        print(f"Fetching graph: event={ev.value} count={args.count} ...")
-        g = scraper.build_track_graph(seed=args.seed, count=args.count, event=ev)
+        print(f"Fetching graph: event={ev.value} count={count} ...")
+        g = scraper.build_track_graph(seed=args.seed, count=count, event=ev)
         graphs_by_event[ev.value] = g
         print(f"  OK: nodes={len(g.nodes)}")
+    print(f"plan: {plan}")
 
-    # 3) simulate
-    actions = parse_actions(plan)
     try:
         records, final_cursor = simulate(
             graphs_by_event=graphs_by_event,

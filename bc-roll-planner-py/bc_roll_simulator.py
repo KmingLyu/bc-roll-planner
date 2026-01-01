@@ -269,8 +269,16 @@ def simulate(
 # -------------------------
 def parse_actions(raw: List[Dict[str, Any]]) -> List[SimAction]:
     """
-    支援輸入大概長這樣:
-      [{"event_value": "aaa", "method": "10連抽"}, {"event_value": "bbb", "method": "1抽"}, ...]
+    輸入範例:
+    [
+        {'event_value': '2025-12-12_1020', 'method': 'ten'},
+        {'event_value': '2025-12-12_1019', 'method': 'single'},
+        {'event_value': '2025-12-12_1019', 'method': 'single'},
+        {'event_value': '2025-12-12_1019', 'method': 'single'},
+        {'event_value': '2025-12-12_1019', 'method': 'single'},
+        {'event_value': '2025-12-12_1019', 'method': 'ten'},
+        {'event_value': '2025-12-12_1020', 'method': 'single'}
+    ]
     """
     out: List[SimAction] = []
     for i, item in enumerate(raw, start=1):
@@ -286,3 +294,23 @@ def parse_actions(raw: List[Dict[str, Any]]) -> List[SimAction]:
             )
         out.append(SimAction(event_value=ev, method=method))
     return out
+
+
+# -------------------------
+# 方便: 根據 actions 預估需要的最少 rolls 數量
+# -------------------------
+def estimate_required_counts(actions: List[SimAction]) -> int:
+    """
+    根據 actions 預估需要的最少 rolls 數量
+    - single: 1 roll
+    - ten: 10 rolls (不考慮保底多抽那隻)
+    """
+    count = 0
+    for act in actions:
+        if act.method == "single":
+            count += 1
+        elif act.method == "ten":
+            count += 10
+        else:
+            raise SimulationError(f"未支援 method={act.method!r} 的估算")
+    return count + 20  # 預留多一些避免邊界問題

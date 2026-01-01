@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import argparse
-import random
-from typing import Dict, List, Optional
+import json
+from pathlib import Path
+from typing import Dict, List
 
 from wcwidth import wcswidth
 
@@ -34,25 +35,6 @@ def print_events(events: List[Event], max_rows: int = 30) -> None:
         print(f"...(共 {len(events)} 筆，僅顯示前 {max_rows} 筆)")
 
 
-def build_random_action_plan(
-    picked_events: List[Event],
-    steps: int,
-    p_guaranteed: float = 0.35,
-) -> List[dict]:
-    """
-    產生一串隨機動作：
-    - 每一步會隨機挑一個 event_value(會出現切卡池)
-    - method 以一定機率選 10連保底，其他選 1抽
-    """
-    plan: List[dict] = []
-    for _ in range(steps):
-        ev = random.choice(picked_events).value
-        # method = "10連抽保底" if random.random() < p_guaranteed else "1抽"
-        method = "10連抽" if random.random() < p_guaranteed else "1抽"
-        plan.append({"event_value": ev, "method": method})
-    return plan
-
-
 def print_action_plan(plan: List[dict]) -> None:
     print("\n=== Action Plan(將會切卡池) ===")
     for i, a in enumerate(plan, start=1):
@@ -60,11 +42,8 @@ def print_action_plan(plan: List[dict]) -> None:
 
 
 def print_records(records, final_cursor) -> None:
-    """
-    印出 simulate 的抽卡結果
-    """
+    """印出 simulate 的抽卡結果"""
     print("\n=== Draw Records ===")
-    # 欄寬(依顯示寬度)
     W_STEP = 5
     W_EV = 16
     W_FROM = 6
@@ -102,25 +81,44 @@ def print_records(records, final_cursor) -> None:
     print(f"\nFinal cursor: {final_cursor.id}")
 
 
+def load_plan(path: str) -> List[dict]:
+    """
+    從檔案讀取 action plan
+    - .json  : 內容為 list[dict]
+    - .jsonl : 每行一個 dict
+    """
+    p = Path(path)
+    if not p.exists():
+        raise FileNotFoundError(f"找不到 plan 檔案: {path}")
+
+    if p.suffix.lower() == ".jsonl":
+        plan: List[dict] = []
+        for i, line in enumerate(p.read_text(encoding="utf-8").splitlines(), start=1):
+            s = line.strip()
+            if not s:
+                continue
+            try:
+                obj = json.loads(s)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"JSONL 第 {i} 行解析失敗: {e}") from e
+            plan.append(obj)
+        return plan
+
+    if p.suffix.lower() == ".json":
+        obj = json.loads(p.read_text(encoding="utf-8"))
+        if not isinstance(obj, list):
+            raise ValueError("JSON plan 必須是陣列(list)，例如: [{...}, {...}]")
+        return obj
+
+    raise ValueError("只支援 .json 或 .jsonl 的 plan 檔案")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         description="示範：取得即將到來的活動 -> 建立圖形 -> 模擬 -> 印出結果"
     )
     ap.add_argument("--seed", default="1234", help="種子碼 (預設: 1234)")
-    ap.add_argument("--count", type=int, default=80, help="軌道數量 (預設: 80)")
-    ap.add_argument(
-        "--pick",
-        type=int,
-        default=3,
-        help="隨機挑選多少個即將到來的活動 (預設: 3)",
-    )
-    ap.add_argument("--steps", type=int, default=6, help="要模擬多少個動作 (預設: 6)")
-    ap.add_argument(
-        "--p-g",
-        type=float,
-        default=0.35,
-        help="每個動作使用10連抽的機率 (預設: 0.35)",
-    )
+    ap.add_argument("--count", type=int, default=80, help="格數 (預設: 80)")
     ap.add_argument("--start", default="1A", help="起始位置編號 (預設: 1A)")
     ap.add_argument("--lang", default="tw", help="語言設定 (預設: tw)")
     ap.add_argument("--ui", default="tw", help="介面語言 (預設: tw)")
@@ -130,84 +128,54 @@ def main() -> int:
         help="網址 (預設: https://bc.godfat.org)",
     )
     ap.add_argument(
-        "--mode",
-        choices=["example", "random"],
-        default="example",
-        help="使用程式內部example還是隨機產生動作 (預設: example)",
+        "--plan-file",
+        required=True,
+        help="action plan 檔案路徑（.json 或 .jsonl）",
     )
     args = ap.parse_args()
 
-    random.seed()  # 使用系統熵
-
     scraper = BattleCatsScraper(base_url=args.base_url, lang=args.lang, ui=args.ui)
 
-    # 1) 找 upcoming events
-    upcoming = scraper.get_upcoming_events()
-    if not upcoming:
-        print("找不到 Upcoming events(可能網站結構變了或被擋)")
-        return 1
-    print_events(upcoming, max_rows=40)
+    # 0) 讀 plan
+    try:
+        plan = load_plan(args.plan_file)
+    except Exception as e:
+        print("讀取 plan 失敗：", e)
+        return 3
 
-    # 2) 挑幾個 event 來建立圖形
-    examples = [
-        {"event_value": "2025-12-12_1020", "method": "ten"},
-        {"event_value": "2025-12-12_1019", "method": "single"},
-        {"event_value": "2025-12-12_1019", "method": "single"},
-        {"event_value": "2025-12-12_1019", "method": "single"},
-        {"event_value": "2025-12-12_1019", "method": "single"},
-        {"event_value": "2025-12-12_1019", "method": "ten"},
-        {"event_value": "2025-12-12_1020", "method": "single"},
-    ]
+    if not plan:
+        print("plan 是空的，沒有任何動作可模擬")
+        return 3
 
-    if args.mode == "example":
-        # 使用內建的 example
-        plan = examples
-        print("\n=== Using example action plan ===")
-    else:
-        # random 產生動作
-        k = min(max(args.pick, 1), len(upcoming))
-        picked = random.sample(upcoming, k=k)
-        print(picked)
-        print("\n=== Picked events ===")
-        for e in picked:
-            print(f"- {e.value}  {e.name}")
-
+    print("\n=== Using plan file ===")
     print_action_plan(plan)
 
-    # 3) 建 graphs(每個 event 一張)
+    # 1) 找 upcoming events（用來補 name / 日期；找不到也沒關係）
+    upcoming = scraper.get_upcoming_events()
+    if not upcoming:
+        print(
+            "找不到 Upcoming events(可能網站結構變了或被擋)，仍嘗試用 plan 的 event_value 建圖"
+        )
+        upcoming_map: Dict[str, Event] = {}
+    else:
+        print_events(upcoming, max_rows=40)
+        upcoming_map = {e.value: e for e in upcoming}
+
+    # 2) 建 graphs(每個 event 一張)
     graphs_by_event: Dict[str, TrackGraph] = {}
     print("\n=== Build graphs ===")
 
-    if args.mode == "example":
-        # 使用內建的 example
-        need_values = sorted({p["event_value"] for p in plan})
-        upcoming_map = {e.value: e for e in upcoming}
-        for v in need_values:
-            ev = upcoming_map.get(v)
-            if not ev:
-                # 如果這個 event 不在 upcoming 裡（例如已變 past），仍然可以用最簡單的 Event 建 graph
-                ev = Event(value=v, name=v, start_date=None, end_date=None)
-            print(f"Fetching graph: event={ev.value} count={args.count} ...")
-            g = scraper.build_track_graph(seed=args.seed, count=args.count, event=ev)
-            graphs_by_event[ev.value] = g
-            print(f"  OK: nodes={len(g.nodes)}")
+    need_values = sorted({p["event_value"] for p in plan})
+    for v in need_values:
+        ev = upcoming_map.get(v) or Event(
+            value=v, name=v, start_date=None, end_date=None
+        )
+        print(f"Fetching graph: event={ev.value} count={args.count} ...")
+        g = scraper.build_track_graph(seed=args.seed, count=args.count, event=ev)
+        graphs_by_event[ev.value] = g
+        print(f"  OK: nodes={len(g.nodes)}")
 
-    else:
-        need_values = sorted({p["event_value"] for p in plan})
-        upcoming_map = {e.value: e for e in upcoming}
-        for v in need_values:
-            ev = upcoming_map.get(v) or Event(
-                value=v, name=v, start_date=None, end_date=None
-            )
-            print(f"Fetching graph: event={ev.value} count={args.count} ...")
-            g = scraper.build_track_graph(seed=args.seed, count=args.count, event=ev)
-            graphs_by_event[ev.value] = g
-            print(f"  OK: nodes={len(g.nodes)}")
-
-    # # 4) 隨機產生 action plan，simulate，印出結果
-    # plan = build_random_action_plan(picked, steps=args.steps, p_guaranteed=args.p_g)
-    # print_action_plan(plan)
-
+    # 3) simulate
     actions = parse_actions(plan)
     try:
         records, final_cursor = simulate(

@@ -175,6 +175,7 @@ class BattleCatsScraper:
     def get_past_events(self, limit: int = 10) -> List[Event]:
         """
         抓 Past events
+        limit: 最多抓幾個 event
         """
         url = f"{self.base_url}/?lang={self.lang}&ui={self.ui}"
         html = self.fetch_html(url)
@@ -211,7 +212,7 @@ class BattleCatsScraper:
     # -------------------------
     def _find_tracks_table(self, soup: BeautifulSoup) -> Optional[Any]:
         """
-        找包含 'Guaranteed' / 'Alt.' 這些表頭的 table（最接近你貼的那張）
+        找包含 'Guaranteed' / 'Alt.' 這些 header 的 table（最接近你貼的那張）
         """
         for table in soup.find_all("table"):
             headers = [

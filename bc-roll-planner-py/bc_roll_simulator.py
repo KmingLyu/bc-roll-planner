@@ -46,9 +46,9 @@ class DrawRecord:
 
     from_pos_id: str
 
-    # 本次採用的 edge 類型: normal / switch_track / guaranteed
+    # edge 類型: normal / switch_track / guaranteed
     # guaranteed 指的是「有 AG 的 10連」才會多出的第 11 隻(來源: 起點的 G 欄)
-    used: Literal["normal", "switch_track", "guaranteedzuzu0"]
+    used: Literal["normal", "switch_track", "guaranteed"]
 
     # 這裡不用Cat物件, 直接拆成欄位方便輸出
     cat_id: Optional[int]

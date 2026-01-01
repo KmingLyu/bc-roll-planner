@@ -10,7 +10,8 @@ from typing import Dict, List, Optional, Literal, Tuple, Any, Mapping
 # -------------------------
 @dataclass(frozen=True)
 class Cat:
-    """ 貓咪資料 """
+    """貓咪資料"""
+
     id: int
     name: str
     desc: str = ""
@@ -18,16 +19,19 @@ class Cat:
 
 @dataclass(frozen=True)
 class Event:
-    """ 卡池活動 """
+    """卡池活動"""
+
     value: str
     name: str
     start_date: Optional[str]
     end_date: Optional[str]
 
+
 # - normal: 單抽
 # - guaranteed: 10 連保底+1(會換線)
 # - switch_track: 換線(因為重複貓咪導致)
 ActionType = Literal["normal", "guaranteed", "switch_track"]
+
 
 @dataclass(frozen=True)
 class Cursor:
@@ -39,9 +43,10 @@ class Cursor:
         cursor = Cursor(pos=1, track="A")
         cursor.id -> "1A"
     """
+
     pos: int
     track: Literal["A", "B"]
-    
+
     @property
     def id(self) -> str:
         return f"{self.pos}{self.track}"
@@ -62,25 +67,28 @@ class Edge:
 
     to 的語意:
     - to 是此 action 結束後「游標要停在哪個位置（例如 '12A'）」
-    - 如果 HTML 能明確告訴你保底最後位置, 
+    - 如果 HTML 能明確告訴你保底最後位置,
       scraper 把它填入 to, 讓 simulator 直接使用這個落點
     - 若 HTML 沒有告訴你保底最後位置, 就會在 simulator 用 fallback 推算(但基本上都有)
     """
-    action: ActionType  
-    to: str 
+
+    action: ActionType
+    to: str
     cat: Optional[Cat] = None
 
     rolls: int = 1
     advance: int = 1
 
-    cost_rolls: int = 1 # 感覺多餘，但先保留
+    cost_rolls: int = 1  # 感覺多餘，但先保留
 
-    note: str = "" 
+    note: str = ""
     ref_from: Optional[str] = None
-    source_pick_id: Optional[str] = None # 例如 "3AG" / "3AR"
+    source_pick_id: Optional[str] = None  # 例如 "3AG" / "3AR"
+
 
 # 注意這裡的「稀有度」指的是序列上所設定的稀有度，而非貓咪本身的稀有度
-Rarity = Literal["rare", "supa", "uber_fest", "supa_fest"] 
+Rarity = Literal["rare", "supa", "uber_fest", "supa_fest"]
+
 
 @dataclass(frozen=True)
 class PositionNode:
@@ -88,6 +96,7 @@ class PositionNode:
     一個位置狀態，例如 "3A" / "15B"
     edges[action] 描述：在這個位置「採取某種抽法」會抽到什麼、並且移動到哪。
     """
+
     id: str
     pos: int
     track: Literal["A", "B"]
@@ -105,14 +114,15 @@ class PickCell:
     """
     解析 HTML 用的中介資料：一個 td（onclick pick('...')）對應的內容
     """
-    pick_id: str                 # e.g. "3A", "3AG", "3AR", "3ARG"
+
+    pick_id: str  # e.g. "3A", "3AG", "3AR", "3ARG"
     pos: int
     track: Literal["A", "B"]
-    suffix: str                  # "", "G", "R", "RG", "X", "GX"...（我們主要用到 "", "G", "R", "RG"）
+    suffix: str  # "", "G", "R", "RG", "X", "GX"...（我們主要用到 "", "G", "R", "RG"）
     rarity: Optional[str] = None
     cat: Optional[Cat] = None
-    jump_to: Optional[str] = None    # "-> 13B"
-    ref_from: Optional[str] = None   # "<- 12A"
+    jump_to: Optional[str] = None  # "-> 13B"
+    ref_from: Optional[str] = None  # "<- 12A"
 
 
 @dataclass
@@ -122,21 +132,22 @@ class TrackGraph:
     - 同一個 seed 在不同 event 會有不同的 TrackGraph
     - 模擬器會用 Cursor.id（如 '12A'）去查 nodes['12A']
     """
+
     seed: str
     count: int
     event: Event
     nodes: Dict[str, PositionNode]
-    raw_cells: Dict[str, PickCell]   # debug / 追查用（保留所有 pick_id）
+    raw_cells: Dict[str, PickCell]  # debug / 追查用（保留所有 pick_id）
 
 
 # -------------------------
 # Helpers
 # -------------------------
-_PICK_ID_RE = re.compile(r"^(\d+)([AB])(.*)$")
-_ONCLICK_RE = re.compile(r"pick\('([^']+)'\)")
-_CATS_ID_RE = re.compile(r"/cats/(\d+)")
-_JUMP_RE = re.compile(r"->\s*([0-9]+[AB])")
-_REF_RE = re.compile(r"<-\s*([0-9]+[AB])")
+_PICK_ID_RE = re.compile(r"^(\d+)([AB])(.*)$")  # 1A, 1AG, 1BR
+_ONCLICK_RE = re.compile(r"pick\('([^']+)'\)")  # pick('3A'), pick('12BG'), ...
+_CATS_ID_RE = re.compile(r"/cats/(\d+)")  # /cats/123
+_JUMP_RE = re.compile(r"->\s*([0-9]+[AB])")  # -> 13B
+_REF_RE = re.compile(r"<-\s*([0-9]+[AB])")  # <- 12A
 
 _RARITY_CLASSES = ("uber_fest", "supa_fest", "supa", "rare")  # 由強到弱（先抓到先算）
 # 有些 td class 可能會是 "cat pick rare next_position" 或 "score pick supa"
@@ -164,7 +175,7 @@ def infer_guaranteed_to(pos: int, track: Literal["A", "B"]) -> str:
 def parse_pick_id(pick_id: str) -> Tuple[int, Literal["A", "B"], str]:
     """
     解析像 "3A", "3AG", "3AR" 這類 pick_id
-    回傳 (pos, track, suffix)
+    回傳 (pos, track, suffix) = (3, "A", "G")
     """
     m = _PICK_ID_RE.match(pick_id)
     if not m:

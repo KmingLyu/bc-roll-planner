@@ -1,5 +1,5 @@
 // src/CorsTest.tsx
-import React, { useState } from "react";
+import { useState } from "react";
 
 /**
  * 方案 A（純前端、無後端、無 proxy）：

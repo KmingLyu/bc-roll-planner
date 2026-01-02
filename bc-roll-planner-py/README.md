@@ -1,167 +1,232 @@
-# BC Roll Planner（Python）
+# 貓咪大戰爭抽卡規劃
 
-Battle Cats 抽卡模擬與預測工具：從 **bc.godfat.org** 抓取活動資料，依據種子值（seed）建立 A/B 雙軌道抽卡路徑，支援單抽、11 連抽保底（Guaranteed）與換線（Switch Track）等行為的結果預測，並可匯出完整軌跡為 JSON。
+這是一個用來解析 `bc.godfat.org` 抽卡軌道（A/B 線、保底 10 連、重複 rare 換線）的工具集，包含：
 
-> 本 README 對應 `bc-roll-planner-py/` 這個 Python 子專案。
+- **Scraper**：抓取指定 `seed + event + count` 的軌道表，解析成結構化 `TrackGraph`
+- **Simulator**：依據一串「切卡池 + 單抽/十連」動作，逐抽模擬走位與抽到的貓
+- **Planner**：在多卡池、多資源限制下，用 Dijkstra 搜尋「最小成本」達成目標貓（以 cat_id 表示）
+
+
+## 專案結構
+
+- `bc_roll_models.py`  
+  Domain models 與解析 helper  
+  - `Cat / Event / Cursor / Edge / PositionNode / PickCell / TrackGraph`
+  - `parse_pick_id / parse_pos_id / extract_jump_and_ref / detect_rarity_from_classes`
+  - `graph_to_dict()`：匯出 TrackGraph 為可 JSON 序列化 dict
+
+- `bc_roll_scraper.py`  
+  `BattleCatsScraper`：抓 HTML + 解析 tracks table -> `TrackGraph`
+  - `get_upcoming_events()` / `get_past_events(limit)`
+  - `build_track_graph(seed, count, event)`：核心建圖
+  - `export_graph_json(graph, path)`：輸出 JSON
+
+- `bc_roll_simulator.py`  
+  `simulate(graphs_by_event, actions, start_pos_id)`：執行逐抽模擬  
+  - `parse_actions()`：把 list[dict] 轉 `SimAction`
+  - `estimate_required_counts()`：依 plan 粗估需要的 count（+20 buffer）
+
+- `bc_roll_planner.py`  
+  `plan_min_cost(...)`：用 Dijkstra 以 lexicographic 成本向量做最小化搜尋  
+  - 支援資源：金券 / 白金券 / 傳說券 / 貓罐頭（單抽、十連）
+  - `PlannerConfig`：可限制每個 pool 允許的 actions、權重、搜尋上限
+  - `build_events()`：用 dict 快速建立 `EventMeta`
+
+- `main.py`  
+  建圖 CLI：抓單一 event 的 TrackGraph 並印出 A/B 軌道摘要（含 G/S）
+- `get_events.py`  
+  Events CLI：列出 upcoming 或 past events（包含 value / name / start_date / end_date）
+- `run_sim_demo.py`  
+  Demo：讀 plan 檔（JSON/JSONL）-> 自動抓 event graphs -> simulate -> 印出逐抽結果
+- `run_planner.py`  
+  跑 planner：讀 test case JSON -> 建 graphs -> plan_min_cost -> 印出 plan summary + 每抽展平表
 
 ---
 
-## 功能特色
+## 環境需求與安裝
 
-- 根據種子值（seed）預測抽卡結果
-- 顯示 A/B 雙軌道的抽卡路徑
-- 支援抽卡模式：
-  - **Normal**：單次抽卡（消耗 1 張票券）
-  - **Guaranteed**：11 連抽保底（消耗 11 張票券，會跳躍位置並換線）
-  - **Switch Track**：因重複貓咪觸發的換線機制
-- 可匯出完整的軌跡圖為 JSON 格式
+建議 Python 3.10+（3.11/3.12 也可）。
 
----
-
-## 安裝
-
-建議使用 venv：
+安裝依賴（請依你自己的環境管理方式）：
 
 ```bash
-cd bc-roll-planner-py
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+pip install requests beautifulsoup4 urllib3 wcwidth
+````
+
+> `bc_roll_scraper.py` 會嘗試用 `lxml` parser；若你要更穩定解析可額外裝：
+
+```bash
+pip install lxml
 ```
-
-主要依賴（以 `requirements.txt` 為準）：
-
-- `requests`：HTTP 請求
-- `beautifulsoup4`：HTML 解析
-- `lxml`：HTML/XML 解析器
-- `wcwidth`：終端顯示寬度處理（中文對齊）
 
 ---
 
-## 使用方法（CLI）
+## 取得活動列表（events）
 
-### 基本用法
+### 1) Upcoming events
 
 ```bash
-python main.py --seed <你的種子值> --event <活動代碼> --count <顯示格數>
+python get_events.py --event_type upcoming --lang tw --ui tw
 ```
+
+### 2) Past events（最多抓 N 個）
+
+```bash
+python get_events.py --event_type past --limit 20 --lang tw --ui tw
+```
+
+輸出格式會列出方便複製的：
+
+* `value`: event_value（後續建圖用）
+* `name`: event 名稱（含日期範圍時會嘗試解析 start/end）
+
+---
+
+## 建圖（TrackGraph）
+
+`main.py` 會抓指定 seed + event + count，建立 `TrackGraph` 並印出每格 A/B 的摘要：
+
+* normal 抽到的貓
+* 是否有 `G -> 落點(保底貓)`
+* 是否有 `S -> 落點(換線貓)`
 
 ### 範例
 
 ```bash
-python main.py --seed 1234567890 --event 2025-12-12_1020 --count 50
+python main.py --seed 1234 --event 2025-12-12_1020 --count 120
 ```
 
-### 參數
-
-| 參數         | 必填 | 預設值                | 說明                              |
-| ------------ | ---- | --------------------- | --------------------------------- |
-| `--seed`     | ✅   | -                     | 種子值（通常為 10 位數字）        |
-| `--event`    | ✅   | -                     | 活動代碼（格式：YYYY-MM-DD_NNNN） |
-| `--count`    | ❌   | 50                    | 顯示的格數（建議 20-100）         |
-| `--lang`     | ❌   | tw                    | 內容語言參數（來源站台用）        |
-| `--ui`       | ❌   | tw                    | CLI 顯示用語言參數                |
-| `--base-url` | ❌   | https://bc.godfat.org | 資料來源網址                      |
-| `--export`   | ❌   | -                     | 匯出 JSON 檔案路徑                |
-
----
-
-## 輸出格式
-
-程式會以表格形式顯示抽卡結果（A/B 雙軌）：
-
-```text
-1A   薩滿貓            [G -> 11B(空中戰艦貓咪Wunder)]      | 1B   幼稚園貓
-2A   貓劍聖                                                | 2B   美腿貓         [S -> 3A(稀有貓)]
-...
-```
-
-- 左欄：A 軌道位置與該位置 normal 抽會得到的貓
-- 右欄：B 軌道位置與該位置 normal 抽會得到的貓
-- `[G -> ...]`：在該位置執行 Guaranteed 時的跳躍位置與結果（含換線）
-- `[S -> ...]`：因重複貓咪觸發 Switch Track 時，換到的位置與結果
-
----
-
-## 匯出 JSON（軌跡圖）
+### 輸出 JSON（可選）
 
 ```bash
-python main.py --seed 1234567890 --event 2025-12-12_1020 --export graph.json
+python main.py --seed 1234 --event 2025-12-12_1020 --count 120 --export graph_1234_1020.json
 ```
-
-匯出的 JSON 會包含完整軌跡圖結構（節點/邊/稀有度/跳躍與換線資訊）。
-
-專案內的 `graph.json`、`graph001.json` 為匯出樣本（若存在）。
 
 ---
 
-## 取得活動列表（抓 event code）
+## 模擬（Simulator）
 
-使用 `get_events.py` 抓取/列出活動，協助找到 `--event` 參數需要的活動代碼：
+### plan 檔格式（JSON / JSONL）
+
+* `.json`：整個檔案是一個 array
+* `.jsonl`：一行一個 dict
+
+每個動作 dict 必須包含：
+
+* `event_value`: 字串
+* `method`: `"single"` 或 `"ten"`
+
+#### JSON 範例（plan.json）
+
+```json
+[
+  {"event_value": "2025-12-12_1020", "method": "ten"},
+  {"event_value": "2025-12-12_1019", "method": "single"},
+  {"event_value": "2025-12-12_1019", "method": "single"},
+  {"event_value": "2025-12-12_1019", "method": "ten"}
+]
+```
+
+#### JSONL 範例（plan.jsonl）
+
+```json
+{"event_value":"2025-12-12_1020","method":"ten"}
+{"event_value":"2025-12-12_1019","method":"single"}
+{"event_value":"2025-12-12_1019","method":"single"}
+{"event_value":"2025-12-12_1019","method":"ten"}
+```
+
+### 直接跑 demo（會自動抓 events + 建 graphs + simulate）
 
 ```bash
-python get_events.py
+python run_sim_demo.py --plan-file plan.json --seed 1234 --start 1A
 ```
+
+* `--count` 可不填：會用 `estimate_required_counts(actions)` 自動推一個最小值（再 +20 buffer）
+* 若網站抓不到 upcoming events，仍會用 plan 裡的 `event_value` 建圖（name/date 會缺）
 
 ---
 
-## 模擬示範與文件
+## 規劃（Planner）
 
-- `bc_roll_simulator.py`：模擬/走圖邏輯（normal/guaranteed/switch）
-- `run_sim_demo.py`：模擬示範腳本
-- `demo.md`：示範說明文件
-- `table_example.html`：表格輸出/展示用範例
-- `curls/`：抓取資料用的 curl 範例/紀錄（如有）
+Planner 用 `run_planner.py`，輸入是一個「test case JSON」，包含：
 
-執行示範：
+* `seed`
+* `start_pos_id`（可選，預設 `1A`）
+* `count`（建圖用，建議 >= 需要的游標範圍）
+* `targets`：目標貓（建議直接用 `cat_id` int）
+* `resources`：資源上限
+* `events`：你要讓 planner 可使用的卡池清單（每個含 pool_type）
+
+### test case 範例（test_case_01.json）
+
+```json
+{
+  "seed": "1234",
+  "start_pos_id": "1A",
+  "count": 140,
+  "targets": [726, 706],
+  "resources": {
+    "tickets": 10,
+    "platinum_tickets": 1,
+    "legend_tickets": 0,
+    "food": 3000
+  },
+  "events": [
+    {
+      "event_value": "2025-12-12_1019",
+      "name": "Some normal pool event",
+      "pool_type": "normal"
+    },
+    {
+      "event_value": "2025-12-12_1020",
+      "name": "Some platinum pool event",
+      "pool_type": "platinum"
+    }
+  ]
+}
+```
+
+### 執行
 
 ```bash
-python run_sim_demo.py
+python run_planner.py test_case_01.json
 ```
 
----
+輸出包含：
 
-## 專案結構（`bc-roll-planner-py/`）
-
-```text
-bc-roll-planner-py/
-├── main.py                 # CLI 入口：解析參數、抓資料、建立圖並輸出/匯出
-├── bc_roll_scraper.py      # 從 bc.godfat.org 抓取頁面並解析活動/池子資料
-├── bc_roll_models.py       # 資料模型定義（Cat、Event、TrackGraph 等）
-├── bc_roll_simulator.py    # 抽卡模擬/走圖邏輯（normal/guaranteed/switch）
-├── get_events.py           # 抓取/列出活動代碼用腳本
-├── run_sim_demo.py         # 模擬示範腳本
-├── demo.md                 # 示範說明
-├── curls/                  # 取得資料用的 curl 範例/紀錄（如有）
-├── table_example.html      # 表格輸出示例
-├── graph.json              # 匯出樣本（若存在）
-├── graph001.json           # 匯出樣本（若存在）
-├── requirements.txt        # Python 依賴
-└── test/                   # 抓取/驗證腳本
-    ├── bc_scraper.py
-    └── scrape_events_test01.py
-```
+* `Success / Targets hit / Targets missing / Final cursor`
+* 成本向量（equivalent_cost、food_used、tickets_used、platinum_used、legend_used）
+* Step summary 表（每步的 event/pool/resource/method/cursor 變化）
+* Draws 展平表（每一抽都標示：event/pool/resource/method/used/cat/pos）
 
 ---
 
-## 測試 / 驗證
+## 重要概念說明（快速）
 
-`test/` 目錄目前包含抓取/驗證用腳本，可先直接執行單一檔案確認環境可用：
+### 1) TrackGraph / PositionNode / Edge
 
-```bash
-python test/scrape_events_test01.py
-```
+* `TrackGraph.nodes["12A"]` 是一個位置
+* `PositionNode.edges` 可能包含：
+
+  * `normal`：一般單抽
+  * `switch_track`：rare 重複時換線抽（R）
+  * `guaranteed`：十連保底的第 11 隻（AG）
+
+### 2) 10 連的落點
+
+* 若起點存在 `guaranteed edge`，則：
+
+  * 先做 10 次單抽規則
+  * 再追加第 11 隻（起點 G 欄）
+  * **最終 cursor** 使用 `guaranteed edge.to`
+* 若起點沒有 `guaranteed edge`：就只有 10 抽，不做保底結算落點
+
+### 3) count 要設多大？
+
+* 建議：
+
+  * Simulator：用 `estimate_required_counts(actions)` 自動估（再 +20）
+  * Planner：你應該保守給更大一點（例如 120~200），避免目標落在更後面的 cursor
 
 ---
-
-## 注意事項
-
-- 種子值需自行取得；本專案不負責推導 seed。
-- 活動代碼可由 `get_events.py` 或 `bc.godfat.org` 查詢。
-- 終端顯示對齊依賴 `wcwidth`；若顯示錯位請確認依賴已安裝。
-
----
-
-## License
-
-請參考 `LICENSE` 檔案。

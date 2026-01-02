@@ -2,12 +2,12 @@
   "seed": "1919191",
   "start_pos_id": "1A",
   "count": 120,
-  "targets": [560,520,726],
+  "targets": [520,452],
   "resources": {
-    "tickets": 80,
-    "food": 1500,
+    "tickets": 20,
+    "food": 4000,
     "platinum_tickets": 1,
-    "legend_tickets": 0
+    "legend_tickets": 1
   },
   "events": [
     {
@@ -23,6 +23,13 @@
       "pool_type": "normal",
       "start_date": "2025-12-29",
       "end_date": "2026-01-09"
+    },
+    {
+      "event_value": "2025-12-12_1009",
+      "name": "2025-12-12 ~ 2030-01-01: 必定可以獲得1隻超激稀有等級以上角色的「傳說轉蛋」！",
+      "pool_type": "legend",
+      "start_date": "2025-12-12",
+      "end_date": "2030-01-01"
     }
   ]
 }

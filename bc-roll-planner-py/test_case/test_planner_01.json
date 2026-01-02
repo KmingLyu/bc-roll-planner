@@ -4,9 +4,9 @@
   "count": 120,
   "targets": [726, 706],
   "resources": {
-    "tickets": 10,
-    "food": 3000,
-    "platinum_tickets": 0,
+    "tickets": 80,
+    "food": 1500,
+    "platinum_tickets": 1,
     "legend_tickets": 0
   },
   "events": [

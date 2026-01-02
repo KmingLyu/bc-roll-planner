@@ -1,0 +1,28 @@
+{
+  "seed": "1919191",
+  "start_pos_id": "1A",
+  "count": 120,
+  "targets": [560,520,726],
+  "resources": {
+    "tickets": 10,
+    "food": 3000,
+    "platinum_tickets": 1,
+    "legend_tickets": 0
+  },
+  "events": [
+    {
+      "event_value": "2025-11-24_523",
+      "name": "2025-11-24 ~ 2025-11-28: 對發射波動敵人超好用的「波動破壞者」登場！★好康轉蛋活動中！",
+      "pool_type": "normal",
+      "start_date": "2025-11-24",
+      "end_date": "2025-11-28"
+    },
+    {
+      "event_value": "2025-12-29_1011",
+      "name": "2025-12-29 ~ 2026-01-09: 限定超激稀有角色「俏喵」參戰！慶祝1.1億下載的特別轉蛋登場！",
+      "pool_type": "normal",
+      "start_date": "2025-12-29",
+      "end_date": "2026-01-09"
+    }
+  ]
+}

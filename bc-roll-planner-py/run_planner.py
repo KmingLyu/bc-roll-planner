@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import unicodedata
 from typing import Any, Dict
 
 from bc_roll_models import Event
@@ -102,26 +103,157 @@ def main() -> int:
     print("platinum_used:", p_used)
     print("legend_used:", l_used)
 
-    print("\n--- Plan steps ---")
-    for i, step in enumerate(res.plan, start=1):
-        print(
-            f"{i:02d}. event={step.event_value} pool={step.pool_type} "
-            f"resource={step.resource} method={step.method} "
-            f"draws={len(step.draws)} cursor: {step.start_cursor_id}->{step.end_cursor_id}"
-        )
-        # 每步只預覽前 5 隻，避免輸出太長
-        for d in step.draws[:5]:
-            print(
-                f"    - {d.used:11s} {d.cat_id} {d.cat_name} ({d.from_pos_id}->{d.to_pos_id})"
-            )
-        if len(step.draws) > 5:
-            print("    ...")
+    # -------- pretty print helpers --------
+    def _trim(s: str, max_len: int) -> str:
+        s = str(s)
+        return s if len(s) <= max_len else (s[: max_len - 1] + "…")
 
-    print("\n--- All draws ---")
-    for i, d in enumerate(res.all_draws, start=1):
+    # 以「顯示寬度」做對齊：CJK 全形字元一般佔 2 格，ASCII 佔 1 格
+    def _display_width(text: str) -> int:
+        w = 0
+        for ch in str(text):
+            # combining marks 不計寬
+            if unicodedata.combining(ch):
+                continue
+            w += 2 if unicodedata.east_asian_width(ch) in ("F", "W") else 1
+        return w
+
+    def _cell(text: str, width: int, align: str = "left") -> str:
+        s = str(text)
+        pad = width - _display_width(s)
+        if pad <= 0:
+            return s
+        if align == "right":
+            return (" " * pad) + s
+        return s + (" " * pad)
+
+    def _print_table(
+        headers: list[tuple[str, int, str]], rows: list[list[str]]
+    ) -> None:
+        # headers: [(title, width, align)]
+        sep = "  "
+        if not headers:
+            return
+
+        # 欄寬自動擴展：不截斷、不加省略號，確保中文字對齊
+        col_count = len(headers)
+        widths: list[int] = [0] * col_count
+        for i, (title, min_w, _) in enumerate(headers):
+            widths[i] = max(int(min_w), _display_width(title))
+
+        for row in rows:
+            if len(row) != col_count:
+                raise ValueError(
+                    f"table row 欄位數不符：expected {col_count}, got {len(row)}"
+                )
+            for i, val in enumerate(row):
+                widths[i] = max(widths[i], _display_width(val))
+
+        line_len = sum(widths) + len(sep) * (col_count - 1)
         print(
-            f"{i:03d}. {d.used:11s} {d.cat_id} {d.cat_name} ({d.from_pos_id}->{d.to_pos_id})"
+            sep.join(
+                _cell(title, widths[i], "left")
+                for i, (title, _, _) in enumerate(headers)
+            )
         )
+        print("-" * line_len)
+        for row in rows:
+            print(
+                sep.join(
+                    _cell(val, widths[i], headers[i][2]) for i, val in enumerate(row)
+                )
+            )
+
+    # 讓 method 呈現更直觀（不假設內部 enum，做保守處理）
+    def _method_label(method: str) -> str:
+        m = str(method).lower()
+        if "10" in m:
+            return "10抽"
+        if "ten" in m:
+            return "10抽"
+        if "single" in m or "one" in m or "1" == m:
+            return "單抽"
+        return str(method)
+
+    # 將 steps 展平成「每一抽」都帶上下文資訊（event/pool/resource/method）
+    flat_draws = []
+    global_idx = 1
+    for step_idx, step in enumerate(res.plan, start=1):
+        for draw_idx, d in enumerate(step.draws, start=1):
+            flat_draws.append(
+                {
+                    "gidx": global_idx,
+                    "step": step_idx,
+                    "didx": draw_idx,
+                    "event": str(step.event_value),
+                    "pool": str(step.pool_type),
+                    "res": str(step.resource),
+                    "method": _method_label(step.method),
+                    "used": str(d.used),
+                    "cat_id": str(d.cat_id),
+                    "cat_name": str(d.cat_name),
+                    "from": str(d.from_pos_id),
+                    "to": str(d.to_pos_id),
+                }
+            )
+            global_idx += 1
+
+    print("\n--- Plan steps (summary) ---")
+    step_headers = [
+        ("#", 2, "right"),
+        ("event", 10, "left"),
+        ("pool", 8, "left"),
+        ("resource", 10, "left"),
+        ("method", 4, "left"),
+        ("draws", 5, "right"),
+        ("cursor", 15, "left"),
+    ]
+    step_rows: list[list[str]] = []
+    for i, step in enumerate(res.plan, start=1):
+        cursor = f"{step.start_cursor_id}->{step.end_cursor_id}"
+        step_rows.append(
+            [
+                str(i),
+                str(step.event_value),
+                str(step.pool_type),
+                str(step.resource),
+                _method_label(step.method),
+                str(len(step.draws)),
+                cursor,
+            ]
+        )
+    _print_table(step_headers, step_rows)
+
+    print("\n--- Draws (每一抽含卡池/資源/抽法) ---")
+    draw_headers = [
+        ("S#", 3, "right"),
+        ("event", 10, "left"),
+        ("pool", 8, "left"),
+        ("resource", 10, "left"),
+        ("method", 4, "left"),
+        ("used", 11, "left"),
+        ("cat", 4, "right"),
+        ("name", 24, "left"),
+        ("pos", 12, "left"),
+    ]
+    draw_rows: list[list[str]] = []
+    for r in flat_draws:
+        name = str(r["cat_name"])
+        pos = f"{r['from']}->{r['to']}"
+        draw_rows.append(
+            [
+                str(r["step"]),
+                str(r["event"]),
+                str(r["pool"]),
+                str(r["res"]),
+                str(r["method"]),
+                str(r["used"]),
+                str(r["cat_id"]),
+                name,
+                pos,
+            ]
+        )
+    _print_table(draw_headers, draw_rows)
 
     return 0
 

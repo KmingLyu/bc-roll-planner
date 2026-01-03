@@ -2,49 +2,66 @@
 import { useState } from "react";
 
 /**
- * 方案 A（純前端、無後端、無 proxy）：
- * - 永遠直接抓 https://bc.godfat.org/?...
- * - 上線到 Netlify 後，如果被 CORS 擋，fetch 會直接失敗（TypeError: Failed to fetch）
- *   這是瀏覽器同源政策，前端無法解決，只能改用：
- *   - 方案 B（Netlify redirect / proxy）
- *   - 或提供「匯入 HTML / 匯入 TrackGraph JSON」的替代方案
+ * 測試模式：
+ * - direct：前端直接抓 https://bc.godfat.org/?...
+ *   很可能被 CORS 擋（瀏覽器安全限制）
+ *
+ * - proxy：抓自己 dev server 的 /api/bc?...（同源）
+ *   再由 vite middleware 去轉抓 bc.godfat.org
+ *   開發期最穩的方式
  */
-function buildGodfatUrl(params: {
-  lang: string;
-  ui: string;
-  seed: string;
-  count: number;
-  event: string;
-}) {
-  const u = new URL("https://bc.godfat.org/");
+type Mode = "direct" | "proxy";
 
-  // 必要參數：lang/ui
-  u.searchParams.set("lang", params.lang);
-  u.searchParams.set("ui", params.ui);
+/**
+ * 統一組出「要 fetch 的 URL」
+ * - direct：回傳完整 https://bc.godfat.org/?...
+ * - proxy ：回傳 http://localhost:5173/api/bc?...
+ *
+ * 注意：
+ * - event 可能是空字串：空就不要塞進 query（避免遠端 404）
+ */
+function buildFetchUrl(
+  mode: Mode,
+  params: {
+    lang: string;
+    ui: string;
+    seed: string;
+    count: number;
+    event: string;
+  }
+) {
+  const base =
+    mode === "direct"
+      ? new URL("https://bc.godfat.org/")
+      : new URL("/api/bc", window.location.origin);
 
-  // 以下參數可選：有值才塞，避免無效參數導致遠端回 404
+  base.searchParams.set("lang", params.lang);
+  base.searchParams.set("ui", params.ui);
+
+  // seed / count / event 不是每次都必要：有值才塞，減少遠端出錯機率
   const seed = params.seed.trim();
-  if (seed) u.searchParams.set("seed", seed);
+  if (seed) base.searchParams.set("seed", seed);
 
   if (Number.isFinite(params.count) && params.count > 0) {
-    u.searchParams.set("count", String(params.count));
+    base.searchParams.set("count", String(params.count));
   }
 
   const ev = params.event.trim();
-  if (ev) u.searchParams.set("event", ev);
+  if (ev) base.searchParams.set("event", ev);
 
-  return u.toString();
+  return base.toString();
 }
 
 export default function CorsTest() {
-  // 使用者可調參數
+  // --- 使用者可調參數（先給合理預設） ---
+  const [mode, setMode] = useState<Mode>("proxy"); // 開發期通常用 proxy
   const [lang, setLang] = useState("tw");
   const [ui, setUi] = useState("tw");
   const [seed, setSeed] = useState("1234");
   const [count, setCount] = useState<number>(50);
-  const [event, setEvent] = useState(""); // 建議先空：避免你填的 event 過期造成 404
+  const [event, setEvent] = useState(""); // ✅ 預設先空，避免用過期 event 造成 404
 
-  // 輸出狀態
+  // --- 輸出狀態 ---
   const [loading, setLoading] = useState(false);
   const [output, setOutput] = useState("");
 
@@ -52,40 +69,41 @@ export default function CorsTest() {
     setLoading(true);
     setOutput("");
 
-    // 1) 組出 direct URL
-    const url = buildGodfatUrl({ lang, ui, seed, count, event });
+    // 1) 組出要抓的 URL
+    const url = buildFetchUrl(mode, { lang, ui, seed, count, event });
 
     try {
-      // 2) 直接 fetch（上線後是否會被 CORS 擋，就看這一行）
+      // 2) 發 request
       const resp = await fetch(url, { method: "GET" });
 
-      // 3) 印出狀態與前 1200 字（幫你判斷抓到的是不是正確頁面）
+      // 3) 把重要資訊印出來（含 proxy header，方便確認真的走 proxy）
       const ct = resp.headers.get("content-type") ?? "(no content-type)";
+      const xProxy = resp.headers.get("x-dev-proxy") ?? "(none)";
       const text = await resp.text();
       const head = text.slice(0, 1200);
 
       setOutput(
         [
-          `✅ Fetch OK (Direct)`,
+          `✅ Fetch OK`,
+          `mode=${mode}`,
           `url=${url}`,
           `status=${resp.status} ${resp.statusText}`,
           `content-type=${ct}`,
+          `x-dev-proxy=${xProxy}`,
           `--- body (first 1200 chars) ---`,
           head,
         ].join("\n")
       );
     } catch (e: any) {
-      // CORS 被擋通常會來這裡（瀏覽器會阻止你讀取 response）
+      // direct 模式被 CORS 擋通常會來這裡：TypeError: Failed to fetch
       setOutput(
         [
-          `❌ Fetch Failed (Direct)`,
+          `❌ Fetch Failed`,
+          `mode=${mode}`,
           `url=${url}`,
           `error=${String(e?.message ?? e)}`,
           ``,
-          `可能原因：CORS（瀏覽器同源政策）`,
-          `建議：`,
-          `- 之後改方案 B：用 Netlify redirects 做 /api/bc proxy`,
-          `- 或實作匯入模式：貼 HTML / 上傳 TrackGraph JSON`,
+          `提示：DevTools -> Console / Network 通常會有更完整的 CORS 訊息`,
         ].join("\n")
       );
     } finally {
@@ -93,6 +111,8 @@ export default function CorsTest() {
     }
   }
 
+  // 目前 UI 做到「最少必要」
+  // 之後你要改成：先抓 events -> 下拉選 event -> 再抓 tracks
   return (
     <div
       style={{
@@ -101,11 +121,31 @@ export default function CorsTest() {
         maxWidth: 860,
       }}
     >
-      <h2>bc.godfat.org Direct 抓取測試（方案 A）</h2>
+      <h2>bc.godfat.org 抓取測試（Direct vs Proxy）</h2>
 
       <div
         style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 8 }}
       >
+        <label>模式</label>
+        <div style={{ display: "flex", gap: 12 }}>
+          <label>
+            <input
+              type="radio"
+              checked={mode === "proxy"}
+              onChange={() => setMode("proxy")}
+            />
+            Proxy（建議）
+          </label>
+          <label>
+            <input
+              type="radio"
+              checked={mode === "direct"}
+              onChange={() => setMode("direct")}
+            />
+            Direct（可能被 CORS 擋）
+          </label>
+        </div>
+
         <label>lang</label>
         <input value={lang} onChange={(e) => setLang(e.target.value)} />
 
@@ -127,7 +167,7 @@ export default function CorsTest() {
         <input
           value={event}
           onChange={(e) => setEvent(e.target.value)}
-          placeholder="可先留空；下一步再做 events 下拉選"
+          placeholder="先留空，下一步會做『抓 events 下拉選』"
         />
       </div>
 
@@ -156,9 +196,8 @@ export default function CorsTest() {
       </pre>
 
       <p style={{ color: "#666" }}>
-        如果上線到 Netlify 後 Direct 失敗且 DevTools 顯示
-        CORS，代表純前端無法直抓。 那時再改方案 B（Netlify redirects
-        proxy）或做匯入模式即可。
+        小技巧：Proxy 成功時通常會看到 <code>x-dev-proxy=bc-godfat</code>。
+        Direct 模式若失敗，多半是瀏覽器 CORS 限制。
       </p>
     </div>
   );

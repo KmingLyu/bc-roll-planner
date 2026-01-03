@@ -39,6 +39,7 @@
  */
 
 import type { Handler } from "@netlify/functions";
+
 import { fetchTextWithRetry } from "./_lib/http";
 import { parseEventsFromHomeHtml } from "./_lib/parseEvents";
 

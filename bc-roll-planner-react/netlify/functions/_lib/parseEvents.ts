@@ -1,8 +1,8 @@
 import * as cheerio from "cheerio";
-import { normalizeText } from "./normalize";
-// import type { Event } from "./buildGraph";
-// import type { Event } from "@shared/models";
+
 import type { Event } from "../../../shared/models";
+
+import { normalizeText } from "./normalize";
 
 function extractDatesFromEventName(name: string): {
   start_date: string | null;

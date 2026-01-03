@@ -1,11 +1,10 @@
 import * as cheerio from "cheerio";
+
 import type { Cheerio, CheerioAPI } from "cheerio";
 import type { AnyNode, Element as DomElement } from "domhandler";
+import type { Cat, PickCell } from "../../../shared/models";
 
 import { normalizeText } from "./normalize";
-// import type { Cat, PickCell } from "./buildGraph";
-// import type { Cat, PickCell } from "@shared/models";
-import type { Cat, PickCell } from "../../../shared/models";
 
 const PICK_ID_RE = /^(\d+)([AB])(.*)$/; // 1A, 1AG, 1BR
 const ONCLICK_RE = /pick\('([^']+)'\)/; // pick('3A')

@@ -18,7 +18,7 @@ export async function fetchTextWithRetry(
   const backoffMs = opt.backoffMs ?? 600;
 
   // 預設 header（模仿瀏覽器 + zh-TW）
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     "User-Agent":
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
     "Accept-Language": "zh-TW,zh;q=0.9",

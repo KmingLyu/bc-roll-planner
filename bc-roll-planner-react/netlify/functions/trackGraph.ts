@@ -49,7 +49,9 @@ import {
   parseTrackCellsFromTableHtml,
 } from "./_lib/parseTrackTable";
 import { buildTrackGraphFromCells } from "./_lib/buildGraph";
-import type { Event } from "./_lib/buildGraph";
+// import type { Event } from "./_lib/buildGraph";
+// import type { Event } from "@shared/models";
+import type { Event } from "../../shared/models";
 
 function json(statusCode: number, body: unknown, cacheSeconds = 0) {
   const cache =

@@ -1,73 +1,53 @@
-# React + TypeScript + Vite
+# BC Roll Planner React 架構 v1
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
 ```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+bc-roll-planner-react/
+├─ netlify/
+│  └─ functions/
+│     ├─ events.ts              # 對應 get_upcoming_events / get_past_events
+│     ├─ trackGraph.ts          # 對應 build_track_graph + parse tracks table
+│     └─ _lib/
+│        ├─ http.ts             # fetch + retry/backoff + headers
+│        ├─ parseEvents.ts      # 解析首頁 events select
+│        ├─ parseTrackTable.ts  # 解析 tracks table -> PickCell map
+│        ├─ buildGraph.ts       # PickCell -> PositionNode/Edge -> TrackGraph
+│        └─ normalize.ts        # normalize_text / regex helpers
+│
+├─ src/                         # React app
+│  ├─ app/
+│  │  ├─ App.tsx
+│  │  └─ routes.tsx
+│  ├─ pages/
+│  │  ├─ HomePage.tsx           # seed/count/events/targets/resources
+│  │  ├─ GraphPage.tsx          # 檢視 TrackGraph
+│  │  └─ PlannerPage.tsx        # 跑 plan_min_cost 並顯示結果
+│  ├─ components/
+│  │  ├─ EventPicker.tsx
+│  │  ├─ TargetInput.tsx
+│  │  ├─ ResourceForm.tsx
+│  │  ├─ PlanResultView.tsx
+│  │  └─ DrawTable.tsx
+│  ├─ api/
+│  │  ├─ netlifyClient.ts       # 呼叫 /.netlify/functions/*
+│  │  ├─ eventsApi.ts
+│  │  └─ trackGraphApi.ts
+│  ├─ core/                     # ✅ TS 版演算法（前端用）
+│  │  ├─ models.ts              # Cat/Event/Edge/PositionNode/TrackGraph 型別
+│  │  ├─ simulator.ts           # simulate / choose_edge_for_single_draw / parse_actions
+│  │  ├─ planner.ts             # plan_min_cost (Dijkstra)
+│  │  └─ utils.ts               # parse_pos_id / apply_hit / cost helpers
+│  ├─ workers/
+│  │  └─ planner.worker.ts      # （建議）把 plan_min_cost 放 worker
+│  └─ store/
+│     ├─ useAppStore.ts         # Zustand/Redux 皆可
+│     └─ persistence.ts         # localStorage cache graphs/results
+│
+├─ shared/                      # ✅（可選，但很推薦）前後端共用型別/純函式
+│  ├─ models.ts                 # 同 core/models.ts（或反過來讓 core 引用 shared）
+│  └─ validators.ts             # zod schemas（function 回傳也驗）
+│
+├─ netlify.toml                 # 建議保留（路由/headers/本地 dev）
+├─ package.json
+├─ tsconfig.json
+└─ vite.config.ts
 ```

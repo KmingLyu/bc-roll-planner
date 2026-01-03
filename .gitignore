@@ -5,3 +5,5 @@ prompts
 graphs/
 *example*
 notes/
+# Local Netlify folder
+.netlify

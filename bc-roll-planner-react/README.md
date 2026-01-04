@@ -32,7 +32,6 @@ bc-roll-planner-react/
 │  │  ├─ eventsApi.ts
 │  │  └─ trackGraphApi.ts
 │  ├─ core/                     # ✅ TS 版演算法（前端用）
-│  │  ├─ models.ts              # Cat/Event/Edge/PositionNode/TrackGraph 型別
 │  │  ├─ simulator.ts           # simulate / choose_edge_for_single_draw / parse_actions
 │  │  ├─ planner.ts             # plan_min_cost (Dijkstra)
 │  │  └─ utils.ts               # parse_pos_id / apply_hit / cost helpers

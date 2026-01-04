@@ -16,10 +16,16 @@
 // Domain models
 // -------------------------
 
+export type CatTier = "rare" | "super" | "uber" | "legendary";
+
 export type Cat = {
   id: number;
   name: string;
-  desc?: string; // optional
+  desc?: string;
+
+  // 貓咪本身稀有度（來自 select optgroup label）
+  // - tracks table 解析出來的 cat 可能沒有 tier，因此設成 optional
+  tier?: CatTier;
 };
 
 export type Event = {

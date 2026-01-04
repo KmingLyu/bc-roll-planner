@@ -17,11 +17,12 @@ import { simulateOnGraph } from "../core/simulator";
 // Planner
 import type { Cost, PlanResult } from "../core/planner";
 import type { PlannerWorkerResponse } from "../workers/planner.worker";
+import PlannerWorker from "../workers/planner.worker?worker";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
 type WorkerResp = PlannerWorkerResponse;
 
-const workerUrl = new URL("../workers/planner.worker.ts", import.meta.url);
+// const workerUrl = new URL("../workers/planner.worker.ts", import.meta.url);
 
 type CatTier = "rare" | "super" | "uber" | "legendary";
 type UiCat = { id: number; name: string; tier?: CatTier };
@@ -210,7 +211,7 @@ export default function HomePage() {
 
   function ensurePlannerWorker() {
     if (!workerRef.current) {
-      workerRef.current = new Worker(workerUrl, { type: "module" });
+      workerRef.current = new PlannerWorker();
     }
     return workerRef.current;
   }

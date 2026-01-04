@@ -1,6 +1,16 @@
 // src/components/graph/GraphSummaryCard.tsx
 import { useMemo, useState } from "react";
 import type { TrackGraph } from "../../../shared/models";
+import {
+  Alert,
+  Box,
+  FormControlLabel,
+  Paper,
+  Stack,
+  Switch,
+  Typography,
+  LinearProgress,
+} from "@mui/material";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
 
@@ -45,73 +55,73 @@ export function GraphSummaryCard(props: {
   const cat1B = useMemo(() => getNormalCatName(graph, "1B"), [graph]);
 
   return (
-    <div style={{ display: "grid", gap: 10 }}>
-      <div style={{ opacity: 0.85 }}>
+    <Stack spacing={1.5}>
+      <Typography variant="body2" color="text.secondary">
         套用參數：seed=<b>{seedApplied}</b>，count=<b>{countApplied}</b>，event=
         <b>{selectedEventValue || "-"}</b>
-      </div>
+      </Typography>
 
-      <div
-        style={{
-          display: "flex",
-          gap: 12,
-          alignItems: "center",
-          flexWrap: "wrap",
-        }}
-      >
-        <span>
+      <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+        <Typography variant="body2" color="text.secondary">
           狀態：<b>{graphState}</b>
-        </span>
-        <label style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
-          <input
-            type="checkbox"
-            checked={showRaw}
-            onChange={(e) => setShowRaw(e.target.checked)}
-          />
-          顯示 raw JSON
-        </label>
-      </div>
+        </Typography>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={showRaw}
+              onChange={(e) => setShowRaw(e.target.checked)}
+            />
+          }
+          label="顯示 raw JSON"
+        />
+      </Stack>
+
+      {graphState === "loading" && <LinearProgress />}
 
       {graphState === "error" && (
-        <div style={{ color: "crimson" }}>trackGraph 錯誤：{graphErr}</div>
-      )}
-
-      {graphState === "ok" && graph && (
-        <div style={{ display: "grid", gap: 6 }}>
-          <div>
-            <b>nodes count</b>：{nodesCount}
-          </div>
-          <div>
-            <b>1A normal</b>：{cat1A}
-          </div>
-          <div>
-            <b>1B normal</b>：{cat1B}
-          </div>
-
-          {showRaw && (
-            <pre
-              style={{
-                margin: 0,
-                padding: 10,
-                background: "#f7f7f7",
-                overflow: "auto",
-                borderRadius: 10,
-              }}
-            >
-              {safeJson(graph)}
-            </pre>
-          )}
-        </div>
+        <Alert severity="error">trackGraph 錯誤：{graphErr}</Alert>
       )}
 
       {graphState === "idle" && (
-        <div style={{ opacity: 0.7 }}>
+        <Alert severity="info">
           尚未抓取 TrackGraph（按 Planner 時會自動抓最新）
-        </div>
+        </Alert>
       )}
-      {graphState === "loading" && (
-        <div style={{ opacity: 0.7 }}>TrackGraph 載入中...</div>
+
+      {graphState === "ok" && graph && (
+        <Box>
+          <Stack spacing={0.5} sx={{ mb: 1 }}>
+            <Typography>
+              <b>nodes count</b>：{nodesCount}
+            </Typography>
+            <Typography>
+              <b>1A normal</b>：{cat1A}
+            </Typography>
+            <Typography>
+              <b>1B normal</b>：{cat1B}
+            </Typography>
+          </Stack>
+
+          {showRaw && (
+            <Paper
+              variant="outlined"
+              sx={{ p: 1.5, overflow: "auto", maxHeight: 420 }}
+            >
+              <Typography
+                component="pre"
+                sx={{
+                  m: 0,
+                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                  fontSize: 12,
+                  whiteSpace: "pre",
+                }}
+              >
+                {safeJson(graph)}
+              </Typography>
+            </Paper>
+          )}
+        </Box>
       )}
-    </div>
+    </Stack>
   );
 }

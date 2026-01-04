@@ -1,5 +1,6 @@
 // src/components/planner/PlanResultSummary.tsx
 import type { PlanResult } from "../../core/planner";
+import { Alert, Chip, Stack, Typography } from "@mui/material";
 
 function fmtCost(cost: any): string {
   if (!cost || !Array.isArray(cost)) return "-";
@@ -14,49 +15,37 @@ export function PlanResultSummary(props: {
   const { result, missingText } = props;
 
   return (
-    <div
-      style={{
-        border: "1px solid #eee",
-        borderRadius: 10,
-        padding: 10,
-        display: "grid",
-        gap: 6,
-      }}
-    >
-      <div>
-        結果：
-        <b
-          style={{ marginLeft: 8, color: result.success ? "green" : "crimson" }}
-        >
-          {result.success
-            ? "成功（命中全部目標）"
-            : "未完全命中（顯示目前最佳部分解）"}
-        </b>
-      </div>
+    <Stack spacing={1}>
+      <Alert severity={result.success ? "success" : "warning"}>
+        {result.success
+          ? "成功：命中全部目標"
+          : "未完全命中：顯示目前最佳部分解"}
+      </Alert>
 
-      <div>
-        命中：<b>{result.targets_hit}</b> / {result.targets_total}
-        {missingText ? (
-          <span style={{ marginLeft: 10, opacity: 0.9 }}>
-            缺少：{missingText}
-          </span>
-        ) : null}
-      </div>
+      <Stack direction="row" spacing={1} flexWrap="wrap">
+        <Chip
+          label={`命中 ${result.targets_hit}/${result.targets_total}`}
+          color={result.success ? "success" : "warning"}
+          variant="outlined"
+        />
+        <Chip label={`最終位置 ${result.final_cursor_id}`} variant="outlined" />
+        <Chip
+          label={`花費 ${fmtCost(result.total_cost as any)}`}
+          variant="outlined"
+        />
+        <Chip
+          label={`steps ${result.plan?.length ?? 0} / draws ${
+            result.all_draws?.length ?? 0
+          }`}
+          variant="outlined"
+        />
+      </Stack>
 
-      <div>
-        最終位置：<b>{result.final_cursor_id}</b>{" "}
-        <span style={{ opacity: 0.8 }}>
-          (prevCatId={result.final_prev_cat_id ?? "-"})
-        </span>
-      </div>
-
-      <div>
-        花費：<b>{fmtCost(result.total_cost as any)}</b>
-      </div>
-
-      <div style={{ opacity: 0.85 }}>
-        steps={result.plan?.length ?? 0}, draws={result.all_draws?.length ?? 0}
-      </div>
-    </div>
+      {missingText && (
+        <Typography variant="body2" color="text.secondary">
+          缺少：{missingText}
+        </Typography>
+      )}
+    </Stack>
   );
 }

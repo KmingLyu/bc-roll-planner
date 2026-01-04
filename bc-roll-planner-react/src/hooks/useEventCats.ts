@@ -40,6 +40,18 @@ export function useEventCats(params: {
       const s = seed.trim();
       const c = Number(count);
 
+      if (
+        !seed ||
+        !Number.isFinite(count) ||
+        count <= 0 ||
+        selectedEventValues.length === 0
+      ) {
+        setCatsState("idle");
+        setCatsErr("");
+        setTierGroups([]);
+        return;
+      }
+
       if (!selectedEventValues.length || !s || !Number.isFinite(c) || c <= 0) {
         setCatsState("idle");
         setCatsErr("");

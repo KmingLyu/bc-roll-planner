@@ -33,6 +33,12 @@ export function useTrackGraphs(params: {
   async function fetchGraphs() {
     const s = seed.trim();
     const c = Number(count);
+    if (selectedEventValues.length === 0) {
+      // 建議：同時把狀態回到 idle，避免 UI 還顯示 loading/error
+      setGraphState("idle");
+      setGraphErr("");
+      return;
+    }
     if (!selectedEventValues.length) throw new Error("no selected events");
     if (!s || !Number.isFinite(c) || c <= 0)
       throw new Error("invalid seed/count");

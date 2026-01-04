@@ -1,5 +1,16 @@
 // src/components/layout/Section.tsx
 import type { ReactNode } from "react";
+import {
+  Card,
+  CardHeader,
+  CardContent,
+  Collapse,
+  IconButton,
+  Stack,
+  Tooltip,
+} from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 
 export function Section(props: {
   title: string;
@@ -11,38 +22,37 @@ export function Section(props: {
   const { title, collapsed, onToggleCollapsed, onHide, children } = props;
 
   return (
-    <section
-      style={{
-        border: "1px solid #ddd",
-        borderRadius: 10,
-        padding: 12,
-        marginBottom: 12,
-        background: "#fff",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          justifyContent: "space-between",
-        }}
-      >
-        <div style={{ fontWeight: 800 }}>{title}</div>
-
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button onClick={onToggleCollapsed} style={{ cursor: "pointer" }}>
-            {collapsed ? "展開" : "收合"}
-          </button>
-          {onHide && (
-            <button onClick={onHide} style={{ cursor: "pointer" }}>
-              隱藏
-            </button>
-          )}
-        </div>
-      </div>
-
-      {!collapsed && <div style={{ marginTop: 10 }}>{children}</div>}
-    </section>
+    <Card variant="outlined">
+      <CardHeader
+        title={title}
+        titleTypographyProps={{ fontWeight: 800 }}
+        action={
+          <Stack direction="row" spacing={1} alignItems="center">
+            {onHide && (
+              <Tooltip title="隱藏此區塊">
+                <IconButton onClick={onHide} size="small">
+                  <VisibilityOffIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+            <Tooltip title={collapsed ? "展開" : "收合"}>
+              <IconButton
+                onClick={onToggleCollapsed}
+                size="small"
+                sx={{
+                  transform: collapsed ? "rotate(0deg)" : "rotate(180deg)",
+                  transition: "transform 180ms ease",
+                }}
+              >
+                <ExpandMoreIcon />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        }
+      />
+      <Collapse in={!collapsed} timeout="auto" unmountOnExit>
+        <CardContent sx={{ pt: 0 }}>{children}</CardContent>
+      </Collapse>
+    </Card>
   );
 }

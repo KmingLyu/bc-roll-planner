@@ -1,6 +1,9 @@
 // src/pages/PlannerPage.tsx
 import { useEffect, useMemo, useState } from "react";
 
+// MUI
+import { Box, Button, Container, Stack, Typography } from "@mui/material";
+
 // Models
 import type { Event, TrackGraph } from "../../shared/models";
 
@@ -38,13 +41,9 @@ import { SimulatorPanel } from "../components/simulator/SimulatorPanel";
 // Planner types
 import type { PlanResult } from "../core/planner";
 
-// -------------------------
-// Shared UI types
-// -------------------------
 type LoadState = "idle" | "loading" | "ok" | "error";
 
 function tierOrder(t: CatTier): number {
-  // Legendary > Uber > Super > Rare
   if (t === "legendary") return 0;
   if (t === "uber") return 1;
   if (t === "super") return 2;
@@ -60,10 +59,10 @@ function safeErrText(e: unknown): string {
 
 export default function PlannerPage() {
   // -------------------------
-  // UI flags（每個大區塊可獨立顯示/隱藏）
+  // UI flags
   // -------------------------
   const [ui, setUi] = useState<UiFlags>({
-    showControlPanel: true,
+    showControlPanel: false,
 
     showSeedCount: true,
     seedCountCollapsed: false,
@@ -77,22 +76,21 @@ export default function PlannerPage() {
     showPlanner: true,
     plannerCollapsed: false,
 
-    showGraphDebug: true,
+    showGraphDebug: false,
     graphDebugCollapsed: true,
 
-    showSimulator: true,
+    showSimulator: false,
     simulatorCollapsed: true,
   });
 
   // -------------------------
-  // Seed/Count：輸入中不影響全域；按 Apply 才更新
+  // Seed/Count：按 Apply 才更新
   // -------------------------
   const [seedApplied, setSeedApplied] = useState<string>("1234");
   const [countApplied, setCountApplied] = useState<number>(120);
 
   // -------------------------
-  // Events（暫時維持原樣：upcoming/past 單選）
-  // 但 value 先用 string[]，未來多選直接啟用
+  // Events：先維持 mode 單一（未來再做 upcoming+past 同時顯示/無限載入）
   // -------------------------
   const [eventsMode, setEventsMode] = useState<"upcoming" | "past">("upcoming");
   const { eventsState, eventsErr, events, reloadEvents } = useEvents({
@@ -102,16 +100,35 @@ export default function PlannerPage() {
     ui: "tw",
   });
 
+  // ✅ 多選 values
   const [selectedEventValues, setSelectedEventValues] = useState<string[]>([]);
-  const selectedEventValue = selectedEventValues[0] ?? "";
 
-  // 初次載入 events 後，自動選第一個（若尚未選）
+  // ✅ primary event：Graph Debug / Simulator 用
+  const [primaryEventValue, setPrimaryEventValue] = useState<string>("");
+
+  // // 初次載入 events 後：若都沒選，預設選第一個，並設為 primary
+  // useEffect(() => {
+  //   if (selectedEventValues.length) return;
+  //   if (eventsState === "ok" && events.length && events[0]?.value) {
+  //     const first = events[0].value;
+  //     setSelectedEventValues([first]);
+  //     setPrimaryEventValue(first);
+  //   }
+  // }, [eventsState, events, selectedEventValues.length]);
+
+  // 任何時候 selectedEventValues 改變：確保 primary 仍有效
   useEffect(() => {
-    if (selectedEventValues.length) return;
-    if (eventsState === "ok" && events.length && events[0]?.value) {
-      setSelectedEventValues([events[0].value]);
+    if (!selectedEventValues.length) {
+      setPrimaryEventValue("");
+      return;
     }
-  }, [eventsState, events, selectedEventValues.length]);
+    if (
+      !primaryEventValue ||
+      !selectedEventValues.includes(primaryEventValue)
+    ) {
+      setPrimaryEventValue(selectedEventValues[0]);
+    }
+  }, [selectedEventValues, primaryEventValue]);
 
   const eventsByValue = useMemo(() => {
     const m = new Map<string, Event>();
@@ -120,8 +137,7 @@ export default function PlannerPage() {
   }, [events]);
 
   // -------------------------
-  // Target Cats：依 seedApplied/countApplied + selectedEventValues 自動載入
-  // 未來多事件 -> 直接 union
+  // Target Cats：依 seed/count + selectedEventValues 自動載入（多事件 union）
   // -------------------------
   const { catsState, catsErr, tierGroups, allowedCatIdSet, catNameById } =
     useEventCats({
@@ -135,15 +151,14 @@ export default function PlannerPage() {
 
   const [targetCatIds, setTargetCatIds] = useState<number[]>([]);
 
-  // 修剪：把已選但不在聯集清單內的移掉
+  // 修剪：把已選但不在聯集中允許的 id 移除
   useEffect(() => {
     if (!allowedCatIdSet) return;
     setTargetCatIds((prev) => prev.filter((id) => allowedCatIdSet.has(id)));
   }, [allowedCatIdSet]);
 
   // -------------------------
-  // Graph：按 Planner 前先 ensure 最新（你要求）
-  // Graph Debug 區可以看目前狀態
+  // Graph：按 Planner 前先 ensure 最新（多 events）
   // -------------------------
   const { graphState, graphErr, graphByEvent, fetchGraphs, clearGraphs } =
     useTrackGraphs({
@@ -155,15 +170,17 @@ export default function PlannerPage() {
       ui: "tw",
     });
 
-  // 當 seed/count apply 或 events 變動：把舊 graph 清掉（避免誤用舊資料）
+  // 參數變動時清掉 graphs（避免舊 graph 造成誤解）
   useEffect(() => {
     clearGraphs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seedApplied, countApplied, selectedEventValues.join("|")]);
 
+  // Graph Debug / Simulator 用 primaryEventValue
   const activeGraph: TrackGraph | null = useMemo(() => {
-    if (!selectedEventValue) return null;
-    return graphByEvent[selectedEventValue] ?? null;
-  }, [graphByEvent, selectedEventValue]);
+    if (!primaryEventValue) return null;
+    return graphByEvent[primaryEventValue] ?? null;
+  }, [graphByEvent, primaryEventValue]);
 
   // -------------------------
   // Planner resources + cfg
@@ -181,27 +198,19 @@ export default function PlannerPage() {
   });
 
   // -------------------------
-  // Planner run (Worker)
+  // Planner worker
   // -------------------------
   const { runPlanner, planState, planErr, planResult, resetPlan } =
     usePlannerWorker();
 
-  // 只要資源改了就清結果（避免誤解）
   useEffect(() => {
     resetPlan();
   }, [resources, plannerCfg.start_pos_id, plannerCfg.max_expansions]);
 
-  // -------------------------
-  // 主流程：按下「規劃」-> 先抓最新 graph -> 再 run worker
-  // -------------------------
   async function onClickPlanner() {
-    // 1) basic guards
-    if (!selectedEventValue) {
+    if (!selectedEventValues.length) {
       resetPlan();
-      return runPlanner({
-        kind: "errorOnly",
-        error: "請先選擇 event",
-      });
+      return runPlanner({ kind: "errorOnly", error: "請先選擇至少一個 event" });
     }
     if (
       !seedApplied.trim() ||
@@ -216,15 +225,12 @@ export default function PlannerPage() {
     }
     if (!targetCatIds.length) {
       resetPlan();
-      return runPlanner({
-        kind: "errorOnly",
-        error: "請先選至少一隻目標貓",
-      });
+      return runPlanner({ kind: "errorOnly", error: "請先選至少一隻目標貓" });
     }
 
-    // 2) ensure graphs
+    // ✅ 確保先抓到最新 graphs
     try {
-      await fetchGraphs(); // 會抓 selectedEventValues 的 graph
+      await fetchGraphs();
     } catch (e) {
       resetPlan();
       return runPlanner({
@@ -234,22 +240,21 @@ export default function PlannerPage() {
     }
 
     const graphsByEvent = { ...graphByEvent };
-    // fetchGraphs() async 完成後，hook 內 state 已更新；但為保險再讀一次 activeGraph
-    const g = graphsByEvent[selectedEventValue] ?? activeGraph;
-    if (!g) {
+
+    // 基本保險：至少 primary 那個要存在（也讓 debug/sim 不會空）
+    const primary = primaryEventValue || selectedEventValues[0];
+    if (primary && !graphsByEvent[primary]) {
       resetPlan();
       return runPlanner({
         kind: "errorOnly",
-        error: "TrackGraph 不存在（可能抓取失敗或回傳為空）",
+        error: "主要 event 的 TrackGraph 不存在（可能抓取失敗或回傳為空）",
       });
     }
 
-    // 3) run planner worker
     runPlanner({
       kind: "run",
       req: {
         graphs_by_event: graphsByEvent,
-        // 目前先單 event + normal pool（未來支援多 event 時，直接把 selectedEventValues map 出來）
         events: selectedEventValues.map((ev) => ({
           event_value: ev,
           pool_type: "normal" as const,
@@ -269,12 +274,6 @@ export default function PlannerPage() {
     });
   }
 
-  // -------------------------
-  // Derived for result UI
-  // -------------------------
-  const plannerOk = planState === "ok" && !!planResult;
-
-  // 給結果顯示：缺少目標 id -> 名稱
   const missingText = useMemo(() => {
     if (!planResult?.targets_missing_ids?.length) return "";
     return (
@@ -285,201 +284,228 @@ export default function PlannerPage() {
     );
   }, [planResult, catNameById]);
 
-  // -------------------------
-  // Render
-  // -------------------------
+  const tierGroupsSorted = useMemo(() => {
+    const gs = [...(tierGroups as TierGroup[])];
+    gs.sort((a, b) => tierOrder(a.tier) - tierOrder(b.tier));
+    return gs;
+  }, [tierGroups]);
+
+  // 預留：圖片/連結
+  const getCatHref = (catId: number) => undefined as string | undefined;
+  const getCatImageUrl = (catId: number) => undefined as string | undefined;
+
   return (
-    <div
-      style={{
-        padding: 16,
-        fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
-      }}
-    >
-      <h2 style={{ margin: "0 0 12px 0" }}>BC Roll Planner（重構版）</h2>
+    <Container maxWidth="lg" sx={{ py: 2 }}>
+      <Stack spacing={2}>
+        <Box>
+          <Typography variant="h5" fontWeight={800}>
+            BC Roll Planner（Events 多選版）
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            先套用 seed/count → 多選 events → 選目標貓（聯集）→
+            規劃（會自動抓最新 TrackGraph）
+          </Typography>
+        </Box>
 
-      {ui.showControlPanel && <ControlPanel value={ui} onChange={setUi} />}
+        {/* {ui.showControlPanel ? (
+          <ControlPanel value={ui} onChange={setUi} />
+        ) : (
+          <Box>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => setUi((p) => ({ ...p, showControlPanel: true }))}
+            >
+              顯示區塊開關面板
+            </Button>
+          </Box>
+        )} */}
 
-      {/* 0) Seed / Count */}
-      {ui.showSeedCount && (
-        <Section
-          title="0) Seed / Count（先套用，再進行後續）"
-          collapsed={ui.seedCountCollapsed}
-          onToggleCollapsed={() =>
-            setUi((p) => ({ ...p, seedCountCollapsed: !p.seedCountCollapsed }))
-          }
-          onHide={() => setUi((p) => ({ ...p, showSeedCount: false }))}
-        >
-          <SeedCountForm
-            seedApplied={seedApplied}
-            countApplied={countApplied}
-            onApply={({ seed, count }) => {
-              setSeedApplied(seed);
-              setCountApplied(count);
-            }}
-          />
-          <div style={{ marginTop: 8, opacity: 0.75, fontSize: 13 }}>
-            目前套用：seed=<b>{seedApplied}</b>，count=<b>{countApplied}</b>
-          </div>
-        </Section>
-      )}
-
-      {/* 1) Events */}
-      {ui.showEvents && (
-        <Section
-          title="1) Events（目前單選；未來可多選 + both + infinite scroll）"
-          collapsed={ui.eventsCollapsed}
-          onToggleCollapsed={() =>
-            setUi((p) => ({ ...p, eventsCollapsed: !p.eventsCollapsed }))
-          }
-          onHide={() => setUi((p) => ({ ...p, showEvents: false }))}
-        >
-          <EventsPicker
-            mode={eventsMode}
-            onModeChange={(m) => {
-              setEventsMode(m);
-              reloadEvents(m);
-            }}
-            loadState={eventsState}
-            error={eventsErr}
-            events={events}
-            value={selectedEventValues}
-            onChange={(next) => setSelectedEventValues(next)}
-          />
-        </Section>
-      )}
-
-      {/* 1.5) Target Cats */}
-      {ui.showTargetCats && (
-        <Section
-          title="1.5) Target Cats（聯集可擴充；可折疊/內捲軸）"
-          collapsed={ui.targetCatsCollapsed}
-          onToggleCollapsed={() =>
-            setUi((p) => ({
-              ...p,
-              targetCatsCollapsed: !p.targetCatsCollapsed,
-            }))
-          }
-          onHide={() => setUi((p) => ({ ...p, showTargetCats: false }))}
-        >
-          <TargetCatsPicker
-            loadState={catsState as LoadState}
-            error={catsErr}
-            groups={tierGroups as TierGroup[]}
-            selectedIds={targetCatIds}
-            onChange={setTargetCatIds}
-            onClear={() => setTargetCatIds([])}
-            maxHeight={340}
-          />
-        </Section>
-      )}
-
-      {/* 2) Planner */}
-      {ui.showPlanner && (
-        <Section
-          title="2) Planner（按下會先抓最新 TrackGraph）"
-          collapsed={ui.plannerCollapsed}
-          onToggleCollapsed={() =>
-            setUi((p) => ({ ...p, plannerCollapsed: !p.plannerCollapsed }))
-          }
-          onHide={() => setUi((p) => ({ ...p, showPlanner: false }))}
-        >
-          <ResourceForm
-            value={resources}
-            cfg={plannerCfg}
-            onChange={setResources}
-            onCfgChange={setPlannerCfg}
-          />
-
-          <div style={{ marginTop: 10 }}>
-            <PlannerRunBar
-              state={planState as LoadState}
-              onRun={onClickPlanner}
-              disabled={
-                planState === "loading" ||
-                !selectedEventValue ||
-                !seedApplied.trim() ||
-                countApplied <= 0 ||
-                targetCatIds.length === 0
-              }
-              hint={
-                !selectedEventValue
-                  ? "請先選 event"
-                  : !targetCatIds.length
-                  ? "請先選目標貓"
-                  : ""
-              }
+        {/* Seed/Count */}
+        {ui.showSeedCount && (
+          <Section
+            title="Seed / Count（先套用）"
+            collapsed={ui.seedCountCollapsed}
+            onToggleCollapsed={() =>
+              setUi((p) => ({
+                ...p,
+                seedCountCollapsed: !p.seedCountCollapsed,
+              }))
+            }
+            onHide={() => setUi((p) => ({ ...p, showSeedCount: false }))}
+          >
+            <SeedCountForm
+              seedApplied={seedApplied}
+              countApplied={countApplied}
+              onApply={({ seed, count }) => {
+                setSeedApplied(seed);
+                setCountApplied(count);
+              }}
             />
-          </div>
+          </Section>
+        )}
 
-          {planState === "error" && (
-            <div style={{ marginTop: 10, color: "crimson" }}>
-              planner 錯誤：{planErr}
-            </div>
-          )}
+        {/* Events（多選 + primary） */}
+        {ui.showEvents && (
+          <Section
+            title="Events（可多選；含主要 event）"
+            collapsed={ui.eventsCollapsed}
+            onToggleCollapsed={() =>
+              setUi((p) => ({ ...p, eventsCollapsed: !p.eventsCollapsed }))
+            }
+            onHide={() => setUi((p) => ({ ...p, showEvents: false }))}
+          >
+            <EventsPicker
+              mode={eventsMode}
+              onModeChange={(m) => {
+                setEventsMode(m);
+                reloadEvents(m);
 
-          {planState === "loading" && (
-            <div style={{ marginTop: 10, opacity: 0.75 }}>規劃中...</div>
-          )}
+                // 切換 mode 時不強制清空已選（但你也可以改成清空）
+                // 這裡維持最少干預：保留 selectedEventValues
+              }}
+              loadState={eventsState as LoadState}
+              error={eventsErr}
+              events={events}
+              value={selectedEventValues}
+              onChange={(next) => setSelectedEventValues(next)}
+              primaryValue={primaryEventValue}
+              onPrimaryChange={(v) => setPrimaryEventValue(v)}
+            />
+          </Section>
+        )}
 
-          {plannerOk && (
-            <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
-              <PlanResultSummary
-                result={planResult as PlanResult}
-                missingText={missingText}
+        {/* Target Cats */}
+        {ui.showTargetCats && (
+          <Section
+            title="Target Cats（多事件聯集）"
+            collapsed={ui.targetCatsCollapsed}
+            onToggleCollapsed={() =>
+              setUi((p) => ({
+                ...p,
+                targetCatsCollapsed: !p.targetCatsCollapsed,
+              }))
+            }
+            onHide={() => setUi((p) => ({ ...p, showTargetCats: false }))}
+          >
+            <TargetCatsPicker
+              loadState={catsState as LoadState}
+              error={catsErr}
+              groups={tierGroupsSorted}
+              selectedIds={targetCatIds}
+              onChange={setTargetCatIds}
+              onClear={() => setTargetCatIds([])}
+              getCatHref={getCatHref}
+              getCatImageUrl={getCatImageUrl}
+              minColWidth={220}
+              dense
+            />
+          </Section>
+        )}
+
+        {/* Planner */}
+        {ui.showPlanner && (
+          <Section
+            title="Planner（按下會先抓最新 TrackGraph）"
+            collapsed={ui.plannerCollapsed}
+            onToggleCollapsed={() =>
+              setUi((p) => ({ ...p, plannerCollapsed: !p.plannerCollapsed }))
+            }
+            onHide={() => setUi((p) => ({ ...p, showPlanner: false }))}
+          >
+            <Stack spacing={2}>
+              <ResourceForm
+                value={resources}
+                cfg={plannerCfg}
+                onChange={setResources}
+                onCfgChange={setPlannerCfg}
               />
 
-              <PlanResultInspector
-                result={planResult as PlanResult}
-                catNameById={catNameById}
-                // 先骨架：未來你要做「在哪個位置命中目標」、「每步資源消耗」、「使用哪些卡池」
+              <PlannerRunBar
+                state={planState as LoadState}
+                onRun={onClickPlanner}
+                disabled={
+                  planState === "loading" ||
+                  !selectedEventValues.length ||
+                  !seedApplied.trim() ||
+                  countApplied <= 0 ||
+                  targetCatIds.length === 0
+                }
+                hint={
+                  !selectedEventValues.length
+                    ? "請先選至少一個 event"
+                    : !targetCatIds.length
+                    ? "請先選目標貓"
+                    : ""
+                }
+                error={planState === "error" ? planErr : ""}
               />
 
-              <PlanStepsTable result={planResult as PlanResult} />
-            </div>
-          )}
-        </Section>
-      )}
+              {planState === "ok" && planResult && (
+                <Stack spacing={2}>
+                  <PlanResultSummary
+                    result={planResult as PlanResult}
+                    missingText={missingText}
+                  />
+                  <PlanResultInspector
+                    result={planResult as PlanResult}
+                    catNameById={catNameById}
+                  />
+                  <PlanStepsTable
+                    result={planResult as PlanResult}
+                    getCatHref={getCatHref}
+                    getCatImageUrl={getCatImageUrl}
+                  />
+                </Stack>
+              )}
+            </Stack>
+          </Section>
+        )}
 
-      {/* 2.2) Graph Debug */}
-      {ui.showGraphDebug && (
-        <Section
-          title="2.2) TrackGraph Debug（可隱藏）"
-          collapsed={ui.graphDebugCollapsed}
-          onToggleCollapsed={() =>
-            setUi((p) => ({
-              ...p,
-              graphDebugCollapsed: !p.graphDebugCollapsed,
-            }))
-          }
-          onHide={() => setUi((p) => ({ ...p, showGraphDebug: false }))}
-        >
-          <GraphSummaryCard
-            seedApplied={seedApplied}
-            countApplied={countApplied}
-            selectedEventValue={selectedEventValue}
-            graphState={graphState as LoadState}
-            graphErr={graphErr}
-            graph={activeGraph}
-          />
-        </Section>
-      )}
+        {/* Graph Debug（用 primary） */}
+        {ui.showGraphDebug && (
+          <Section
+            title="TrackGraph Debug（主要 event）"
+            collapsed={ui.graphDebugCollapsed}
+            onToggleCollapsed={() =>
+              setUi((p) => ({
+                ...p,
+                graphDebugCollapsed: !p.graphDebugCollapsed,
+              }))
+            }
+            onHide={() => setUi((p) => ({ ...p, showGraphDebug: false }))}
+          >
+            <GraphSummaryCard
+              seedApplied={seedApplied}
+              countApplied={countApplied}
+              selectedEventValue={primaryEventValue}
+              graphState={graphState as LoadState}
+              graphErr={graphErr}
+              graph={activeGraph}
+            />
+          </Section>
+        )}
 
-      {/* 3) Simulator */}
-      {ui.showSimulator && (
-        <Section
-          title="3) Simulator（可隱藏；不影響 Planner）"
-          collapsed={ui.simulatorCollapsed}
-          onToggleCollapsed={() =>
-            setUi((p) => ({ ...p, simulatorCollapsed: !p.simulatorCollapsed }))
-          }
-          onHide={() => setUi((p) => ({ ...p, showSimulator: false }))}
-        >
-          <SimulatorPanel
-            graph={activeGraph}
-            graphReady={!!activeGraph && graphState === "ok"}
-          />
-        </Section>
-      )}
-    </div>
+        {/* 3) Simulator（用 primary） */}
+        {ui.showSimulator && (
+          <Section
+            title="Simulator（主要 event；可隱藏）"
+            collapsed={ui.simulatorCollapsed}
+            onToggleCollapsed={() =>
+              setUi((p) => ({
+                ...p,
+                simulatorCollapsed: !p.simulatorCollapsed,
+              }))
+            }
+            onHide={() => setUi((p) => ({ ...p, showSimulator: false }))}
+          >
+            <SimulatorPanel
+              graph={activeGraph}
+              graphReady={!!activeGraph && graphState === "ok"}
+            />
+          </Section>
+        )}
+      </Stack>
+    </Container>
   );
 }

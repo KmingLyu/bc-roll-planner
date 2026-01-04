@@ -2,6 +2,14 @@
 import { useMemo, useState } from "react";
 import type { TrackGraph } from "../../../shared/models";
 import { simulateOnGraph, type DrawRecord } from "../../core/simulator";
+import {
+  Alert,
+  Button,
+  ButtonGroup,
+  Paper,
+  Stack,
+  Typography,
+} from "@mui/material";
 
 export function SimulatorPanel(props: {
   graph: TrackGraph | null;
@@ -25,7 +33,7 @@ export function SimulatorPanel(props: {
 
   function append(method: "single" | "ten") {
     if (!graphReady || !graph) {
-      setText("請先取得 TrackGraph（按 Planner 會自動抓）");
+      setText("");
       return;
     }
 
@@ -72,47 +80,47 @@ export function SimulatorPanel(props: {
   }
 
   return (
-    <div style={{ display: "grid", gap: 10 }}>
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          alignItems: "center",
-          flexWrap: "wrap",
-        }}
-      >
-        <button onClick={() => append("single")} disabled={!graphReady}>
-          單抽一次
-        </button>
-        <button onClick={() => append("ten")} disabled={!graphReady}>
-          十連一次
-        </button>
-        <button onClick={reset}>重設（回到 1A）</button>
+    <Stack spacing={1.5}>
+      {!graphReady && (
+        <Alert severity="info">
+          需要 TrackGraph 才能使用（按 Planner 會自動抓最新）
+        </Alert>
+      )}
 
-        <span>
-          cursor：<b>{cursorId}</b>
-        </span>
-        <span>
-          prevCatId：<b>{prevCatId ?? "-"}</b>
-        </span>
-        <span>
-          records：<b>{records.length}</b>
-        </span>
-      </div>
+      <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+        <ButtonGroup variant="outlined" size="small" disabled={!graphReady}>
+          <Button onClick={() => append("single")}>單抽一次</Button>
+          <Button onClick={() => append("ten")}>十連一次</Button>
+        </ButtonGroup>
+
+        <Button variant="text" onClick={reset}>
+          重設（回到 1A）
+        </Button>
+
+        <Typography variant="body2" color="text.secondary">
+          cursor：<b>{cursorId}</b>，prevCatId：<b>{prevCatId ?? "-"}</b>
+          ，records：<b>{records.length}</b>
+        </Typography>
+      </Stack>
 
       {text && (
-        <pre
-          style={{
-            margin: 0,
-            padding: 10,
-            background: "#f7f7f7",
-            overflow: "auto",
-            borderRadius: 10,
-          }}
+        <Paper
+          variant="outlined"
+          sx={{ p: 1.5, overflow: "auto", maxHeight: 420 }}
         >
-          {text}
-        </pre>
+          <Typography
+            component="pre"
+            sx={{
+              m: 0,
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+              fontSize: 12,
+              whiteSpace: "pre",
+            }}
+          >
+            {text}
+          </Typography>
+        </Paper>
       )}
-    </div>
+    </Stack>
   );
 }

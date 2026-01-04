@@ -1,5 +1,7 @@
 // src/components/inputs/SeedCountForm.tsx
-import { useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { Alert, Button, Stack, TextField, Typography } from "@mui/material";
+import Grid from "@mui/material/Grid";
 
 export function SeedCountForm(props: {
   seedApplied: string;
@@ -8,80 +10,77 @@ export function SeedCountForm(props: {
 }) {
   const { seedApplied, countApplied, onApply } = props;
 
-  // 使用 local state（只在此 component 內更新，不影響全域）
   const [seedDraft, setSeedDraft] = useState(seedApplied);
   const [countDraft, setCountDraft] = useState<number>(countApplied);
+  const [err, setErr] = useState<string>("");
 
-  const errRef = useRef<string>("");
+  useEffect(() => {
+    setSeedDraft(seedApplied);
+    setCountDraft(countApplied);
+    setErr("");
+  }, [seedApplied, countApplied]);
 
   function apply() {
     const s = seedDraft.trim();
     const c = Number(countDraft);
-    if (!s) {
-      errRef.current = "seed 不可為空";
-      // 強迫刷新顯示
-      setSeedDraft((x) => x);
-      return;
-    }
-    if (!Number.isFinite(c) || c <= 0) {
-      errRef.current = "count 必須是正整數";
-      setCountDraft((x) => x);
-      return;
-    }
-    errRef.current = "";
+    if (!s) return setErr("seed 不可為空");
+    if (!Number.isFinite(c) || c <= 0) return setErr("count 必須是正整數");
+    setErr("");
     onApply({ seed: s, count: Math.floor(c) });
   }
 
-  const err = errRef.current;
-
   return (
-    <div style={{ display: "grid", gap: 10, maxWidth: 520 }}>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "140px 1fr",
-          gap: 10,
-          alignItems: "center",
-        }}
-      >
-        <div>seed</div>
-        <input
-          value={seedDraft}
-          onChange={(e) => setSeedDraft(e.target.value)}
-          placeholder="例如 1234"
-        />
+    <Stack spacing={1.5}>
+      <Typography variant="body2" color="text.secondary">
+        輸入不會觸發後續載入；只有按「套用」才會更新全域狀態（避免輸入卡頓）。
+      </Typography>
 
-        <div>count</div>
-        <input
-          type="number"
-          min={1}
-          value={countDraft}
-          onChange={(e) => setCountDraft(Number(e.target.value))}
-        />
-      </div>
+      <Grid container spacing={2} sx={{ maxWidth: 640, width: "100%" }}>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <TextField
+            fullWidth
+            label="seed"
+            value={seedDraft}
+            onChange={(e) => setSeedDraft(e.target.value)}
+            size="small"
+            placeholder="例如 1234"
+          />
+        </Grid>
 
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-        <button onClick={apply} style={{ cursor: "pointer" }}>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <TextField
+            fullWidth
+            label="count"
+            type="number"
+            value={countDraft}
+            onChange={(e) => setCountDraft(Number(e.target.value))}
+            size="small"
+            inputProps={{ min: 1 }}
+          />
+        </Grid>
+      </Grid>
+
+      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+        <Button variant="contained" onClick={apply}>
           套用（Apply）
-        </button>
-
-        <button
+        </Button>
+        <Button
+          variant="outlined"
           onClick={() => {
             setSeedDraft(seedApplied);
             setCountDraft(countApplied);
-            errRef.current = "";
+            setErr("");
           }}
-          style={{ cursor: "pointer" }}
         >
           還原為已套用值
-        </button>
+        </Button>
 
-        <span style={{ opacity: 0.75, fontSize: 13 }}>
-          ※ 輸入不會觸發後續載入，只有按 Apply 才會更新
-        </span>
-      </div>
+        <Typography variant="body2" color="text.secondary">
+          目前套用：seed=<b>{seedApplied}</b>，count=<b>{countApplied}</b>
+        </Typography>
+      </Stack>
 
-      {err && <div style={{ color: "crimson" }}>{err}</div>}
-    </div>
+      {err && <Alert severity="error">{err}</Alert>}
+    </Stack>
   );
 }

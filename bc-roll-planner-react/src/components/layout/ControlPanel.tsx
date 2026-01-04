@@ -1,4 +1,15 @@
 // src/components/layout/ControlPanel.tsx
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  FormControlLabel,
+  FormGroup,
+  Stack,
+  Switch,
+  Typography,
+} from "@mui/material";
+
 export type UiFlags = {
   showControlPanel: boolean;
 
@@ -41,56 +52,45 @@ export function ControlPanel(props: {
   ];
 
   return (
-    <div
-      style={{
-        border: "1px dashed #bbb",
-        borderRadius: 10,
-        padding: 10,
-        marginBottom: 12,
-        background: "#fafafa",
-      }}
-    >
-      <div
-        style={{ display: "flex", justifyContent: "space-between", gap: 10 }}
-      >
-        <div style={{ fontWeight: 800 }}>顯示設定（快速開關區塊）</div>
-        <button onClick={() => set("showControlPanel", false)}>
-          隱藏此面板
-        </button>
-      </div>
+    <Card variant="outlined">
+      <CardHeader
+        title="顯示設定（快速開關區塊）"
+        titleTypographyProps={{ fontWeight: 800 }}
+        action={
+          <FormControlLabel
+            control={
+              <Switch
+                checked={value.showControlPanel}
+                onChange={(e) => set("showControlPanel", e.target.checked)}
+              />
+            }
+            label="顯示面板"
+          />
+        }
+      />
+      <CardContent sx={{ pt: 0 }}>
+        <Stack spacing={1}>
+          <FormGroup row>
+            {rows.map((r) => (
+              <FormControlLabel
+                key={String(r.key)}
+                control={
+                  <Switch
+                    checked={Boolean(value[r.key])}
+                    onChange={(e) => set(r.key, e.target.checked as any)}
+                  />
+                }
+                label={r.label}
+              />
+            ))}
+          </FormGroup>
 
-      <div
-        style={{
-          marginTop: 8,
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: 6,
-        }}
-      >
-        {rows.map((r) => (
-          <label
-            key={String(r.key)}
-            style={{
-              display: "flex",
-              gap: 8,
-              alignItems: "center",
-              userSelect: "none",
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={Boolean(value[r.key])}
-              onChange={(e) => set(r.key, e.target.checked as any)}
-            />
-            <span>{r.label}</span>
-          </label>
-        ))}
-      </div>
-
-      <div style={{ marginTop: 8, opacity: 0.75, fontSize: 13 }}>
-        你也可以直接在 <code>PlannerPage.tsx</code> 的 <code>ui</code> state
-        裡調整預設顯示/收合狀態。
-      </div>
-    </div>
+          <Typography variant="body2" color="text.secondary">
+            收合狀態也可在各區塊標題列直接切換；未來做 UI/UX
+            調整時，這裡可以很快關掉某些區塊。
+          </Typography>
+        </Stack>
+      </CardContent>
+    </Card>
   );
 }

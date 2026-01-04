@@ -1,5 +1,23 @@
 // src/components/planner/PlanStepsTable.tsx
 import type { PlanResult } from "../../core/planner";
+import {
+  Avatar,
+  Box,
+  Collapse,
+  IconButton,
+  Link,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography,
+} from "@mui/material";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 
 function fmtCost(cost: any): string {
   if (!cost || !Array.isArray(cost)) return "-";
@@ -7,155 +25,219 @@ function fmtCost(cost: any): string {
   return `equiv=${equiv}, food=${foodUsed}, ticket=${tUsed}, platinum=${pUsed}, legend=${lUsed}`;
 }
 
-export function PlanStepsTable(props: { result: PlanResult }) {
-  const { result } = props;
+export function PlanStepsTable(props: {
+  result: PlanResult;
+
+  // ✅ 預留：未來 planner 結果或 draws 要加圖片/連結
+  getCatHref?: (catId: number) => string | undefined;
+  getCatImageUrl?: (catId: number) => string | undefined;
+}) {
+  const { result, getCatHref, getCatImageUrl } = props;
+  const plan = (result.plan || []) as any[];
+
+  const [openRow, setOpenRow] = React.useState<Record<number, boolean>>({});
+
+  if (!plan.length) {
+    return (
+      <Paper variant="outlined" sx={{ p: 2 }}>
+        <Typography fontWeight={800} sx={{ mb: 0.5 }}>
+          Plan Steps
+        </Typography>
+        <Typography color="text.secondary">
+          沒有 step（可能資源不足或 graph 無法走位）
+        </Typography>
+      </Paper>
+    );
+  }
 
   return (
-    <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 10 }}>
-      <div style={{ fontWeight: 800, marginBottom: 8 }}>Plan Steps</div>
+    <Paper variant="outlined" sx={{ p: 2 }}>
+      <Typography fontWeight={800} sx={{ mb: 1 }}>
+        Plan Steps
+      </Typography>
 
-      {!result.plan?.length ? (
-        <div style={{ opacity: 0.7 }}>
-          沒有 step（可能資源不足或 graph 無法走位）
-        </div>
-      ) : (
-        <div style={{ overflow: "auto" }}>
-          <table style={{ borderCollapse: "collapse", width: "100%" }}>
-            <thead>
-              <tr>
-                {[
-                  "#",
-                  "event",
-                  "resource",
-                  "method",
-                  "from→to",
-                  "cost_inc",
-                  "draws",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    style={{
-                      textAlign: "left",
-                      borderBottom: "1px solid #ddd",
-                      padding: "6px 6px",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
+      <TableContainer>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell width={42} />
+              <TableCell width={56}>#</TableCell>
+              <TableCell>event</TableCell>
+              <TableCell>resource</TableCell>
+              <TableCell>method</TableCell>
+              <TableCell>from→to</TableCell>
+              <TableCell>cost_inc</TableCell>
+              <TableCell>draws</TableCell>
+            </TableRow>
+          </TableHead>
 
-            <tbody>
-              {result.plan.map((st: any, i: number) => {
-                const draws = st.draws || [];
-                const drawsText =
-                  draws
-                    .map((d: any) =>
-                      d.cat_id != null ? `${d.cat_name}#${d.cat_id}` : "-"
-                    )
-                    .slice(0, 8)
-                    .join(", ") + (draws.length > 8 ? " ..." : "");
+          <TableBody>
+            {plan.map((st, i) => {
+              const draws = st.draws || [];
+              const short =
+                draws
+                  .slice(0, 6)
+                  .map((d: any) =>
+                    d.cat_id != null ? `${d.cat_name}#${d.cat_id}` : "-"
+                  )
+                  .join(", ") + (draws.length > 6 ? " ..." : "");
 
-                return (
-                  <tr key={`${i}-${st.event_value}-${st.start_cursor_id}`}>
-                    <td
-                      style={{
-                        padding: "6px 6px",
-                        borderBottom: "1px solid #eee",
-                      }}
-                    >
-                      {i + 1}
-                    </td>
-                    <td
-                      style={{
-                        padding: "6px 6px",
-                        borderBottom: "1px solid #eee",
-                      }}
-                    >
-                      {st.event_value}
-                    </td>
-                    <td
-                      style={{
-                        padding: "6px 6px",
-                        borderBottom: "1px solid #eee",
-                      }}
-                    >
-                      {st.resource}
-                    </td>
-                    <td
-                      style={{
-                        padding: "6px 6px",
-                        borderBottom: "1px solid #eee",
-                      }}
-                    >
-                      {st.method}
-                    </td>
-                    <td
-                      style={{
-                        padding: "6px 6px",
-                        borderBottom: "1px solid #eee",
-                      }}
-                    >
-                      {st.start_cursor_id} → {st.end_cursor_id}
-                    </td>
-                    <td
-                      style={{
-                        padding: "6px 6px",
-                        borderBottom: "1px solid #eee",
-                      }}
-                    >
-                      {fmtCost(st.cost_inc as any)}
-                    </td>
-                    <td
-                      style={{
-                        padding: "6px 6px",
-                        borderBottom: "1px solid #eee",
-                      }}
-                    >
-                      {drawsText || "-"}
-                      <details style={{ marginTop: 6 }}>
-                        <summary style={{ cursor: "pointer" }}>
-                          展開（{draws.length} draws）
-                        </summary>
+              const isOpen = Boolean(openRow[i]);
 
-                        <div style={{ marginTop: 6, display: "grid", gap: 4 }}>
-                          {draws.map((d: any, idx: number) => (
-                            <div
-                              key={`${i}-${idx}-${d.from_pos_id}-${
-                                d.cat_id ?? "x"
-                              }`}
-                              style={{
-                                fontFamily:
-                                  "ui-monospace, SFMono-Regular, Menlo, monospace",
-                              }}
-                            >
-                              {String(idx + 1).padStart(2, "0")}.{" "}
-                              {String(d.used).padEnd(12)} {d.from_pos_id}→
-                              {d.to_pos_id} {d.cat_id ?? "-"} {d.cat_name}{" "}
-                              <span style={{ opacity: 0.65 }}>
-                                (src={d.source_pick_id ?? "-"})
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </details>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+              return (
+                <React.Fragment
+                  key={`${i}-${st.event_value}-${st.start_cursor_id}`}
+                >
+                  <TableRow hover>
+                    <TableCell>
+                      <IconButton
+                        size="small"
+                        onClick={() =>
+                          setOpenRow((p) => ({ ...p, [i]: !p[i] }))
+                        }
+                      >
+                        {isOpen ? (
+                          <KeyboardArrowUpIcon />
+                        ) : (
+                          <KeyboardArrowDownIcon />
+                        )}
+                      </IconButton>
+                    </TableCell>
 
-          <div style={{ marginTop: 10, opacity: 0.75, fontSize: 13 }}>
-            ✅
-            未來你要更清楚標示：「此步在哪個位置執行、使用哪個卡池、資源消耗、命中目標位置」，
-            建議新增欄位後不要改 planner 核心資料，只擴充
-            view-model（下一步我可以幫你做）。
-          </div>
-        </div>
-      )}
-    </div>
+                    <TableCell>{i + 1}</TableCell>
+                    <TableCell>{st.event_value}</TableCell>
+                    <TableCell>{st.resource}</TableCell>
+                    <TableCell>{st.method}</TableCell>
+                    <TableCell>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontFamily:
+                            "ui-monospace, SFMono-Regular, Menlo, monospace",
+                        }}
+                      >
+                        {st.start_cursor_id} → {st.end_cursor_id}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>{fmtCost(st.cost_inc as any)}</TableCell>
+                    <TableCell>
+                      <Typography variant="body2" color="text.secondary">
+                        {short || "-"}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+
+                  <TableRow>
+                    <TableCell colSpan={8} sx={{ py: 0 }}>
+                      <Collapse in={isOpen} timeout="auto" unmountOnExit>
+                        <Box sx={{ py: 1.5 }}>
+                          <Typography
+                            variant="body2"
+                            fontWeight={700}
+                            sx={{ mb: 1 }}
+                          >
+                            Draws（{draws.length}）
+                          </Typography>
+
+                          <Stack spacing={0.75}>
+                            {draws.map((d: any, idx: number) => {
+                              const href =
+                                d.cat_id != null
+                                  ? getCatHref?.(d.cat_id)
+                                  : undefined;
+                              const img =
+                                d.cat_id != null
+                                  ? getCatImageUrl?.(d.cat_id)
+                                  : undefined;
+
+                              return (
+                                <Stack
+                                  key={`${i}-${idx}-${d.from_pos_id}-${
+                                    d.cat_id ?? "x"
+                                  }`}
+                                  direction="row"
+                                  spacing={1}
+                                  alignItems="center"
+                                  sx={{
+                                    p: 1,
+                                    border: "1px solid",
+                                    borderColor: "divider",
+                                    borderRadius: 1,
+                                  }}
+                                >
+                                  <Avatar
+                                    variant="rounded"
+                                    src={img}
+                                    sx={{ width: 28, height: 28 }}
+                                  >
+                                    {d.cat_name?.[0] ?? "?"}
+                                  </Avatar>
+
+                                  <Typography
+                                    variant="body2"
+                                    sx={{
+                                      fontFamily:
+                                        "ui-monospace, SFMono-Regular, Menlo, monospace",
+                                    }}
+                                  >
+                                    {String(idx + 1).padStart(2, "0")}.{" "}
+                                    {String(d.used).padEnd(12)} {d.from_pos_id}→
+                                    {d.to_pos_id}{" "}
+                                  </Typography>
+
+                                  <Typography variant="body2">
+                                    {d.cat_id != null ? (
+                                      href ? (
+                                        <Link
+                                          href={href}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          underline="hover"
+                                        >
+                                          {d.cat_name}#{d.cat_id}
+                                        </Link>
+                                      ) : (
+                                        `${d.cat_name}#${d.cat_id}`
+                                      )
+                                    ) : (
+                                      "-"
+                                    )}
+                                  </Typography>
+
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    sx={{ ml: "auto" }}
+                                  >
+                                    src={d.source_pick_id ?? "-"}
+                                  </Typography>
+                                </Stack>
+                              );
+                            })}
+                          </Stack>
+
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ display: "block", mt: 1 }}
+                          >
+                            ✅
+                            未來你要更清楚標示：「此步在哪個位置執行、使用哪個卡池、資源消耗、命中目標位置」，
+                            建議新增 view-model（不改 planner 核心資料）。
+                          </Typography>
+                        </Box>
+                      </Collapse>
+                    </TableCell>
+                  </TableRow>
+                </React.Fragment>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Paper>
   );
 }
+
+// 為了避免跟你專案 tsconfig 的 jsx runtime 設定衝突：顯式引入 React
+import React from "react";

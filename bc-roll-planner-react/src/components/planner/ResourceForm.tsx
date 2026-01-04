@@ -1,4 +1,7 @@
 // src/components/planner/ResourceForm.tsx
+import { Stack, TextField, Typography } from "@mui/material";
+import Grid from "@mui/material/Grid";
+
 export type PlannerResources = {
   tickets: number;
   platinum_tickets: number;
@@ -16,80 +19,105 @@ export function ResourceForm(props: {
   cfg: PlannerConfig;
   onChange: (next: PlannerResources) => void;
   onCfgChange: (next: PlannerConfig) => void;
+  showAdvanced?: boolean;
 }) {
-  const { value, cfg, onChange, onCfgChange } = props;
+  const { value, cfg, onChange, onCfgChange, showAdvanced = false } = props;
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
-      <div style={{ fontWeight: 800 }}>Planner 資源與設定</div>
+    <Stack spacing={1.5}>
+      <Typography fontWeight={800}>Planner 資源與設定</Typography>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "140px 1fr",
-          gap: 10,
-          maxWidth: 520,
-        }}
-      >
-        <div>tickets</div>
-        <input
-          type="number"
-          min={0}
-          value={value.tickets}
-          onChange={(e) =>
-            onChange({ ...value, tickets: Number(e.target.value) })
-          }
-        />
+      <Grid container spacing={2} sx={{ maxWidth: 720, width: "100%" }}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <TextField
+            fullWidth
+            size="small"
+            label="tickets"
+            type="number"
+            inputProps={{ min: 0 }}
+            value={value.tickets}
+            onChange={(e) =>
+              onChange({ ...value, tickets: Number(e.target.value) })
+            }
+          />
+        </Grid>
 
-        <div>platinum</div>
-        <input
-          type="number"
-          min={0}
-          value={value.platinum_tickets}
-          onChange={(e) =>
-            onChange({ ...value, platinum_tickets: Number(e.target.value) })
-          }
-        />
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <TextField
+            fullWidth
+            size="small"
+            label="platinum"
+            type="number"
+            inputProps={{ min: 0 }}
+            value={value.platinum_tickets}
+            onChange={(e) =>
+              onChange({ ...value, platinum_tickets: Number(e.target.value) })
+            }
+          />
+        </Grid>
 
-        <div>legend</div>
-        <input
-          type="number"
-          min={0}
-          value={value.legend_tickets}
-          onChange={(e) =>
-            onChange({ ...value, legend_tickets: Number(e.target.value) })
-          }
-        />
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <TextField
+            fullWidth
+            size="small"
+            label="legend"
+            type="number"
+            inputProps={{ min: 0 }}
+            value={value.legend_tickets}
+            onChange={(e) =>
+              onChange({ ...value, legend_tickets: Number(e.target.value) })
+            }
+          />
+        </Grid>
 
-        <div>food</div>
-        <input
-          type="number"
-          min={0}
-          step={100}
-          value={value.food}
-          onChange={(e) => onChange({ ...value, food: Number(e.target.value) })}
-        />
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <TextField
+            fullWidth
+            size="small"
+            label="food"
+            type="number"
+            inputProps={{ min: 0, step: 100 }}
+            value={value.food}
+            onChange={(e) =>
+              onChange({ ...value, food: Number(e.target.value) })
+            }
+          />
+        </Grid>
 
-        <div>start_pos_id</div>
-        <input
-          value={cfg.start_pos_id}
-          onChange={(e) =>
-            onCfgChange({ ...cfg, start_pos_id: e.target.value })
-          }
-          placeholder="例如 1A"
-        />
+        {showAdvanced && (
+          <>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                size="small"
+                label="start_pos_id"
+                value={cfg.start_pos_id}
+                onChange={(e) =>
+                  onCfgChange({ ...cfg, start_pos_id: e.target.value })
+                }
+                placeholder="例如 1A"
+              />
+            </Grid>
 
-        <div>max_expansions</div>
-        <input
-          type="number"
-          min={1000}
-          step={1000}
-          value={cfg.max_expansions}
-          onChange={(e) =>
-            onCfgChange({ ...cfg, max_expansions: Number(e.target.value) })
-          }
-        />
-      </div>
-    </div>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                size="small"
+                label="max_expansions"
+                type="number"
+                inputProps={{ min: 1000, step: 1000 }}
+                value={cfg.max_expansions}
+                onChange={(e) =>
+                  onCfgChange({
+                    ...cfg,
+                    max_expansions: Number(e.target.value),
+                  })
+                }
+              />
+            </Grid>
+          </>
+        )}
+      </Grid>
+    </Stack>
   );
 }

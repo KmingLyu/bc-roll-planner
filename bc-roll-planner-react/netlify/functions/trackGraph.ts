@@ -102,6 +102,7 @@ export const handler: Handler = async (event) => {
     if (!Number.isFinite(count) || count <= 0)
       return json(400, { error: "count 必須是正整數" });
 
+    // 組目標頁面 URL
     const url =
       `${baseUrl}/?lang=${encodeURIComponent(lang)}` +
       `&ui=${encodeURIComponent(ui)}` +

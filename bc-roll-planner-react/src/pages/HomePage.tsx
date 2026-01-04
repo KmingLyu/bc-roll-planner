@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 
+// Models
 import type { Event, TrackGraph } from "../../shared/models";
 
+// APIs
 import { fetchEvents } from "../api/eventsApi";
 import { fetchTrackGraph } from "../api/trackGraphApi";
 import { ApiError } from "../api/netlifyClient";
+
+// Core
+import type { DrawRecord } from "../core/simulator";
+import { simulateOnGraph } from "../core/simulator";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
 
@@ -43,6 +49,12 @@ export default function HomePage() {
   const [graph, setGraph] = useState<TrackGraph | null>(null);
   const [graphErr, setGraphErr] = useState<string>("");
   const [showRaw, setShowRaw] = useState(false);
+
+  // --- simulator ---
+  const [simCursorId, setSimCursorId] = useState<string>("1A");
+  const [simPrevCatId, setSimPrevCatId] = useState<number | null>(null);
+  const [simRecords, setSimRecords] = useState<DrawRecord[]>([]);
+  const [simText, setSimText] = useState<string>("");
 
   // Load events on mount or type change
   useEffect(() => {
@@ -135,6 +147,73 @@ export default function HomePage() {
 
   const cat1A = useMemo(() => getNormalCatName(graph, "1A"), [graph]);
   const cat1B = useMemo(() => getNormalCatName(graph, "1B"), [graph]);
+
+  // --- simulator ---
+  function graphReady(): boolean {
+    return graphState === "ok" && !!graph;
+  }
+
+  function resetSim() {
+    setSimCursorId("1A");
+    setSimPrevCatId(null);
+    setSimRecords([]);
+    setSimText(""); // 你本來就有 simText
+  }
+
+  function appendSim(method: "single" | "ten") {
+    if (!graphReady() || !graph) {
+      setSimText("請先成功取得 TrackGraph（按『呼叫 trackGraph』）");
+      return;
+    }
+
+    try {
+      // 用 simulator 跑「一次動作」，起點用目前 simCursorId
+      const { records, final_cursor } = simulateOnGraph({
+        graph,
+        actions: [{ event_value: graph.event.value, method }],
+        start_pos_id: simCursorId,
+      });
+
+      // 更新 prevCatId：最後一筆 records 的 cat_id（含保底第11隻）
+      const last = records.length ? records[records.length - 1] : null;
+      const nextPrevCatId = last?.cat_id ?? null;
+
+      // 讓 step 連續累加（simulateOnGraph 每次都從 step=1 開始）
+      const baseStep = simRecords.length;
+      const rebased = records.map((r) => ({
+        ...r,
+        step: r.step + baseStep,
+      }));
+
+      const nextAll = [...simRecords, ...rebased];
+
+      setSimRecords(nextAll);
+      setSimCursorId(final_cursor.id);
+      setSimPrevCatId(nextPrevCatId);
+
+      // 你原本的 simText：這裡直接用簡單摘要（也可以改成 table）
+      const lines = nextAll.map(
+        (r) =>
+          `${String(r.step).padStart(3, " ")} | ${r.method.padEnd(
+            6
+          )} | ${String(r.within_action_index).padStart(2, " ")} | ${
+            r.from_pos_id
+          } -> ${r.to_pos_id} | ${r.used} | ${r.cat_id ?? "-"} ${
+            r.cat_name
+          } | src=${r.source_pick_id ?? "-"}`
+      );
+      setSimText(
+        [
+          `cursor=${final_cursor.id}  prevCatId=${nextPrevCatId ?? "-"}`,
+          `total_records=${nextAll.length}`,
+          "",
+          ...lines,
+        ].join("\n")
+      );
+    } catch (e: any) {
+      setSimText(`simulate failed: ${String(e?.message || e)}`);
+    }
+  }
 
   return (
     <div
@@ -304,6 +383,69 @@ export default function HomePage() {
               </pre>
             )}
           </div>
+        )}
+      </section>
+
+      {/* Simulator Controls (放在 TrackGraph 下面) */}
+      <section
+        style={{
+          border: "1px solid #ddd",
+          borderRadius: 8,
+          padding: 12,
+          marginTop: 12,
+        }}
+      >
+        <h3 style={{ marginTop: 0 }}>3) Simulator</h3>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <button
+            onClick={() => appendSim("single")}
+            disabled={!graph || graphState !== "ok"}
+          >
+            單抽一次
+          </button>
+
+          <button
+            onClick={() => appendSim("ten")}
+            disabled={!graph || graphState !== "ok"}
+          >
+            十連一次
+          </button>
+
+          <button onClick={resetSim}>重設（回到 1A）</button>
+
+          <span>
+            cursor：<b>{simCursorId}</b>
+          </span>
+
+          <span>
+            prevCatId：<b>{simPrevCatId ?? "-"}</b>
+          </span>
+
+          <span>
+            records：<b>{simRecords.length}</b>
+          </span>
+        </div>
+
+        {/* 文字輸出（你原本的 simText 直接沿用） */}
+        {simText && (
+          <pre
+            style={{
+              marginTop: 10,
+              padding: 10,
+              background: "#f7f7f7",
+              overflow: "auto",
+            }}
+          >
+            {simText}
+          </pre>
         )}
       </section>
     </div>

@@ -18,14 +18,12 @@ function tierOrder(t: CatTier): number {
 }
 
 export function useEventCats(params: {
-  seed: string;
-  count: number;
   selectedEventValues: string[];
   eventsByValue: Map<string, Event>;
   lang: string;
   ui: string;
 }) {
-  const { seed, count, selectedEventValues, eventsByValue, lang, ui } = params;
+  const { selectedEventValues, eventsByValue, lang, ui } = params;
 
   const [catsState, setCatsState] = useState<LoadState>("idle");
   const [catsErr, setCatsErr] = useState<string>("");
@@ -37,22 +35,7 @@ export function useEventCats(params: {
     let cancelled = false;
 
     async function run() {
-      const s = seed.trim();
-      const c = Number(count);
-
-      if (
-        !seed ||
-        !Number.isFinite(count) ||
-        count <= 0 ||
-        selectedEventValues.length === 0
-      ) {
-        setCatsState("idle");
-        setCatsErr("");
-        setTierGroups([]);
-        return;
-      }
-
-      if (!selectedEventValues.length || !s || !Number.isFinite(c) || c <= 0) {
+      if (!selectedEventValues.length) {
         setCatsState("idle");
         setCatsErr("");
         setTierGroups([]);
@@ -70,9 +53,7 @@ export function useEventCats(params: {
           selectedEventValues.map(async (ev) => {
             const meta = eventsByValue.get(ev) || null;
             return fetchEventCats({
-              seed: s,
               event: ev,
-              count: c,
               lang,
               ui,
               name: meta?.name ?? ev,
@@ -85,7 +66,7 @@ export function useEventCats(params: {
         if (cancelled) return;
         if (seq !== seqRef.current) return;
 
-        // union cats by id
+        // union cats by id（tier 取更稀有者）
         const catMap = new Map<
           number,
           { id: number; name: string; tier: CatTier }
@@ -103,12 +84,14 @@ export function useEventCats(params: {
                   tier: g.tier,
                 });
               } else {
-                // tier 取更稀有的（order 越小越稀有）
                 const better = tierOrder(g.tier) < tierOrder(existing.tier);
-                if (better) catMap.set(cat.id, { ...existing, tier: g.tier });
+                const next = better ? { ...existing, tier: g.tier } : existing;
                 // 名稱以非空者為準（保守）
-                if (!existing.name && cat.name)
-                  catMap.set(cat.id, { ...existing, name: cat.name });
+                if (!next.name && cat.name) {
+                  catMap.set(cat.id, { ...next, name: cat.name });
+                } else if (better) {
+                  catMap.set(cat.id, next);
+                }
               }
             }
           }
@@ -148,7 +131,7 @@ export function useEventCats(params: {
     return () => {
       cancelled = true;
     };
-  }, [seed, count, selectedEventValues.join("|"), eventsByValue, lang, ui]);
+  }, [selectedEventValues.join("|"), eventsByValue, lang, ui]);
 
   const allowedCatIdSet = useMemo(() => {
     if (!tierGroups.length) return null;

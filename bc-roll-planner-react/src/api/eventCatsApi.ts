@@ -5,16 +5,14 @@ export type TierGroup = { tier: CatTier; cats: Cat[] };
 
 export type EventCatsResponse = {
   event: Event;
-  source: "find_select" | "last_select" | "none";
+  source: "last_select" | "none";
   count: number;
   groups: TierGroup[];
   cats: Cat[];
 };
 
 export async function fetchEventCats(params: {
-  seed: string;
   event: string;
-  count: number;
   lang?: string;
   ui?: string;
   base_url?: string;
@@ -24,9 +22,7 @@ export async function fetchEventCats(params: {
   end_date?: string | null;
 }): Promise<EventCatsResponse> {
   return netlifyGet<EventCatsResponse>("eventCats", {
-    seed: params.seed,
     event: params.event,
-    count: params.count,
     lang: params.lang ?? "tw",
     ui: params.ui ?? "tw",
     base_url: params.base_url,

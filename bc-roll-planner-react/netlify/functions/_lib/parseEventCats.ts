@@ -46,22 +46,17 @@ function parseFromSelectId(html: string, selectId: string): TierGroup[] {
 }
 
 /**
- * 解析 event 裡所有貓（用 find_select / last_select）
- * - 優先 find_select（通常比較完整/順序更適合搜尋）
- * - fallback last_select
+ * 解析 event 裡所有貓（只用 last_select）
+ * - last_select：只需要 event / lang / ui
+ * - find_select：需要 seed / count 才會出現（本專案改為不使用）
  */
 export function parseEventCatsFromHtml(html: string): {
-  source: "find_select" | "last_select" | "none";
+  source: "last_select" | "none";
   groups: TierGroup[];
   cats: Cat[]; // 扁平去重（以 id）
 } {
-  let groups = parseFromSelectId(html, "find_select");
-  let source: "find_select" | "last_select" | "none" = "find_select";
-
-  if (!groups.length) {
-    groups = parseFromSelectId(html, "last_select");
-    source = groups.length ? "last_select" : "none";
-  }
+  const groups = parseFromSelectId(html, "last_select");
+  const source: "last_select" | "none" = groups.length ? "last_select" : "none";
 
   // 扁平 + 去重（以 id）
   const byId = new Map<number, Cat>();

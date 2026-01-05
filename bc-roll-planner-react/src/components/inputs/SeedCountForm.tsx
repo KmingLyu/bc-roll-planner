@@ -5,29 +5,57 @@ import Grid from "@mui/material/Grid";
 
 export function SeedCountForm(props: {
   seedApplied: string;
-  countApplied: number;
-  onApply: (v: { seed: string; count: number }) => void;
+  countApplied: number | null;
+  onApply: (v: { seed: string; count: number | null }) => void;
 }) {
   const { seedApplied, countApplied, onApply } = props;
 
-  const [seedDraft, setSeedDraft] = useState(seedApplied);
-  const [countDraft, setCountDraft] = useState<number>(countApplied);
+  // ✅ 用 string 才能自然支援清空欄位
+  const [seedDraft, setSeedDraft] = useState<string>(seedApplied);
+  const [countDraft, setCountDraft] = useState<string>(
+    typeof countApplied === "number" ? String(countApplied) : ""
+  );
   const [err, setErr] = useState<string>("");
 
   useEffect(() => {
     setSeedDraft(seedApplied);
-    setCountDraft(countApplied);
+    setCountDraft(typeof countApplied === "number" ? String(countApplied) : "");
     setErr("");
   }, [seedApplied, countApplied]);
 
   function apply() {
     const s = seedDraft.trim();
-    const c = Number(countDraft);
+    const cRaw = countDraft.trim();
+
     if (!s) return setErr("seed 不可為空");
+    if (!cRaw) return setErr("count 不可為空");
+    const c = Number(cRaw);
     if (!Number.isFinite(c) || c <= 0) return setErr("count 必須是正整數");
+
     setErr("");
     onApply({ seed: s, count: Math.floor(c) });
   }
+
+  function resetToApplied() {
+    setSeedDraft(seedApplied);
+    setCountDraft(typeof countApplied === "number" ? String(countApplied) : "");
+    setErr("");
+  }
+
+  function clearApplied() {
+    setSeedDraft("");
+    setCountDraft("");
+    setErr("");
+    onApply({ seed: "", count: null });
+  }
+
+  const appliedSeedText = seedApplied.trim() ? seedApplied : "-";
+  const appliedCountText =
+    typeof countApplied === "number" &&
+    Number.isFinite(countApplied) &&
+    countApplied > 0
+      ? String(countApplied)
+      : "-";
 
   return (
     <Stack spacing={1.5}>
@@ -53,9 +81,10 @@ export function SeedCountForm(props: {
             label="count"
             type="number"
             value={countDraft}
-            onChange={(e) => setCountDraft(Number(e.target.value))}
+            onChange={(e) => setCountDraft(e.target.value)}
             size="small"
             inputProps={{ min: 1 }}
+            placeholder="例如 120"
           />
         </Grid>
       </Grid>
@@ -64,19 +93,18 @@ export function SeedCountForm(props: {
         <Button variant="contained" onClick={apply}>
           套用（Apply）
         </Button>
-        <Button
-          variant="outlined"
-          onClick={() => {
-            setSeedDraft(seedApplied);
-            setCountDraft(countApplied);
-            setErr("");
-          }}
-        >
+
+        <Button variant="outlined" onClick={resetToApplied}>
           還原為已套用值
         </Button>
 
+        <Button variant="text" color="warning" onClick={clearApplied}>
+          清空已套用值
+        </Button>
+
         <Typography variant="body2" color="text.secondary">
-          目前套用：seed=<b>{seedApplied}</b>，count=<b>{countApplied}</b>
+          目前套用：seed=<b>{appliedSeedText}</b>，count=
+          <b>{appliedCountText}</b>
         </Typography>
       </Stack>
 

@@ -24,24 +24,33 @@ export function useTrackGraphs(params: {
 
   const seqRef = useRef(0);
 
+  // 保存最新結果，避免 click handler 讀到舊 state
+  const latestGraphsRef = useRef<Record<string, TrackGraph>>({});
+
   function clearGraphs() {
     setGraphState("idle");
     setGraphErr("");
     setGraphByEvent({});
+    latestGraphsRef.current = {};
   }
 
-  async function fetchGraphs() {
+  // 回傳 next graphs
+  async function fetchGraphs(): Promise<Record<string, TrackGraph>> {
     const s = seed.trim();
     const c = Number(count);
+
     if (selectedEventValues.length === 0) {
       // 建議：同時把狀態回到 idle，避免 UI 還顯示 loading/error
       setGraphState("idle");
       setGraphErr("");
-      return;
+      // 不 throw error，回傳空
+      latestGraphsRef.current = {};
+      setGraphByEvent({});
+      return {};
     }
-    if (!selectedEventValues.length) throw new Error("no selected events");
-    if (!s || !Number.isFinite(c) || c <= 0)
+    if (!s || !Number.isFinite(c) || c <= 0) {
       throw new Error("invalid seed/count");
+    }
 
     const seq = ++seqRef.current;
     setGraphState("loading");
@@ -65,15 +74,24 @@ export function useTrackGraphs(params: {
         })
       );
 
-      if (seq !== seqRef.current) return;
+      // 如果這次請求已經過期，就回傳「最新已知」的 graphs（避免回傳空讓你 planner 擋掉）
+      if (seq !== seqRef.current) {
+        return latestGraphsRef.current;
+      }
 
       const next: Record<string, TrackGraph> = {};
       for (const r of results) next[r.ev] = r.graph;
 
+      latestGraphsRef.current = next;
       setGraphByEvent(next);
       setGraphState("ok");
+      return next;
     } catch (e: any) {
-      if (seq !== seqRef.current) return;
+      if (seq !== seqRef.current) {
+        // 過期請求失敗，不要覆蓋最新狀態；回傳最新已知
+        return latestGraphsRef.current;
+      }
+
       setGraphState("error");
       setGraphErr(
         e instanceof ApiError

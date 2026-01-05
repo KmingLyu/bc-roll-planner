@@ -228,9 +228,21 @@ export default function PlannerPage() {
       return runPlanner({ kind: "errorOnly", error: "請先選至少一隻目標貓" });
     }
 
-    // ✅ 確保先抓到最新 graphs
+    // // ✅ 確保先抓到最新 graphs
+    // try {
+    //   await fetchGraphs();
+    // } catch (e) {
+    //   resetPlan();
+    //   return runPlanner({
+    //     kind: "errorOnly",
+    //     error: `取得 TrackGraph 失敗：${safeErrText(e)}`,
+    //   });
+    // }
+    // const graphsByEvent = { ...graphByEvent };
+
+    let graphsByEvent: Record<string, TrackGraph>;
     try {
-      await fetchGraphs();
+      graphsByEvent = await fetchGraphs();
     } catch (e) {
       resetPlan();
       return runPlanner({
@@ -239,11 +251,19 @@ export default function PlannerPage() {
       });
     }
 
-    const graphsByEvent = { ...graphByEvent };
-
     // 基本保險：至少 primary 那個要存在（也讓 debug/sim 不會空）
-    const primary = primaryEventValue || selectedEventValues[0];
-    if (primary && !graphsByEvent[primary]) {
+    // primary 的選法要保證在 selected 裡
+    const primary =
+      primaryEventValue && selectedEventValues.includes(primaryEventValue)
+        ? primaryEventValue
+        : selectedEventValues[0];
+
+    const g = primary ? graphsByEvent[primary] : undefined;
+
+    // 判斷 graph 有效性
+    const ok = !!g && Object.keys(g.nodes ?? {}).length > 0;
+
+    if (!ok) {
       resetPlan();
       return runPlanner({
         kind: "errorOnly",

@@ -6,9 +6,18 @@ import { ApiError } from "../api/netlifyClient";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
 
+function isValidSeedCount(seed: string, count: number | null): boolean {
+  const s = seed.trim();
+  if (!s) return false;
+  if (typeof count !== "number") return false;
+  if (!Number.isFinite(count)) return false;
+  if (count <= 0) return false;
+  return true;
+}
+
 export function useTrackGraphs(params: {
   seed: string;
-  count: number;
+  count: number | null; // 改成可為 null
   selectedEventValues: string[];
   eventsByValue: Map<string, Event>;
   lang: string;
@@ -36,21 +45,28 @@ export function useTrackGraphs(params: {
 
   // 回傳 next graphs
   async function fetchGraphs(): Promise<Record<string, TrackGraph>> {
-    const s = seed.trim();
-    const c = Number(count);
-
+    // 1) 沒選 event：回到 idle，回傳空
     if (selectedEventValues.length === 0) {
-      // 建議：同時把狀態回到 idle，避免 UI 還顯示 loading/error
       setGraphState("idle");
       setGraphErr("");
-      // 不 throw error，回傳空
       latestGraphsRef.current = {};
       setGraphByEvent({});
       return {};
     }
-    if (!s || !Number.isFinite(c) || c <= 0) {
-      throw new Error("invalid seed/count");
+
+    // 2) seed/count 不合法：不要打 API、不要 throw，回到 idle，回傳空
+    if (!isValidSeedCount(seed, count)) {
+      setGraphState("idle");
+      setGraphErr("");
+      // 不清掉 latestGraphsRef 也可以；但你的需求是「參數不完整就視為不可用」
+      // 所以這裡乾脆也清空，避免 UI 誤顯示舊資料
+      latestGraphsRef.current = {};
+      setGraphByEvent({});
+      return {};
     }
+
+    const s = seed.trim();
+    const c = count as number;
 
     const seq = ++seqRef.current;
     setGraphState("loading");
@@ -74,7 +90,7 @@ export function useTrackGraphs(params: {
         })
       );
 
-      // 如果這次請求已經過期，就回傳「最新已知」的 graphs（避免回傳空讓你 planner 擋掉）
+      // 過期請求：不覆蓋 state，回傳最新已知結果
       if (seq !== seqRef.current) {
         return latestGraphsRef.current;
       }
@@ -87,8 +103,8 @@ export function useTrackGraphs(params: {
       setGraphState("ok");
       return next;
     } catch (e: any) {
+      // 過期請求失敗：不覆蓋最新狀態，回傳最新已知
       if (seq !== seqRef.current) {
-        // 過期請求失敗，不要覆蓋最新狀態；回傳最新已知
         return latestGraphsRef.current;
       }
 

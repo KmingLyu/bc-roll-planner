@@ -32,7 +32,7 @@ export function ResourceForm(props: {
           <TextField
             fullWidth
             size="small"
-            label="tickets"
+            label="金券"
             type="number"
             inputProps={{ min: 0 }}
             value={value.tickets}
@@ -46,7 +46,7 @@ export function ResourceForm(props: {
           <TextField
             fullWidth
             size="small"
-            label="platinum"
+            label="白金券"
             type="number"
             inputProps={{ min: 0 }}
             value={value.platinum_tickets}
@@ -60,7 +60,7 @@ export function ResourceForm(props: {
           <TextField
             fullWidth
             size="small"
-            label="legend"
+            label="傳說券"
             type="number"
             inputProps={{ min: 0 }}
             value={value.legend_tickets}
@@ -74,7 +74,7 @@ export function ResourceForm(props: {
           <TextField
             fullWidth
             size="small"
-            label="food"
+            label="貓罐頭"
             type="number"
             inputProps={{ min: 0, step: 100 }}
             value={value.food}

@@ -87,9 +87,9 @@ export function EventsPicker(props: {
         <Alert severity="error">events 錯誤：{error}</Alert>
       )}
 
-      {/* ✅ 多選 Select */}
+      {/* 多選 Select */}
       <FormControl fullWidth size="small">
-        <InputLabel id="event-multi-label">選擇 event（可多選）</InputLabel>
+        <InputLabel id="event-multi-label">選擇卡池（多選）</InputLabel>
         <Select
           labelId="event-multi-label"
           multiple
@@ -98,7 +98,7 @@ export function EventsPicker(props: {
             const next = e.target.value as string[];
             onChange(next);
           }}
-          input={<OutlinedInput label="選擇 event（可多選）" />}
+          input={<OutlinedInput label="選擇卡池（多選）" />}
           renderValue={renderValue}
           MenuProps={{ PaperProps: { sx: { maxHeight: 420 } } }}
         >

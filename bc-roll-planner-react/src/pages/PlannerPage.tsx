@@ -325,7 +325,7 @@ export default function PlannerPage() {
             <SeedCountForm
               seedApplied={seedApplied}
               countApplied={countApplied}
-              onApply={({ seed, count }) => {
+              onChange={({ seed, count }) => {
                 setSeedApplied(seed);
                 setCountApplied(count);
               }}

@@ -48,13 +48,6 @@ export function GraphSummaryCard(props: {
 
   const [showRaw, setShowRaw] = useState(false);
 
-  const hasSeed = !!seedApplied.trim();
-  const hasCount =
-    typeof countApplied === "number" &&
-    Number.isFinite(countApplied) &&
-    countApplied > 0;
-  const hasEvent = !!selectedEventValue;
-
   const nodesCount = useMemo(
     () => (graph ? Object.keys(graph.nodes || {}).length : 0),
     [graph]
@@ -62,15 +55,19 @@ export function GraphSummaryCard(props: {
   const cat1A = useMemo(() => getNormalCatName(graph, "1A"), [graph]);
   const cat1B = useMemo(() => getNormalCatName(graph, "1B"), [graph]);
 
-  const seedText = hasSeed ? seedApplied : "-";
-  const countText = hasCount ? String(countApplied) : "-";
-  const eventText = hasEvent ? selectedEventValue : "-";
+  const seedText = seedApplied.trim() ? seedApplied : "-";
+  const countText =
+    typeof countApplied === "number" &&
+    Number.isFinite(countApplied) &&
+    countApplied > 0
+      ? String(countApplied)
+      : "-";
 
   return (
     <Stack spacing={1.5}>
       <Typography variant="body2" color="text.secondary">
-        套用參數：seed=<b>{seedText}</b>，count=<b>{countText}</b>，event=
-        <b>{eventText}</b>
+        目前參數：seed=<b>{seedText}</b>，count=<b>{countText}</b>，event=
+        <b>{selectedEventValue || "-"}</b>
       </Typography>
 
       <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
@@ -96,19 +93,7 @@ export function GraphSummaryCard(props: {
 
       {graphState === "idle" && (
         <Alert severity="info">
-          {!hasSeed || !hasCount ? (
-            <>
-              尚未抓取 TrackGraph。請先在上方「套用 seed / count」，再按
-              Planner（會自動抓最新）。
-            </>
-          ) : !hasEvent ? (
-            <>
-              尚未抓取 TrackGraph。請先選擇 event，再按
-              Planner（會自動抓最新）。
-            </>
-          ) : (
-            <>尚未抓取 TrackGraph（按 Planner 時會自動抓最新）。</>
-          )}
+          尚未抓取 TrackGraph（按 Planner 時會自動抓最新）
         </Alert>
       )}
 

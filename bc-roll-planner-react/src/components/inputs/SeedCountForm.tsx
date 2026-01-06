@@ -35,7 +35,7 @@ export function SeedCountForm(props: {
     const nextSeed = s;
     let nextCount: number | null = null;
 
-    // ✅ 規則：只要 seed 或 count 任一為空 => 這裡不顯示錯誤
+    // 規則：只要 seed 或 count 任一為空 => 這裡不顯示錯誤
     // （但仍回傳 count=null，讓上層 hasSeedCount 變 false）
     if (!s || !cRaw) {
       return { seed: nextSeed, count: null, err: "" };
@@ -51,7 +51,7 @@ export function SeedCountForm(props: {
     return { seed: nextSeed, count: nextCount, err: "" };
   }, [seedDraft, countDraft]);
 
-  // ✅ 任何輸入變動都同步回父層（不合法就回傳 count=null / seed=""）
+  // 任何輸入變動都同步回父層（不合法就回傳 count=null / seed=""）
   useEffect(() => {
     setErr(parsed.err);
 

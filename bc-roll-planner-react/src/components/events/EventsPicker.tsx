@@ -28,11 +28,11 @@ export function EventsPicker(props: {
   error: string;
   events: Event[];
 
-  /** ✅ 多選 */
+  /** 多選 */
   value: string[];
   onChange: (next: string[]) => void;
 
-  /** ✅ primary event：給 graph debug / simulator 用（planner 仍用全部 events） */
+  /** primary event：給 graph debug / simulator 用（planner 仍用全部 events） */
   primaryValue: string;
   onPrimaryChange: (v: string) => void;
 }) {
@@ -66,7 +66,8 @@ export function EventsPicker(props: {
 
   return (
     <Stack spacing={1.5}>
-      <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+      {/* 選擇 upcoming / past (之後改成不指定) */}
+      {/* <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
         <ToggleButtonGroup
           value={mode}
           exclusive
@@ -80,7 +81,7 @@ export function EventsPicker(props: {
         <Typography variant="body2" color="text.secondary">
           狀態：<b>{loadState}</b>，筆數：{events.length}
         </Typography>
-      </Stack>
+      </Stack> */}
 
       {loadState === "loading" && <LinearProgress />}
       {loadState === "error" && (
@@ -108,10 +109,12 @@ export function EventsPicker(props: {
               <MenuItem key={ev.value} value={ev.value} dense>
                 <Checkbox size="small" checked={checked} />
                 <ListItemText
-                  primary={`${ev.name}`}
-                  secondary={ev.value}
-                  primaryTypographyProps={{ noWrap: true }}
-                  secondaryTypographyProps={{ noWrap: true }}
+                  primary={ev.name}
+                  // secondary={ev.value}
+                  slotProps={{
+                    primary: { noWrap: true, title: ev.name },
+                    // secondary: { noWrap: true, title: ev.value },
+                  }}
                 />
               </MenuItem>
             );
@@ -119,7 +122,7 @@ export function EventsPicker(props: {
         </Select>
       </FormControl>
 
-      {/* ✅ 顯示已選 chips（省事也好確認） */}
+      {/* 顯示已選 chips（省事也好確認）*/}
       {!!value.length && (
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
           {selectedEvents.slice(0, 20).map((ev) => (
@@ -144,7 +147,7 @@ export function EventsPicker(props: {
         </Box>
       )}
 
-      {/* ✅ Primary event（多選時很重要） */}
+      {/* Primary event（多選時很重要） */}
       {/* {value.length >= 1 && (
         <FormControl size="small" sx={{ maxWidth: 520 }}>
           <InputLabel id="event-primary-label">

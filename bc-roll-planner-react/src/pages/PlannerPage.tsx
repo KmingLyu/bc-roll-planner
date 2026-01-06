@@ -312,7 +312,7 @@ export default function PlannerPage() {
         {/* Seed/Count */}
         {ui.showSeedCount && (
           <Section
-            title="輸入種子碼 & 顯示數量"
+            title="輸入種子碼、卡池"
             collapsed={ui.seedCountCollapsed}
             onToggleCollapsed={() =>
               setUi((p) => ({
@@ -322,19 +322,35 @@ export default function PlannerPage() {
             }
             onHide={() => setUi((p) => ({ ...p, showSeedCount: false }))}
           >
-            <SeedCountForm
-              seedApplied={seedApplied}
-              countApplied={countApplied}
-              onChange={({ seed, count }) => {
-                setSeedApplied(seed);
-                setCountApplied(count);
-              }}
-            />
+            <Stack spacing={2}>
+              <SeedCountForm
+                seedApplied={seedApplied}
+                countApplied={countApplied}
+                onChange={({ seed, count }) => {
+                  setSeedApplied(seed);
+                  setCountApplied(count);
+                }}
+              />
+              <EventsPicker
+                mode={eventsMode}
+                onModeChange={(m) => {
+                  setEventsMode(m);
+                  reloadEvents(m);
+                }}
+                loadState={eventsState as LoadState}
+                error={eventsErr}
+                events={events}
+                value={selectedEventValues}
+                onChange={(next) => setSelectedEventValues(next)}
+                primaryValue={primaryEventValue}
+                onPrimaryChange={(v) => setPrimaryEventValue(v)}
+              />
+            </Stack>
           </Section>
         )}
 
         {/* Events（多選 + primary） */}
-        {ui.showEvents && (
+        {/* {ui.showEvents && (
           <Section
             title="選擇卡池(多選)"
             collapsed={ui.eventsCollapsed}
@@ -358,7 +374,7 @@ export default function PlannerPage() {
               onPrimaryChange={(v) => setPrimaryEventValue(v)}
             />
           </Section>
-        )}
+        )} */}
 
         {/* Target Cats */}
         {ui.showTargetCats && (

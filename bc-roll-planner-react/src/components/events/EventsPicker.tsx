@@ -99,11 +99,11 @@ export function EventsPicker(props: {
   return (
     <Stack spacing={1.5}>
       <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
-        <Typography variant="body2" color="text.secondary">
+        {/* <Typography variant="body2" color="text.secondary">
           狀態：<b>{loadState}</b>
           ，Upcoming：{upcomingEvents.length}
           ，Past：{pastEvents.length}
-        </Typography>
+        </Typography> */}
       </Stack>
 
       {loadState === "loading" && <LinearProgress />}
@@ -179,10 +179,10 @@ export function EventsPicker(props: {
         </Box>
       )}
 
-      <Typography variant="body2" color="text.secondary">
+      {/* <Typography variant="body2" color="text.secondary">
         Planner 會用「所有已選 events」一起規劃；Graph Debug / Simulator
         則用「主要 event」顯示。
-      </Typography>
+      </Typography> */}
     </Stack>
   );
 }

@@ -29,7 +29,7 @@ export function PlannerRunBar(props: {
             state === "loading" ? <CircularProgress size={16} /> : undefined
           }
         >
-          規劃（會先抓最新 TrackGraph）
+          開始執行
         </Button>
 
         <Typography variant="body2" color="text.secondary">

@@ -25,7 +25,7 @@ export function ResourceForm(props: {
 
   return (
     <Stack spacing={1.5}>
-      <Typography fontWeight={800}>Planner 資源與設定</Typography>
+      {/* <Typography fontWeight={800}>輸入資源</Typography> */}
 
       <Grid container spacing={2} sx={{ maxWidth: 720, width: "100%" }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>

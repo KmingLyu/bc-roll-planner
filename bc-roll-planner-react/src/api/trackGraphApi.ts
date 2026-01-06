@@ -1,6 +1,6 @@
 // src/api/trackGraphApi.ts
 import { netlifyGet } from "./netlifyClient";
-import type { TrackGraph } from "../../shared/models";
+import type { TrackGraph, PoolType } from "../../shared/models";
 
 export type TrackGraphResponse = {
   graph: TrackGraph;
@@ -18,6 +18,7 @@ export async function fetchTrackGraph(params: {
   name?: string;
   start_date?: string | null;
   end_date?: string | null;
+  pool_type?: PoolType;
 }): Promise<TrackGraphResponse> {
   return netlifyGet<TrackGraphResponse>("trackGraph", {
     seed: params.seed,
@@ -30,5 +31,6 @@ export async function fetchTrackGraph(params: {
     name: params.name,
     start_date: params.start_date ?? undefined,
     end_date: params.end_date ?? undefined,
+    pool_type: params.pool_type,
   });
 }

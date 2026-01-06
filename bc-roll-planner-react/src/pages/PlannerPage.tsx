@@ -257,10 +257,10 @@ export default function PlannerPage() {
       kind: "run",
       req: {
         graphs_by_event: graphsByEvent,
-        events: selectedEventValues.map((ev) => ({
-          event_value: ev,
-          pool_type: "normal" as const,
-        })),
+
+        // 不再塞 pool_type，planner 會從 graphs_by_event[ev].event.pool_type 讀
+        events: selectedEventValues.map((ev) => ({ event_value: ev })),
+
         target_cats: targetCatIds,
 
         tickets: Math.max(0, Math.floor(resources.tickets)),

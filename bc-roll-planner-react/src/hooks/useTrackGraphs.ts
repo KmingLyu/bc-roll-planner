@@ -17,7 +17,7 @@ function isValidSeedCount(seed: string, count: number | null): boolean {
 
 export function useTrackGraphs(params: {
   seed: string;
-  count: number | null; // 改成可為 null
+  count: number | null; // 可為 null
   selectedEventValues: string[];
   eventsByValue: Map<string, Event>;
   lang: string;
@@ -45,7 +45,7 @@ export function useTrackGraphs(params: {
 
   // 回傳 next graphs
   async function fetchGraphs(): Promise<Record<string, TrackGraph>> {
-    // 1) 沒選 event：回到 idle，回傳空
+    // 沒選 event：回到 idle，回傳空
     if (selectedEventValues.length === 0) {
       setGraphState("idle");
       setGraphErr("");
@@ -54,12 +54,11 @@ export function useTrackGraphs(params: {
       return {};
     }
 
-    // 2) seed/count 不合法：不要打 API、不要 throw，回到 idle，回傳空
+    // seed/count 不合法：不要打 API、不要 throw，回到 idle，回傳空
     if (!isValidSeedCount(seed, count)) {
       setGraphState("idle");
       setGraphErr("");
-      // 不清掉 latestGraphsRef 也可以；但你的需求是「參數不完整就視為不可用」
-      // 所以這裡乾脆也清空，避免 UI 誤顯示舊資料
+      // 參數不完整就視為不可用，所以這裡乾脆也清空，避免 UI 誤顯示舊資料
       latestGraphsRef.current = {};
       setGraphByEvent({});
       return {};
@@ -85,6 +84,7 @@ export function useTrackGraphs(params: {
             name: meta?.name ?? ev,
             start_date: meta?.start_date ?? null,
             end_date: meta?.end_date ?? null,
+            pool_type: meta?.pool_type ?? "normal",
           });
           return { ev, graph: res.graph };
         })
@@ -118,11 +118,5 @@ export function useTrackGraphs(params: {
     }
   }
 
-  return {
-    graphState,
-    graphErr,
-    graphByEvent,
-    fetchGraphs,
-    clearGraphs,
-  };
+  return { graphState, graphErr, graphByEvent, fetchGraphs, clearGraphs };
 }

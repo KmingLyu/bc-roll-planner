@@ -1,5 +1,5 @@
 import { netlifyGet } from "./netlifyClient";
-import type { Event, Cat, CatTier } from "../../shared/models";
+import type { Event, Cat, CatTier, PoolType } from "../../shared/models";
 
 export type TierGroup = { tier: CatTier; cats: Cat[] };
 
@@ -20,6 +20,7 @@ export async function fetchEventCats(params: {
   name?: string;
   start_date?: string | null;
   end_date?: string | null;
+  pool_type?: PoolType;
 }): Promise<EventCatsResponse> {
   return netlifyGet<EventCatsResponse>("eventCats", {
     event: params.event,
@@ -30,5 +31,6 @@ export async function fetchEventCats(params: {
     name: params.name,
     start_date: params.start_date ?? undefined,
     end_date: params.end_date ?? undefined,
+    pool_type: params.pool_type,
   });
 }

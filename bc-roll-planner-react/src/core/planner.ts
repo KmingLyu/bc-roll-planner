@@ -1,24 +1,23 @@
-// src/core/planner.ts
-import type { TrackGraph, PositionNode, Edge, Cat } from "../../shared/models";
+import type {
+  TrackGraph,
+  PositionNode,
+  Edge,
+  Cat,
+  PoolType,
+} from "../../shared/models";
 import { parsePosId } from "./utils";
 import { chooseEdgeForSingleDraw } from "./simulator";
-
-// -------------------------
-// Types (對齊 Python bc_roll_planner.py)
-// -------------------------
-export type PoolType = "normal" | "platinum" | "legend";
 
 export type ResourceType =
   | "ticket"
   | "platinum_ticket"
   | "legend_ticket"
   | "food";
-
 export type PlanMethod = "single" | "ten";
 
+/** pool_type 從 graph.event.pool_type 讀 */
 export type EventMeta = {
   event_value: string;
-  pool_type?: PoolType; // default: "normal"
 };
 
 export type PlannerState = {
@@ -31,8 +30,8 @@ export type PlannerState = {
   mask: number;
 };
 
-export type Cost = [number, number, number, number, number];
 // (equiv_cost, food_used, ticket_used, platinum_used, legend_used)
+export type Cost = [number, number, number, number, number];
 
 export type DrawHit = {
   cat_id: number | null;
@@ -115,8 +114,8 @@ export type PlannerConfig = {
 function normalizeConfig(cfg?: PlannerConfig): Required<PlannerConfig> {
   const weights = {
     ticket_single: 150,
-    platinum_single: 150,
-    legend_single: 150,
+    platinum_single: 200, // 設貴一點，優先使用金券/罐頭
+    legend_single: 300, // 設更貴一點，優先使用白金券/金券/罐頭
     food_single: 150,
     food_ten: 1500,
     ...(cfg?.weights || {}),
@@ -243,7 +242,7 @@ function bitCount32(n: number): number {
 }
 
 // -------------------------
-// Draw simulation (single / ten) - 對齊 Python planner
+// Draw simulation (single / ten)
 // -------------------------
 function catPayload(cat?: Cat | null): {
   id: number | null;
@@ -515,6 +514,26 @@ export function planMinCost(params: {
     return costLess(aCost, bCost);
   }
 
+  // relax state
+  function relax(
+    ns: PlannerState,
+    fromKey: string,
+    curCost: Cost,
+    inc: Cost,
+    step: PlanStep
+  ) {
+    const nk = stateKey(ns);
+    const newCost = addCost(curCost, inc);
+    const old = dist.get(nk) || INF;
+
+    if (costLess(newCost, old)) {
+      dist.set(nk, newCost);
+      parent.set(nk, { prevKey: fromKey, step });
+      stateByKey.set(nk, ns);
+      pq.push({ cost: newCost, seq: seq++, key: nk, state: ns });
+    }
+  }
+
   while (pq.size()) {
     const curItem = pq.pop()!;
     const curKey = curItem.key;
@@ -553,11 +572,13 @@ export function planMinCost(params: {
     // expand neighbors
     for (const meta of params.events) {
       const ev = meta.event_value;
-      const pool: PoolType = (meta.pool_type || "normal") as PoolType;
       const graph = params.graphs_by_event[ev];
       if (!graph) continue;
 
-      // ---- (A) 單抽 transition（跟資源無關）----
+      /** 直接從 graph.event.pool_type 讀 */
+      const pool: PoolType = graph.event.pool_type ?? "normal";
+
+      // ---- (A) 單抽 transition ----
       const key1 = `${ev}|${s.cursor_id}|${
         s.prev_cat_id == null ? "-" : s.prev_cat_id
       }`;
@@ -745,26 +766,6 @@ export function planMinCost(params: {
           });
         }
       }
-    }
-  }
-
-  // relax helper (需要閉包用到 pq/dist/parent/stateByKey)
-  function relax(
-    ns: PlannerState,
-    fromKey: string,
-    curCost: Cost,
-    inc: Cost,
-    step: PlanStep
-  ) {
-    const nk = stateKey(ns);
-    const newCost = addCost(curCost, inc);
-    const old = dist.get(nk) || INF;
-
-    if (costLess(newCost, old)) {
-      dist.set(nk, newCost);
-      parent.set(nk, { prevKey: fromKey, step });
-      stateByKey.set(nk, ns);
-      pq.push({ cost: newCost, seq: seq++, key: nk, state: ns });
     }
   }
 

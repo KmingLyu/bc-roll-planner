@@ -41,10 +41,8 @@
  * 快取
  * - 成功回應會給 60 秒快取（避免同參數一直重爬）
  */
-
 import type { Handler } from "@netlify/functions";
-
-import type { Event } from "../../shared/models";
+import type { Event, PoolType } from "../../shared/models";
 
 import { buildTrackGraphFromCells } from "./_lib/buildGraph";
 import { fetchTextWithRetry } from "./_lib/http";
@@ -52,6 +50,7 @@ import {
   findTracksTable,
   parseTrackCellsFromTableHtml,
 } from "./_lib/parseTrackTable";
+import { normalizeText } from "./_lib/normalize";
 
 function json(statusCode: number, body: unknown, cacheSeconds = 0) {
   const cache =
@@ -70,6 +69,26 @@ function json(statusCode: number, body: unknown, cacheSeconds = 0) {
     },
     body: JSON.stringify(body),
   };
+}
+
+/** 允許從 querystring 帶入 pool_type，否則從 name 推斷，最後 fallback normal */
+function normalizePoolType(v: unknown): PoolType | null {
+  const s = String(v ?? "")
+    .trim()
+    .toLowerCase();
+  if (s === "normal" || s === "platinum" || s === "legend")
+    return s as PoolType;
+  return null;
+}
+
+function inferPoolTypeFromName(nameRaw: string): PoolType {
+  const name = normalizeText(nameRaw);
+  if (name.includes("傳說")) return "legend";
+  if (name.includes("白金")) return "platinum";
+  const lower = name.toLowerCase();
+  if (lower.includes("legend")) return "legend";
+  if (lower.includes("platinum")) return "platinum";
+  return "normal";
 }
 
 export const handler: Handler = async (event) => {
@@ -102,7 +121,7 @@ export const handler: Handler = async (event) => {
     if (!Number.isFinite(count) || count <= 0)
       return json(400, { error: "count 必須是正整數" });
 
-    // 組目標頁面 URL
+    // 這裡需要帶入 seed/count 參數
     const url =
       `${baseUrl}/?lang=${encodeURIComponent(lang)}` +
       `&ui=${encodeURIComponent(ui)}` +
@@ -122,11 +141,16 @@ export const handler: Handler = async (event) => {
 
     const raw_cells = parseTrackCellsFromTableHtml(tableHtml);
 
+    const name = qs.name ? String(qs.name) : eventValue;
+    const pool_type =
+      normalizePoolType(qs.pool_type) ?? inferPoolTypeFromName(name);
+
     const ev: Event = {
       value: eventValue,
-      name: qs.name ? String(qs.name) : eventValue,
+      name,
       start_date: qs.start_date ? String(qs.start_date) : null,
       end_date: qs.end_date ? String(qs.end_date) : null,
+      pool_type,
     };
 
     const graph = buildTrackGraphFromCells({

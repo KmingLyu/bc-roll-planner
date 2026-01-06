@@ -59,6 +59,7 @@ export function useEventCats(params: {
               name: meta?.name ?? ev,
               start_date: meta?.start_date ?? null,
               end_date: meta?.end_date ?? null,
+              pool_type: meta?.pool_type ?? "normal",
             });
           })
         );
@@ -86,6 +87,7 @@ export function useEventCats(params: {
               } else {
                 const better = tierOrder(g.tier) < tierOrder(existing.tier);
                 const next = better ? { ...existing, tier: g.tier } : existing;
+
                 // 名稱以非空者為準（保守）
                 if (!next.name && cat.name) {
                   catMap.set(cat.id, { ...next, name: cat.name });
@@ -146,11 +148,5 @@ export function useEventCats(params: {
     return m;
   }, [tierGroups]);
 
-  return {
-    catsState,
-    catsErr,
-    tierGroups,
-    allowedCatIdSet,
-    catNameById,
-  };
+  return { catsState, catsErr, tierGroups, allowedCatIdSet, catNameById };
 }

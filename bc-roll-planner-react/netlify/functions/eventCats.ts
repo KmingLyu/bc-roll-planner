@@ -34,10 +34,11 @@
  */
 
 import type { Handler } from "@netlify/functions";
-import type { Event } from "../../shared/models";
+import type { Event, PoolType } from "../../shared/models";
 
 import { fetchTextWithRetry } from "./_lib/http";
 import { parseEventCatsFromHtml } from "./_lib/parseEventCats";
+import { normalizeText } from "./_lib/normalize";
 
 function json(statusCode: number, body: unknown, cacheSeconds = 0) {
   const cache =
@@ -56,6 +57,26 @@ function json(statusCode: number, body: unknown, cacheSeconds = 0) {
     },
     body: JSON.stringify(body),
   };
+}
+
+/** 允許從 querystring 帶入 pool_type，否則從 name 推斷，最後 fallback normal */
+function normalizePoolType(v: unknown): PoolType | null {
+  const s = String(v ?? "")
+    .trim()
+    .toLowerCase();
+  if (s === "normal" || s === "platinum" || s === "legend")
+    return s as PoolType;
+  return null;
+}
+
+function inferPoolTypeFromName(nameRaw: string): PoolType {
+  const name = normalizeText(nameRaw);
+  if (name.includes("傳說")) return "legend";
+  if (name.includes("白金")) return "platinum";
+  const lower = name.toLowerCase();
+  if (lower.includes("legend")) return "legend";
+  if (lower.includes("platinum")) return "platinum";
+  return "normal";
 }
 
 export const handler: Handler = async (evt) => {
@@ -83,7 +104,7 @@ export const handler: Handler = async (evt) => {
 
     if (!eventValue) return json(400, { error: "缺少 event" });
 
-    // 只需要帶 event/lang/ui（不帶 seed/count）
+    // 爬取 eventCats 只需要帶 event/lang/ui（不帶 seed/count）
     const url =
       `${baseUrl}/?event=${encodeURIComponent(eventValue)}` +
       `&lang=${encodeURIComponent(lang)}` +
@@ -96,11 +117,16 @@ export const handler: Handler = async (evt) => {
 
     const parsed = parseEventCatsFromHtml(html);
 
+    const name = qs.name ? String(qs.name) : eventValue;
+    const pool_type =
+      normalizePoolType(qs.pool_type) ?? inferPoolTypeFromName(name);
+
     const ev: Event = {
       value: eventValue,
-      name: qs.name ? String(qs.name) : eventValue,
+      name,
       start_date: qs.start_date ? String(qs.start_date) : null,
       end_date: qs.end_date ? String(qs.end_date) : null,
+      pool_type, // ✅ 必帶
     };
 
     return json(

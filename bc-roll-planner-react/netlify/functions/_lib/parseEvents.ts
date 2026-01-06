@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 
-import type { Event } from "../../../shared/models";
+import type { Event, PoolType } from "../../../shared/models";
 
 import { normalizeText } from "./normalize";
 
@@ -22,6 +22,22 @@ function extractDatesFromEventName(name: string): {
 
   const single = head[0].replace(/:$/, "");
   return { start_date: single, end_date: single };
+}
+
+/** 由活動名稱判斷卡池類型 */
+function inferPoolTypeFromEventName(nameRaw: string): PoolType {
+  const name = normalizeText(nameRaw);
+
+  // 先判斷傳說（通常比白金更「特殊」；避免同時命中時被白金吃掉）
+  if (name.includes("傳說")) return "legend";
+  if (name.includes("白金")) return "platinum";
+
+  // 保守：也支援英文關鍵字（以防 ui/lang 變動）
+  const lower = name.toLowerCase();
+  if (lower.includes("legend")) return "legend";
+  if (lower.includes("platinum")) return "platinum";
+
+  return "normal";
 }
 
 export function parseEventsFromHomeHtml(
@@ -50,12 +66,14 @@ export function parseEventsFromHomeHtml(
     seen.add(key);
 
     const { start_date, end_date } = extractDatesFromEventName(name);
+    const pool_type = inferPoolTypeFromEventName(name);
 
     out.push({
       value,
       name,
       start_date,
       end_date,
+      pool_type,
     });
   });
 

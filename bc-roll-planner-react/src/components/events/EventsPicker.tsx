@@ -67,7 +67,7 @@ export function EventsPicker(props: {
   return (
     <Stack spacing={1.5}>
       {/* 選擇 upcoming / past (之後改成不指定) */}
-      {/* <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+      <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
         <ToggleButtonGroup
           value={mode}
           exclusive
@@ -81,7 +81,7 @@ export function EventsPicker(props: {
         <Typography variant="body2" color="text.secondary">
           狀態：<b>{loadState}</b>，筆數：{events.length}
         </Typography>
-      </Stack> */}
+      </Stack>
 
       {loadState === "loading" && <LinearProgress />}
       {loadState === "error" && (

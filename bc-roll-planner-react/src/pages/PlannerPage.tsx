@@ -95,7 +95,7 @@ export default function PlannerPage() {
   const [eventsMode, setEventsMode] = useState<"upcoming" | "past">("upcoming");
   const { eventsState, eventsErr, events, reloadEvents } = useEvents({
     type: eventsMode,
-    limit: 60,
+    limit: 10,
     lang: "tw",
     ui: "tw",
   });

@@ -1,5 +1,5 @@
 /**
- * events.ts
+ * netlify/functions/events.ts
  *
  * 用途
  * - 從指定的 base_url（預設 https://bc.godfat.org）抓取首頁 HTML
@@ -73,13 +73,19 @@ export const handler: Handler = async (event) => {
   try {
     const qs = event.queryStringParameters || {};
     const type = (qs.type || "upcoming").toLowerCase() as "upcoming" | "past";
-    const limit = Number(qs.limit || "10");
     const lang = qs.lang || "tw";
     const ui = qs.ui || "tw";
     const baseUrl = (qs.base_url || "https://bc.godfat.org").replace(
       /\/+$/,
       ""
     );
+    // const limit = Number(qs.limit || "10");
+    const limitRaw = qs.limit;
+    let limit: number | null = null; // null = 不限制
+    if (typeof limitRaw === "string" && limitRaw.trim() !== "") {
+      const n = Number(limitRaw);
+      if (Number.isFinite(n) && n > 0) limit = n;
+    }
 
     if (type !== "upcoming" && type !== "past") {
       return json(400, { error: "type 必須是 upcoming 或 past" });
@@ -96,7 +102,8 @@ export const handler: Handler = async (event) => {
     const events = parseEventsFromHomeHtml(
       html,
       type,
-      Number.isFinite(limit) ? limit : 10
+      // Number.isFinite(limit) ? limit : 10
+      limit
     );
 
     return json(200, { type, count: events.length, events });

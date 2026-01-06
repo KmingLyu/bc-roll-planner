@@ -16,6 +16,7 @@ export class ApiError extends Error {
 function toQueryString(q: Query): string {
   const usp = new URLSearchParams();
   for (const [k, v] of Object.entries(q)) {
+    // 擋掉 undefined 和 null
     if (v === null || v === undefined) continue;
     usp.set(k, String(v));
   }

@@ -8,11 +8,17 @@ type LoadState = "idle" | "loading" | "ok" | "error";
 
 export function useEvents(params: {
   type: "upcoming" | "past";
-  limit: number;
+  // limit: number;
+  limit?: number | null;
   lang: string;
   ui: string;
 }) {
   const { type, limit, lang, ui } = params;
+
+  const cleanLimit =
+    typeof limit === "number" && Number.isFinite(limit) && limit > 0
+      ? limit
+      : undefined;
 
   const [eventsState, setEventsState] = useState<LoadState>("idle");
   const [eventsErr, setEventsErr] = useState<string>("");
@@ -27,7 +33,7 @@ export function useEvents(params: {
     setEventsErr("");
 
     try {
-      const res = await fetchEvents({ type: t, limit, lang, ui });
+      const res = await fetchEvents({ type: t, limit: cleanLimit, lang, ui });
       if (seq !== seqRef.current) return;
       setEvents(res.events || []);
       setEventsState("ok");

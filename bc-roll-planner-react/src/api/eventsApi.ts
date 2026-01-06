@@ -12,14 +12,14 @@ export type EventsResponse = {
 
 export async function fetchEvents(params: {
   type?: EventsType;
-  limit?: number;
+  limit?: number | null;
   lang?: string;
   ui?: string;
   base_url?: string;
 }): Promise<EventsResponse> {
   return netlifyGet<EventsResponse>("events", {
     type: params.type ?? "upcoming",
-    limit: params.limit ?? 40,
+    limit: params.limit ?? null,
     lang: params.lang ?? "tw",
     ui: params.ui ?? "tw",
     base_url: params.base_url, // optional

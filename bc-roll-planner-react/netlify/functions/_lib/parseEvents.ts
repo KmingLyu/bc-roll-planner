@@ -1,3 +1,4 @@
+// netlify/functions/_lib/parseEvents.ts
 import * as cheerio from "cheerio";
 
 import type { Event, PoolType } from "../../../shared/models";
@@ -43,7 +44,8 @@ function inferPoolTypeFromEventName(nameRaw: string): PoolType {
 export function parseEventsFromHomeHtml(
   html: string,
   type: "upcoming" | "past",
-  limit = 10
+  // limit = 10
+  limit?: number | null
 ): Event[] {
   const $ = cheerio.load(html);
 
@@ -53,9 +55,12 @@ export function parseEventsFromHomeHtml(
   const out: Event[] = [];
   const seen = new Set<string>();
 
-  options.each((_, el) => {
-    if (type === "past" && out.length >= limit) return;
+  const hasLimit =
+    typeof limit === "number" && Number.isFinite(limit) && limit > 0;
 
+  options.each((_, el) => {
+    // if (type === "past" && out.length >= limit) return;
+    if (hasLimit && out.length >= (limit as number)) return false;
     const value = normalizeText($(el).attr("value"));
     const name = normalizeText($(el).text());
 

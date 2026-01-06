@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 // MUI
-import { Box, Button, Container, Stack, Typography } from "@mui/material";
+import { Box, Container, Stack, Typography } from "@mui/material";
 
 // Models
 import type { Event, TrackGraph } from "../../shared/models";
@@ -41,7 +41,7 @@ import { SimulatorPanel } from "../components/simulator/SimulatorPanel";
 // Planner types
 import type { PlanResult } from "../core/planner";
 
-// ✅ env
+// env
 import { BC_ENV } from "../config/bcEnv";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
@@ -87,37 +87,31 @@ export default function PlannerPage() {
   });
 
   // -------------------------
-  // Seed/Count：按 Apply 才更新
+  // Seed/Count
   // -------------------------
   const [seedApplied, setSeedApplied] = useState<string>("");
   const [countApplied, setCountApplied] = useState<number | null>(null);
 
   // -------------------------
-  // Events
+  // Events（一次載入 upcoming + past）
   // -------------------------
-  const [eventsMode, setEventsMode] = useState<"upcoming" | "past">("upcoming");
-
-  console.log(
-    "[PlannerPage] pastEventLimit",
-    BC_ENV.pastEventLimit,
-    "mode",
-    eventsMode
-  );
-
-  const { eventsState, eventsErr, events, reloadEvents } = useEvents({
-    type: eventsMode,
-    // ✅ past 的 limit 改從 env；upcoming 不限制就給 null/undefined（依你 hook 實作）
-    limit: eventsMode === "past" ? BC_ENV.pastEventLimit : null,
+  const {
+    eventsState,
+    eventsErr,
+    events,
+    upcomingEvents,
+    pastEvents,
+    reloadEvents,
+  } = useEvents({
+    pastLimit: BC_ENV.pastEventLimit,
     lang: BC_ENV.lang,
     ui: BC_ENV.ui,
-    // base_url 若你的 useEvents 支援，也可以一起傳；不支援就先不傳（Functions 端會吃 env 預設）
-    // base_url: BC_ENV.baseUrl,
   });
 
-  // ✅ 多選 values
+  // 多選 values
   const [selectedEventValues, setSelectedEventValues] = useState<string[]>([]);
 
-  // ✅ primary event：Graph Debug / Simulator 用
+  // primary event：Graph Debug / Simulator 用
   const [primaryEventValue, setPrimaryEventValue] = useState<string>("");
 
   // 任何時候 selectedEventValues 改變：確保 primary 仍有效
@@ -317,18 +311,18 @@ export default function PlannerPage() {
       <Stack spacing={2}>
         <Box>
           <Typography variant="h5" fontWeight={800}>
-            BC Roll Planner（Events 多選版）
+            貓咪大戰爭抽卡規劃（測試版）
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            先套用 seed/count → 多選 events → 選目標貓（聯集）→
-            規劃（會自動抓最新 TrackGraph）
+            流程：輸入 seed/count → 選卡池(多選) → 選目標貓咪(多選) → 輸入資源 →
+            執行抽卡規劃
           </Typography>
         </Box>
 
         {/* Seed/Count */}
         {ui.showSeedCount && (
           <Section
-            title="輸入種子碼、卡池"
+            title="輸入seed/count、卡池"
             collapsed={ui.seedCountCollapsed}
             onToggleCollapsed={() =>
               setUi((p) => ({
@@ -338,7 +332,7 @@ export default function PlannerPage() {
             }
             onHide={() => setUi((p) => ({ ...p, showSeedCount: false }))}
           >
-            <Stack spacing={2}>
+            <Stack spacing={0.5}>
               <SeedCountForm
                 seedApplied={seedApplied}
                 countApplied={countApplied}
@@ -347,15 +341,12 @@ export default function PlannerPage() {
                   setCountApplied(count);
                 }}
               />
+
               <EventsPicker
-                mode={eventsMode}
-                onModeChange={(m) => {
-                  setEventsMode(m);
-                  reloadEvents(m);
-                }}
                 loadState={eventsState as LoadState}
                 error={eventsErr}
-                events={events}
+                upcomingEvents={upcomingEvents}
+                pastEvents={pastEvents}
                 value={selectedEventValues}
                 onChange={(next) => setSelectedEventValues(next)}
                 primaryValue={primaryEventValue}
@@ -396,7 +387,7 @@ export default function PlannerPage() {
         {/* Planner */}
         {ui.showPlanner && (
           <Section
-            title="抽卡規劃"
+            title="輸入資源"
             collapsed={ui.plannerCollapsed}
             onToggleCollapsed={() =>
               setUi((p) => ({ ...p, plannerCollapsed: !p.plannerCollapsed }))

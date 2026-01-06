@@ -25,3 +25,37 @@ export async function fetchEvents(params: {
     base_url: params.base_url, // optional
   });
 }
+
+export type EventsBothResponse = {
+  upcoming: EventsResponse;
+  past: EventsResponse;
+};
+
+export async function fetchEventsBoth(params: {
+  pastLimit?: number | null;
+  lang?: string;
+  ui?: string;
+  base_url?: string;
+}): Promise<EventsBothResponse> {
+  const lang = params.lang ?? "tw";
+  const ui = params.ui ?? "tw";
+
+  const [upcoming, past] = await Promise.all([
+    fetchEvents({
+      type: "upcoming",
+      limit: null, // upcoming 通常不需要限制
+      lang,
+      ui,
+      base_url: params.base_url,
+    }),
+    fetchEvents({
+      type: "past",
+      limit: params.pastLimit ?? null,
+      lang,
+      ui,
+      base_url: params.base_url,
+    }),
+  ]);
+
+  return { upcoming, past };
+}

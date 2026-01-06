@@ -65,9 +65,9 @@ export function SeedCountForm(props: {
 
   return (
     <Stack spacing={1.5}>
-      <Typography variant="body2" color="text.secondary">
+      {/* <Typography variant="body2" color="text.secondary">
         直接輸入即可生效；若 seed / count 不完整或不合法，規劃按鈕會自動停用。
-      </Typography>
+      </Typography> */}
 
       <Grid container spacing={2} sx={{ maxWidth: 640, width: "100%" }}>
         <Grid size={{ xs: 12, sm: 6 }}>

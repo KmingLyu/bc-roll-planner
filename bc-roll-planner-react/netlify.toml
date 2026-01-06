@@ -8,7 +8,6 @@
   # Functions runtime
   BC_UI = "tw"
   BC_LANG = "tw"
-  BC_PAST_EVENT_LIMIT = "0"
   BC_GODFAT_BASE_URL = "https://bc.godfat.org"
 
   # Vite build-time env

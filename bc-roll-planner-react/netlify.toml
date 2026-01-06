@@ -13,7 +13,7 @@
   # Vite build-time env
   VITE_BC_UI = "tw"
   VITE_BC_LANG = "tw"
-  VITE_BC_PAST_EVENT_LIMIT = "0"
+  VITE_BC_PAST_EVENT_LIMIT = "100"
   VITE_BC_GODFAT_BASE_URL = "https://bc.godfat.org"
 
 [dev]

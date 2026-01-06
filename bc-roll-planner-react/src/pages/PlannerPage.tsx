@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 // MUI
-import { Box, Button, Container, Stack, Typography } from "@mui/material";
+import { Box, Container, Stack, Typography } from "@mui/material";
 
 // Models
 import type { Event, TrackGraph } from "../../shared/models";
@@ -87,31 +87,25 @@ export default function PlannerPage() {
   });
 
   // -------------------------
-  // Seed/Count：按 Apply 才更新
+  // Seed/Count
   // -------------------------
   const [seedApplied, setSeedApplied] = useState<string>("");
   const [countApplied, setCountApplied] = useState<number | null>(null);
 
   // -------------------------
-  // Events
+  // Events（一次載入 upcoming + past）
   // -------------------------
-  const [eventsMode, setEventsMode] = useState<"upcoming" | "past">("upcoming");
-
-  console.log(
-    "[PlannerPage] pastEventLimit",
-    BC_ENV.pastEventLimit,
-    "mode",
-    eventsMode
-  );
-
-  const { eventsState, eventsErr, events, reloadEvents } = useEvents({
-    type: eventsMode,
-    // ✅ past 的 limit 改從 env；upcoming 不限制就給 null/undefined（依你 hook 實作）
-    limit: eventsMode === "past" ? BC_ENV.pastEventLimit : null,
+  const {
+    eventsState,
+    eventsErr,
+    events,
+    upcomingEvents,
+    pastEvents,
+    reloadEvents,
+  } = useEvents({
+    pastLimit: BC_ENV.pastEventLimit,
     lang: BC_ENV.lang,
     ui: BC_ENV.ui,
-    // base_url 若你的 useEvents 支援，也可以一起傳；不支援就先不傳（Functions 端會吃 env 預設）
-    // base_url: BC_ENV.baseUrl,
   });
 
   // ✅ 多選 values
@@ -320,8 +314,8 @@ export default function PlannerPage() {
             BC Roll Planner（Events 多選版）
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            先套用 seed/count → 多選 events → 選目標貓（聯集）→
-            規劃（會自動抓最新 TrackGraph）
+            先套用 seed/count → 多選 events（上 upcoming / 下 past）→
+            選目標貓（聯集） → 規劃（會自動抓最新 TrackGraph）
           </Typography>
         </Box>
 
@@ -347,15 +341,12 @@ export default function PlannerPage() {
                   setCountApplied(count);
                 }}
               />
+
               <EventsPicker
-                mode={eventsMode}
-                onModeChange={(m) => {
-                  setEventsMode(m);
-                  reloadEvents(m);
-                }}
                 loadState={eventsState as LoadState}
                 error={eventsErr}
-                events={events}
+                upcomingEvents={upcomingEvents}
+                pastEvents={pastEvents}
                 value={selectedEventValues}
                 onChange={(next) => setSelectedEventValues(next)}
                 primaryValue={primaryEventValue}

@@ -1,9 +1,24 @@
 [build]
+  base = "bc-roll-planner-react"
   command = "npm run build"
   publish = "dist"
   functions = "netlify/functions"
 
+[build.environment]
+  # Functions runtime
+  BC_UI = "tw"
+  BC_LANG = "tw"
+  BC_PAST_EVENT_LIMIT = "0"
+  BC_GODFAT_BASE_URL = "https://bc.godfat.org"
+
+  # Vite build-time env
+  VITE_BC_UI = "tw"
+  VITE_BC_LANG = "tw"
+  VITE_BC_PAST_EVENT_LIMIT = "0"
+  VITE_BC_GODFAT_BASE_URL = "https://bc.godfat.org"
+
 [dev]
+  base = "bc-roll-planner-react"
   command = "npm run dev"
+  framework = "#custom"
   targetPort = 5173
-  functions = "netlify/functions"

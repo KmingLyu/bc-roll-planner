@@ -11,7 +11,11 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
+        "npm:@emotion/react@^11.14.0",
+        "npm:@emotion/styled@^11.14.1",
         "npm:@eslint/js@^9.39.1",
+        "npm:@mui/icons-material@^7.3.6",
+        "npm:@mui/material@^7.3.6",
         "npm:@netlify/functions@^5.1.2",
         "npm:@types/node@^24.10.1",
         "npm:@types/react-dom@^19.2.3",
@@ -27,6 +31,8 @@
         "npm:react@^19.2.0",
         "npm:typescript-eslint@^8.46.4",
         "npm:typescript@~5.9.3",
+        "npm:undici@^7.16.0",
+        "npm:vite-tsconfig-paths@^6.0.3",
         "npm:vite@^7.2.4"
       ]
     }

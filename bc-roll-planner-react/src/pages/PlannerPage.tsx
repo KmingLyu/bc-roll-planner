@@ -41,6 +41,9 @@ import { SimulatorPanel } from "../components/simulator/SimulatorPanel";
 // Planner types
 import type { PlanResult } from "../core/planner";
 
+// ✅ env
+import { BC_ENV } from "../config/bcEnv";
+
 type LoadState = "idle" | "loading" | "ok" | "error";
 
 function tierOrder(t: CatTier): number {
@@ -93,11 +96,22 @@ export default function PlannerPage() {
   // Events
   // -------------------------
   const [eventsMode, setEventsMode] = useState<"upcoming" | "past">("upcoming");
+
+  console.log(
+    "[PlannerPage] pastEventLimit",
+    BC_ENV.pastEventLimit,
+    "mode",
+    eventsMode
+  );
+
   const { eventsState, eventsErr, events, reloadEvents } = useEvents({
     type: eventsMode,
-    limit: 10,
-    lang: "tw",
-    ui: "tw",
+    // ✅ past 的 limit 改從 env；upcoming 不限制就給 null/undefined（依你 hook 實作）
+    limit: eventsMode === "past" ? BC_ENV.pastEventLimit : null,
+    lang: BC_ENV.lang,
+    ui: BC_ENV.ui,
+    // base_url 若你的 useEvents 支援，也可以一起傳；不支援就先不傳（Functions 端會吃 env 預設）
+    // base_url: BC_ENV.baseUrl,
   });
 
   // ✅ 多選 values
@@ -144,8 +158,9 @@ export default function PlannerPage() {
     useEventCats({
       selectedEventValues,
       eventsByValue,
-      lang: "tw",
-      ui: "tw",
+      lang: BC_ENV.lang,
+      ui: BC_ENV.ui,
+      // base_url: BC_ENV.baseUrl,
     });
 
   const [targetCatIds, setTargetCatIds] = useState<number[]>([]);
@@ -165,8 +180,9 @@ export default function PlannerPage() {
       count: countApplied, // number | null
       selectedEventValues,
       eventsByValue,
-      lang: "tw",
-      ui: "tw",
+      lang: BC_ENV.lang,
+      ui: BC_ENV.ui,
+      // base_url: BC_ENV.baseUrl,
     });
 
   // 參數變動時清掉 graphs（避免舊 graph 造成誤解）
@@ -348,33 +364,6 @@ export default function PlannerPage() {
             </Stack>
           </Section>
         )}
-
-        {/* Events（多選 + primary） */}
-        {/* {ui.showEvents && (
-          <Section
-            title="選擇卡池(多選)"
-            collapsed={ui.eventsCollapsed}
-            onToggleCollapsed={() =>
-              setUi((p) => ({ ...p, eventsCollapsed: !p.eventsCollapsed }))
-            }
-            onHide={() => setUi((p) => ({ ...p, showEvents: false }))}
-          >
-            <EventsPicker
-              mode={eventsMode}
-              onModeChange={(m) => {
-                setEventsMode(m);
-                reloadEvents(m);
-              }}
-              loadState={eventsState as LoadState}
-              error={eventsErr}
-              events={events}
-              value={selectedEventValues}
-              onChange={(next) => setSelectedEventValues(next)}
-              primaryValue={primaryEventValue}
-              onPrimaryChange={(v) => setPrimaryEventValue(v)}
-            />
-          </Section>
-        )} */}
 
         {/* Target Cats */}
         {ui.showTargetCats && (

@@ -1,6 +1,7 @@
 // src/components/planner/ResourceForm.tsx
 import { Stack, TextField, Typography } from "@mui/material";
 import Grid from "@mui/material/Grid";
+import NumberField from "../tools/NumberField";
 
 export type PlannerResources = {
   tickets: number;
@@ -29,57 +30,61 @@ export function ResourceForm(props: {
 
       <Grid container spacing={2} sx={{ maxWidth: 720, width: "100%" }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <TextField
-            fullWidth
-            size="small"
+          <NumberField
             label="金券"
-            type="number"
-            inputProps={{ min: 0 }}
+            min={0}
+            size="small"
             value={value.tickets}
-            onChange={(e) =>
-              onChange({ ...value, tickets: Number(e.target.value) })
+            onValueChange={(v) =>
+              onChange({
+                ...value,
+                tickets: Math.max(0, v ?? 0), // 清空時 v 會是 null，就當 0；同時保底不小於 0
+              })
             }
           />
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <TextField
-            fullWidth
-            size="small"
+          <NumberField
             label="白金券"
-            type="number"
-            inputProps={{ min: 0 }}
+            min={0}
+            size="small"
             value={value.platinum_tickets}
-            onChange={(e) =>
-              onChange({ ...value, platinum_tickets: Number(e.target.value) })
+            onValueChange={(v) =>
+              onChange({
+                ...value,
+                platinum_tickets: Math.max(0, v ?? 0), // 清空時 v 會是 null，就當 0；同時保底不小於 0
+              })
             }
           />
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <TextField
-            fullWidth
-            size="small"
+          <NumberField
             label="傳說券"
-            type="number"
-            inputProps={{ min: 0 }}
+            min={0}
+            size="small"
             value={value.legend_tickets}
-            onChange={(e) =>
-              onChange({ ...value, legend_tickets: Number(e.target.value) })
+            onValueChange={(v) =>
+              onChange({
+                ...value,
+                legend_tickets: Math.max(0, v ?? 0), // 清空時 v 會是 null，就當 0；同時保底不小於 0
+              })
             }
           />
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <TextField
-            fullWidth
+          <NumberField
+            label="罐頭"
+            min={0}
             size="small"
-            label="貓罐頭"
-            type="number"
-            inputProps={{ min: 0, step: 100 }}
             value={value.food}
-            onChange={(e) =>
-              onChange({ ...value, food: Number(e.target.value) })
+            onValueChange={(v) =>
+              onChange({
+                ...value,
+                food: Math.max(0, v ?? 0), // 清空時 v 會是 null，就當 0；同時保底不小於 0
+              })
             }
           />
         </Grid>

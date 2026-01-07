@@ -30,6 +30,13 @@ export function usePlannerWorker() {
     setPlanResult(null);
   }
 
+  // 先把狀態切到 loading（通常也順便清掉舊結果/錯誤）
+  function setLoading() {
+    setPlanState("loading");
+    setPlanErr("");
+    setPlanResult(null);
+  }
+
   function runPlanner(payload: RunPayload) {
     if (payload.kind === "errorOnly") {
       setPlanState("error");
@@ -72,6 +79,7 @@ export function usePlannerWorker() {
     planState,
     planErr,
     planResult,
+    setLoading,
     runPlanner,
     resetPlan,
   };

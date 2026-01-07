@@ -195,10 +195,10 @@ export default function PlannerPage() {
   // Planner resources + cfg
   // -------------------------
   const [resources, setResources] = useState<PlannerResources>({
-    tickets: 10,
+    tickets: 0,
     platinum_tickets: 0,
     legend_tickets: 0,
-    food: 3000,
+    food: 0,
   });
 
   const [plannerCfg, setPlannerCfg] = useState<PlannerConfig>({
@@ -209,7 +209,7 @@ export default function PlannerPage() {
   // -------------------------
   // Planner worker
   // -------------------------
-  const { runPlanner, planState, planErr, planResult, resetPlan } =
+  const { runPlanner, setLoading, planState, planErr, planResult, resetPlan } =
     usePlannerWorker();
 
   useEffect(() => {
@@ -232,6 +232,8 @@ export default function PlannerPage() {
       resetPlan();
       return runPlanner({ kind: "errorOnly", error: "請先選至少一隻目標貓" });
     }
+
+    setLoading();
 
     let graphsByEvent: Record<string, TrackGraph>;
     try {

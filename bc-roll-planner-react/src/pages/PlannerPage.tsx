@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 
 // MUI
 import { Box, Container, Stack, Typography } from "@mui/material";
+import PetsIcon from "@mui/icons-material/Pets";
 
 // Models
 import type { Event, TrackGraph } from "../../shared/models";
@@ -311,15 +312,15 @@ export default function PlannerPage() {
   return (
     <Container maxWidth="lg" sx={{ py: 2 }}>
       <Stack spacing={2}>
-        <Box>
+        <Stack spacing={1} alignItems="flex-start">
           <Typography variant="h5" fontWeight={800}>
-            貓咪大戰爭抽卡規劃（測試版）
+            🐾 貓咪大戰爭抽卡規劃（測試版）
           </Typography>
           <Typography variant="body2" color="text.secondary">
             流程：輸入 seed/count → 選卡池(多選) → 選目標貓咪(多選) → 輸入資源 →
             執行抽卡規劃
           </Typography>
-        </Box>
+        </Stack>
 
         {/* Seed/Count */}
         {ui.showSeedCount && (

@@ -101,9 +101,6 @@ export type PlannerConfig = {
     >
   >;
 
-  // 十連允許的池類型（通常只有 normal）
-  allow_ten_pools?: PoolType[];
-
   // 每種池允許哪些 action_key
   allowed_actions_by_pool?: Partial<Record<PoolType, string[]>>;
 
@@ -130,7 +127,6 @@ function normalizeConfig(cfg?: PlannerConfig): Required<PlannerConfig> {
 
   return {
     weights,
-    allow_ten_pools: cfg?.allow_ten_pools ?? ["normal"],
     allowed_actions_by_pool,
     max_expansions: cfg?.max_expansions ?? 2_000_000,
   };
@@ -141,6 +137,7 @@ function isActionAllowed(
   pool: PoolType,
   actionKey: string
 ): boolean {
+  // 用來判斷 normal/platinum/legend 三種池，跟10連抽必中池無關
   const allowed = cfg.allowed_actions_by_pool[pool];
   return Array.isArray(allowed) ? allowed.includes(actionKey) : false;
 }
@@ -707,11 +704,18 @@ export function planMinCost(params: {
         });
       }
 
-      // ---- (B) ten：只允許 food + allow_ten_pools ----
+      // ---- (B) ten：只允許 food  ----
+
+      // 檢查「起點是否真的有 guaranteed edge」
+      const startNode = graph.nodes?.[s.cursor_id] as PositionNode | undefined;
+      console.log("startNode for ten:", startNode);
+      const hasGuaranteed =
+        !!startNode?.edges?.guaranteed && !!startNode.edges.guaranteed.cat;
+
       if (
         s.food_left >= 1500 &&
-        cfg.allow_ten_pools.includes(pool) &&
-        isActionAllowed(cfg, pool, "food_ten")
+        hasGuaranteed
+        // isActionAllowed(cfg, pool, "food_ten")
       ) {
         const key10 = `${ev}|${s.cursor_id}|${
           s.prev_cat_id == null ? "-" : s.prev_cat_id

@@ -268,6 +268,10 @@ export function PlanDrawsTimelineTable(props: {
     borderColor: "divider",
     py: 1,
     verticalAlign: "middle",
+
+    // boxSizing: "border-box",
+    // overflow: "hidden",
+    // textOverflow: "ellipsis",
   } as const;
 
   const steps = useMemo(() => {
@@ -360,7 +364,7 @@ export function PlanDrawsTimelineTable(props: {
 
         <Divider />
 
-        <TableContainer
+        {/* <TableContainer
           component={Box}
           sx={{
             maxHeight: 520,
@@ -371,307 +375,337 @@ export function PlanDrawsTimelineTable(props: {
             bgcolor: "background.default",
             p: 1,
           }}
+        > */}
+        <Box
+          sx={{
+            borderRadius: 3,
+            border: 1,
+            borderColor: "divider",
+            bgcolor: "background.default",
+            overflow: "hidden", // ✅ 外層負責裁切圓角/邊框
+          }}
         >
-          <Table
-            stickyHeader
-            size="small"
+          <Box
             sx={{
-              minWidth: 980,
-              tableLayout: "fixed",
-              borderCollapse: "separate",
-              borderSpacing: "0 10px",
+              maxHeight: 520,
+              overflow: "auto", // ✅ 內層負責捲動
+              p: 1,
             }}
           >
-            <TableHead>
-              <TableRow>
-                {[
-                  { key: "count", label: "count", w: colW.count },
-                  { key: "step", label: "抽卡步驟", w: colW.step },
-                  { key: "action", label: "資源", w: colW.action },
-                  { key: "event", label: "Event", w: colW.event },
-                  { key: "A", label: "A", w: colW.A },
-                  { key: "B", label: "B", w: colW.B },
-                ].map((c) => (
-                  <TableCell
-                    key={c.key}
-                    sx={{
-                      width: `${c.w}%`,
-                      fontWeight: 900,
-                      whiteSpace: "nowrap",
-                      bgcolor: "background.paper",
-                      borderBottom: "1px solid",
-                      borderColor: "divider",
-                    }}
-                  >
-                    {c.label}
-                  </TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-
-            <TableBody>
-              {steps.length === 0 ? (
+            <Table
+              stickyHeader
+              size="small"
+              sx={{
+                minWidth: 980,
+                tableLayout: "fixed",
+                borderCollapse: "separate",
+                borderSpacing: "0 10px",
+              }}
+            >
+              <TableHead>
                 <TableRow>
-                  {/* ✅ FIX：欄位數是 6，不是 7 */}
-                  <TableCell colSpan={6} sx={{ py: 6, textAlign: "center" }}>
-                    沒有資料
-                  </TableCell>
+                  {[
+                    { key: "count", label: "count", w: colW.count },
+                    { key: "step", label: "抽卡步驟", w: colW.step },
+                    { key: "action", label: "資源", w: colW.action },
+                    { key: "event", label: "Event", w: colW.event },
+                    { key: "A", label: "A", w: colW.A },
+                    { key: "B", label: "B", w: colW.B },
+                  ].map((c) => (
+                    <TableCell
+                      key={c.key}
+                      sx={{
+                        width: `${c.w}%`,
+                        fontWeight: 900,
+                        whiteSpace: "nowrap",
+                        bgcolor: "background.paper",
+                        borderBottom: "1px solid",
+                        borderColor: "divider",
+
+                        // boxSizing: "border-box",
+                        // overflow: "hidden",
+                        // textOverflow: "ellipsis",
+                      }}
+                    >
+                      {c.label}
+                    </TableCell>
+                  ))}
                 </TableRow>
-              ) : (
-                steps.map(([stepIndex, rows]) => {
-                  const tenSummary =
-                    rows.find((r) => r.isTen && r.isHeader) || null;
-                  const tenDraws = rows.filter((r) => r.isTen && !r.isHeader);
-                  const singles = rows.filter((r) => !r.isTen);
+              </TableHead>
 
-                  const isTen = !!tenSummary;
-                  const open = !!openTen[stepIndex];
+              <TableBody>
+                {steps.length === 0 ? (
+                  <TableRow>
+                    {/* ✅ FIX：欄位數是 6，不是 7 */}
+                    <TableCell colSpan={6} sx={{ py: 6, textAlign: "center" }}>
+                      沒有資料
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  steps.map(([stepIndex, rows]) => {
+                    const tenSummary =
+                      rows.find((r) => r.isTen && r.isHeader) || null;
+                    const tenDraws = rows.filter((r) => r.isTen && !r.isHeader);
+                    const singles = rows.filter((r) => !r.isTen);
 
-                  const stepHasTarget = rows.some((r) => r.isTarget);
+                    const isTen = !!tenSummary;
+                    const open = !!openTen[stepIndex];
 
-                  const shownTenDraws = showTargetDrawsOnly
-                    ? tenDraws.filter((r) => r.isTarget || r.isGuaranteedRow)
-                    : tenDraws;
+                    const stepHasTarget = rows.some((r) => r.isTarget);
 
-                  const renderRow = (
-                    r: DrawRow,
-                    hasNextInBlock: boolean,
-                    isFirst: boolean,
-                    isLast: boolean,
-                    stepHeader?: boolean
-                  ) => {
-                    const isEllipsis = r.countText === "⋯";
-                    const evKey = r.eventName || r.eventValue;
+                    const shownTenDraws = showTargetDrawsOnly
+                      ? tenDraws.filter((r) => r.isTarget || r.isGuaranteedRow)
+                      : tenDraws;
 
-                    return (
-                      <TableRow
-                        key={r.key}
-                        hover
-                        sx={{ opacity: isEllipsis ? 0.9 : 1 }}
-                      >
-                        <TableCell
-                          sx={{
-                            ...bodyCellBase,
-                            width: `${colW.count}%`,
-                            whiteSpace: "nowrap",
-                            borderLeft: "1px solid",
-                            borderColor: "divider",
-                            borderTopLeftRadius: isFirst ? 16 : 16,
-                            borderBottomLeftRadius: isLast ? 16 : 16,
-                          }}
+                    const renderRow = (
+                      r: DrawRow,
+                      hasNextInBlock: boolean,
+                      isFirst: boolean,
+                      isLast: boolean,
+                      stepHeader?: boolean
+                    ) => {
+                      const isEllipsis = r.countText === "⋯";
+                      const evKey = r.eventName || r.eventValue;
+
+                      return (
+                        <TableRow
+                          key={r.key}
+                          hover
+                          sx={{ opacity: isEllipsis ? 0.9 : 1 }}
                         >
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            alignItems="center"
-                          >
-                            {stepHeader && isTen ? (
-                              <IconButton
-                                size="small"
-                                onClick={() =>
-                                  setOpenTen((p) => ({
-                                    ...p,
-                                    [stepIndex]: !p[stepIndex],
-                                  }))
-                                }
-                              >
-                                {open ? (
-                                  <KeyboardArrowUpIcon />
-                                ) : (
-                                  <KeyboardArrowDownIcon />
-                                )}
-                              </IconButton>
-                            ) : (
-                              <Box sx={{ width: 34 }} />
-                            )}
-
-                            <Typography variant="body2" fontWeight={900}>
-                              {r.countText}
-                            </Typography>
-                          </Stack>
-                        </TableCell>
-
-                        <TableCell
-                          sx={{ ...bodyCellBase, width: `${colW.step}%` }}
-                        >
-                          <Pill
-                            text={r.stepText}
-                            tone={r.stepText !== "-" ? "strong" : "normal"}
-                          />
-                        </TableCell>
-
-                        <TableCell
-                          sx={{ ...bodyCellBase, width: `${colW.action}%` }}
-                        >
-                          <Pill
-                            text={r.actionText}
-                            tone={r.isTen && r.isHeader ? "strong" : "normal"}
-                          />
-                        </TableCell>
-
-                        <TableCell
-                          sx={{ ...bodyCellBase, width: `${colW.event}%` }}
-                        >
-                          <Box
-                            title={evKey}
+                          <TableCell
                             sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 1,
-                              px: 1,
-                              py: 0.6,
-                              borderRadius: 999,
-                              border: "1px solid",
-                              // borderColor: eventColor(evKey),
-                              // bgcolor: eventTint(evKey),
-                              borderColor: eventPicker.colorOf(evKey),
-                              bgcolor: eventPicker.tintOf(evKey),
-                              minWidth: 0,
+                              ...bodyCellBase,
+                              width: `${colW.count}%`,
+                              whiteSpace: "nowrap",
+                              borderLeft: "1px solid",
+                              borderColor: "divider",
+                              borderTopLeftRadius: isFirst ? 16 : 16,
+                              borderBottomLeftRadius: isLast ? 16 : 16,
                             }}
                           >
-                            <Box
-                              sx={{
-                                width: 10,
-                                height: 10,
-                                borderRadius: 999,
-                                // bgcolor: eventColor(evKey),
-                                bgcolor: eventPicker.colorOf(evKey),
-                                flex: "0 0 auto",
-                              }}
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems="center"
+                            >
+                              {stepHeader && isTen ? (
+                                <IconButton
+                                  size="small"
+                                  onClick={() =>
+                                    setOpenTen((p) => ({
+                                      ...p,
+                                      [stepIndex]: !p[stepIndex],
+                                    }))
+                                  }
+                                >
+                                  {open ? (
+                                    <KeyboardArrowUpIcon />
+                                  ) : (
+                                    <KeyboardArrowDownIcon />
+                                  )}
+                                </IconButton>
+                              ) : (
+                                <Box sx={{ width: 34 }} />
+                              )}
+
+                              <Typography variant="body2" fontWeight={900}>
+                                {r.countText}
+                              </Typography>
+                            </Stack>
+                          </TableCell>
+
+                          <TableCell
+                            sx={{ ...bodyCellBase, width: `${colW.step}%` }}
+                          >
+                            <Pill
+                              text={r.stepText}
+                              tone={r.stepText !== "-" ? "strong" : "normal"}
                             />
-                            <Typography
-                              variant="caption"
-                              fontWeight={900}
-                              noWrap
+                          </TableCell>
+
+                          <TableCell
+                            sx={{ ...bodyCellBase, width: `${colW.action}%` }}
+                          >
+                            <Pill
+                              text={r.actionText}
+                              tone={r.isTen && r.isHeader ? "strong" : "normal"}
+                            />
+                          </TableCell>
+
+                          <TableCell
+                            sx={{ ...bodyCellBase, width: `${colW.event}%` }}
+                          >
+                            <Box
+                              title={evKey}
                               sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
+                                px: 1,
+                                py: 0.6,
+                                borderRadius: 999,
+                                border: "1px solid",
+                                // borderColor: eventColor(evKey),
+                                // bgcolor: eventTint(evKey),
+                                borderColor: eventPicker.colorOf(evKey),
+                                bgcolor: eventPicker.tintOf(evKey),
                                 minWidth: 0,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                                flex: "1 1 auto",
                               }}
                             >
-                              {evKey}
-                            </Typography>
-                          </Box>
-                        </TableCell>
-
-                        <TableCell
-                          sx={{ ...bodyCellBase, width: `${colW.A}%` }}
-                        >
-                          <StepLane
-                            lane="A"
-                            text={r.A}
-                            status={r.statusA}
-                            isTarget={!isEllipsis && r.isTargetA} // ✅ FIX
-                            hasNext={hasNextInBlock}
-                            isEllipsis={isEllipsis}
-                          />
-                        </TableCell>
-
-                        <TableCell
-                          sx={{ ...bodyCellBase, width: `${colW.B}%` }}
-                        >
-                          <StepLane
-                            lane="B"
-                            text={r.B}
-                            status={r.statusB}
-                            isTarget={!isEllipsis && r.isTargetB} // ✅ FIX
-                            hasNext={hasNextInBlock}
-                            isEllipsis={isEllipsis}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    );
-                  };
-
-                  const blockRows: React.ReactNode[] = [];
-
-                  if (isTen && tenSummary) {
-                    blockRows.push(
-                      renderRow(
-                        tenSummary,
-                        false,
-                        true,
-                        !open || shownTenDraws.length === 0,
-                        true
-                      )
-                    );
-
-                    blockRows.push(
-                      <TableRow key={`s${stepIndex}-collapse`}>
-                        {/* ✅ FIX：欄位數是 6，不是 7 */}
-                        <TableCell colSpan={6} sx={{ py: 0, borderBottom: 0 }}>
-                          <Collapse in={open} timeout="auto" unmountOnExit>
-                            <Box sx={{ pt: 1, pb: 0.5 }}>
+                              <Box
+                                sx={{
+                                  width: 10,
+                                  height: 10,
+                                  borderRadius: 999,
+                                  // bgcolor: eventColor(evKey),
+                                  bgcolor: eventPicker.colorOf(evKey),
+                                  flex: "0 0 auto",
+                                }}
+                              />
                               <Typography
-                                variant="body2"
-                                fontWeight={800}
-                                sx={{ mb: 1 }}
+                                variant="caption"
+                                fontWeight={900}
+                                noWrap
+                                sx={{
+                                  minWidth: 0,
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                  flex: "1 1 auto",
+                                }}
                               >
-                                10連展開（{shownTenDraws.length}/
-                                {tenDraws.length}）
-                                {showTargetDrawsOnly ? "：只顯示目標/保底" : ""}
+                                {evKey}
                               </Typography>
-
-                              <Table size="small" sx={{ tableLayout: "fixed" }}>
-                                <TableBody>
-                                  {shownTenDraws.map((r, idx) =>
-                                    renderRow(
-                                      r,
-                                      idx < shownTenDraws.length - 1,
-                                      idx === 0,
-                                      idx === shownTenDraws.length - 1,
-                                      false
-                                    )
-                                  )}
-                                </TableBody>
-                              </Table>
-
-                              {!shownTenDraws.length && (
-                                <Typography
-                                  variant="body2"
-                                  color="text.secondary"
-                                  sx={{ py: 2 }}
-                                >
-                                  （展開內容為空：可能你開了「只看目標」，但此
-                                  10 連沒有命中目標）
-                                </Typography>
-                              )}
                             </Box>
-                          </Collapse>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  }
+                          </TableCell>
 
-                  if (singles.length) {
-                    for (let i = 0; i < singles.length; i++) {
-                      const r = singles[i];
+                          <TableCell
+                            sx={{ ...bodyCellBase, width: `${colW.A}%` }}
+                          >
+                            <StepLane
+                              lane="A"
+                              text={r.A}
+                              status={r.statusA}
+                              isTarget={!isEllipsis && r.isTargetA} // ✅ FIX
+                              hasNext={hasNextInBlock}
+                              isEllipsis={isEllipsis}
+                            />
+                          </TableCell>
+
+                          <TableCell
+                            sx={{ ...bodyCellBase, width: `${colW.B}%` }}
+                          >
+                            <StepLane
+                              lane="B"
+                              text={r.B}
+                              status={r.statusB}
+                              isTarget={!isEllipsis && r.isTargetB} // ✅ FIX
+                              hasNext={hasNextInBlock}
+                              isEllipsis={isEllipsis}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    };
+
+                    const blockRows: React.ReactNode[] = [];
+
+                    if (isTen && tenSummary) {
                       blockRows.push(
                         renderRow(
-                          r,
-                          i < singles.length - 1,
-                          i === 0 && !isTen,
-                          i === singles.length - 1,
-                          false
+                          tenSummary,
+                          false,
+                          true,
+                          !open || shownTenDraws.length === 0,
+                          true
                         )
                       );
+
+                      blockRows.push(
+                        <TableRow key={`s${stepIndex}-collapse`}>
+                          {/* ✅ FIX：欄位數是 6，不是 7 */}
+                          <TableCell
+                            colSpan={6}
+                            sx={{ py: 0, borderBottom: 0 }}
+                          >
+                            <Collapse in={open} timeout="auto" unmountOnExit>
+                              <Box sx={{ pt: 1, pb: 0.5 }}>
+                                <Typography
+                                  variant="body2"
+                                  fontWeight={800}
+                                  sx={{ mb: 1 }}
+                                >
+                                  10連展開（{shownTenDraws.length}/
+                                  {tenDraws.length}）
+                                  {showTargetDrawsOnly
+                                    ? "：只顯示目標/保底"
+                                    : ""}
+                                </Typography>
+
+                                <Table
+                                  size="small"
+                                  sx={{ tableLayout: "fixed" }}
+                                >
+                                  <TableBody>
+                                    {shownTenDraws.map((r, idx) =>
+                                      renderRow(
+                                        r,
+                                        idx < shownTenDraws.length - 1,
+                                        idx === 0,
+                                        idx === shownTenDraws.length - 1,
+                                        false
+                                      )
+                                    )}
+                                  </TableBody>
+                                </Table>
+
+                                {!shownTenDraws.length && (
+                                  <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{ py: 2 }}
+                                  >
+                                    （展開內容為空：可能你開了「只看目標」，但此
+                                    10 連沒有命中目標）
+                                  </Typography>
+                                )}
+                              </Box>
+                            </Collapse>
+                          </TableCell>
+                        </TableRow>
+                      );
                     }
-                  }
 
-                  if (showTargetsOnly && !stepHasTarget) return null;
+                    if (singles.length) {
+                      for (let i = 0; i < singles.length; i++) {
+                        const r = singles[i];
+                        blockRows.push(
+                          renderRow(
+                            r,
+                            i < singles.length - 1,
+                            i === 0 && !isTen,
+                            i === singles.length - 1,
+                            false
+                          )
+                        );
+                      }
+                    }
 
-                  return (
-                    <React.Fragment key={`step-${stepIndex}`}>
-                      {blockRows}
-                    </React.Fragment>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                    if (showTargetsOnly && !stepHasTarget) return null;
+
+                    return (
+                      <React.Fragment key={`step-${stepIndex}`}>
+                        {blockRows}
+                      </React.Fragment>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+            {/* </TableContainer> */}
+          </Box>
+        </Box>
 
         <Typography variant="caption" color="text.secondary">
           說明：A/B 欄位不是「這一步抽到哪邊」，而是「此位置在該 event 的 A/B

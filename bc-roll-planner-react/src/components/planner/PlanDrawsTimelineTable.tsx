@@ -332,12 +332,12 @@ export function PlanDrawsTimelineTable(props: {
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             <Chip
               size="small"
-              label="黃底：抽到"
+              label="抽中"
               sx={{ bgcolor: STATUS_STYLE.hit.bg }}
             />
             <Chip
               size="small"
-              label="綠框：目標"
+              label="目標"
               sx={{
                 bgcolor: "action.hover",
                 ...TARGET_BORDER_STYLE,
@@ -345,16 +345,16 @@ export function PlanDrawsTimelineTable(props: {
             />
             <Chip
               size="small"
-              label="粉紫：保底"
+              label="保底"
               sx={{ bgcolor: STATUS_STYLE.guaranteed.bg }}
             />
-            <Chip size="small" label="圓點+連線：A/B Lane" variant="outlined" />
-            <Chip
+            {/* <Chip size="small" label="圓點+連線：A/B Lane" variant="outlined" /> */}
+            {/* <Chip
               size="small"
               label="Event 色點：自動 hash"
               variant="outlined"
-            />
-            <Chip size="small" label="10連：可展開/收合" variant="outlined" />
+            /> */}
+            {/* <Chip size="small" label="10連：可展開/收合" variant="outlined" /> */}
           </Stack>
         )}
 

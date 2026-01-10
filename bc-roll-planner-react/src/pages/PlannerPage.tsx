@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 // MUI
-import { Box, Container, Stack, Typography } from "@mui/material";
+import { Box, Container, Stack, Typography, Divider } from "@mui/material";
 import PetsIcon from "@mui/icons-material/Pets";
 
 // Models
@@ -35,9 +35,13 @@ import {
 } from "../components/planner/ResourceForm";
 import { PlannerRunBar } from "../components/planner/PlannerRunBar";
 import { PlanResultSummary } from "../components/planner/PlanResultSummary";
-import { PlanStepsTable } from "../components/planner/PlanStepsTable";
 import { PlanResultInspector } from "../components/planner/PlanResultInspector";
 import { SimulatorPanel } from "../components/simulator/SimulatorPanel";
+
+// ✅ New result UI
+import { PlanResultStatsCard } from "../components/planner/PlanResultStatsCard";
+import { PlanDrawsTimelineTable } from "../components/planner/PlanDrawsTimelineTable";
+import { EventTrackGraphsView } from "../components/planner/EventTrackGraphsView";
 
 // Planner types
 import type { PlanResult } from "../core/planner";
@@ -92,9 +96,12 @@ export default function PlannerPage() {
   // -------------------------
   const [seedApplied, setSeedApplied] = useState<string>("");
   const [countApplied, setCountApplied] = useState<number | null>(null);
+  // ** 測試用預設值 **
+  // const [seedApplied, setSeedApplied] = useState<string>("1234");
+  // const [countApplied, setCountApplied] = useState<number | null>(1000);
 
   // -------------------------
-  // Events（一次載入 upcoming + past）
+  // Events
   // -------------------------
   const {
     eventsState,
@@ -115,7 +122,6 @@ export default function PlannerPage() {
   // primary event：Graph Debug / Simulator 用
   const [primaryEventValue, setPrimaryEventValue] = useState<string>("");
 
-  // 任何時候 selectedEventValues 改變：確保 primary 仍有效
   useEffect(() => {
     if (!selectedEventValues.length) {
       setPrimaryEventValue("");
@@ -129,14 +135,13 @@ export default function PlannerPage() {
     }
   }, [selectedEventValues, primaryEventValue]);
 
-  // Map for easy lookup
+  // Map lookup
   const eventsByValue = useMemo(() => {
     const m = new Map<string, Event>();
     for (const e of events) m.set(e.value, e);
     return m;
   }, [events]);
 
-  // 是否設定了 seed/count
   const hasSeedCount = useMemo(() => {
     const okSeed = !!seedApplied.trim();
     const okCount =
@@ -147,7 +152,7 @@ export default function PlannerPage() {
   }, [seedApplied, countApplied]);
 
   // -------------------------
-  // Target Cats：依 selectedEventValues 自動載入（多事件 union）
+  // Target Cats
   // -------------------------
   const { catsState, catsErr, tierGroups, allowedCatIdSet, catNameById } =
     useEventCats({
@@ -155,38 +160,33 @@ export default function PlannerPage() {
       eventsByValue,
       lang: BC_ENV.lang,
       ui: BC_ENV.ui,
-      // base_url: BC_ENV.baseUrl,
     });
 
   const [targetCatIds, setTargetCatIds] = useState<number[]>([]);
 
-  // 修剪：把已選但不在聯集中允許的 id 移除
   useEffect(() => {
     if (!allowedCatIdSet) return;
     setTargetCatIds((prev) => prev.filter((id) => allowedCatIdSet.has(id)));
   }, [allowedCatIdSet]);
 
   // -------------------------
-  // Graph：按 Planner 前先 ensure 最新（多 events）
+  // Graphs
   // -------------------------
   const { graphState, graphErr, graphByEvent, fetchGraphs, clearGraphs } =
     useTrackGraphs({
       seed: seedApplied,
-      count: countApplied, // number | null
+      count: countApplied,
       selectedEventValues,
       eventsByValue,
       lang: BC_ENV.lang,
       ui: BC_ENV.ui,
-      // base_url: BC_ENV.baseUrl,
     });
 
-  // 參數變動時清掉 graphs（避免舊 graph 造成誤解）
   useEffect(() => {
     clearGraphs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seedApplied, countApplied, selectedEventValues.join("|")]);
 
-  // Graph Debug / Simulator 用 primaryEventValue
   const activeGraph: TrackGraph | null = useMemo(() => {
     if (!primaryEventValue) return null;
     return graphByEvent[primaryEventValue] ?? null;
@@ -200,6 +200,11 @@ export default function PlannerPage() {
     platinum_tickets: 0,
     legend_tickets: 0,
     food: 0,
+    // ** 測試用預設值 **
+    // tickets: 300,
+    // platinum_tickets: 0,
+    // legend_tickets: 0,
+    // food: 10000,
   });
 
   const [plannerCfg, setPlannerCfg] = useState<PlannerConfig>({
@@ -247,15 +252,12 @@ export default function PlannerPage() {
       });
     }
 
-    // primary 的選法要保證在 selected 裡
     const primary =
       primaryEventValue && selectedEventValues.includes(primaryEventValue)
         ? primaryEventValue
         : selectedEventValues[0];
 
     const g = primary ? graphsByEvent[primary] : undefined;
-
-    // 判斷 graph 有效性
     const ok = !!g && Object.keys(g.nodes ?? {}).length > 0;
 
     if (!ok) {
@@ -270,10 +272,7 @@ export default function PlannerPage() {
       kind: "run",
       req: {
         graphs_by_event: graphsByEvent,
-
-        // 不再塞 pool_type，planner 會從 graphs_by_event[ev].event.pool_type 讀
         events: selectedEventValues.map((ev) => ({ event_value: ev })),
-
         target_cats: targetCatIds,
 
         tickets: Math.max(0, Math.floor(resources.tickets)),
@@ -322,7 +321,7 @@ export default function PlannerPage() {
           </Typography>
         </Stack>
 
-        {/* Seed/Count */}
+        {/* Seed/Count + Events */}
         {ui.showSeedCount && (
           <Section
             title="輸入seed/count、卡池"
@@ -428,19 +427,35 @@ export default function PlannerPage() {
 
               {planState === "ok" && planResult && (
                 <Stack spacing={2}>
-                  <PlanResultSummary
+                  {/* <PlanResultSummary
                     result={planResult as PlanResult}
                     missingText={missingText}
+                  /> */}
+
+                  <PlanResultStatsCard
+                    result={planResult as PlanResult}
+                    graphsByEvent={graphByEvent}
+                    catNameById={catNameById}
                   />
+
+                  <PlanDrawsTimelineTable
+                    result={planResult as PlanResult}
+                    graphsByEvent={graphByEvent}
+                    targetCatIds={targetCatIds}
+                  />
+
+                  {/* <EventTrackGraphsView
+                    result={planResult as PlanResult}
+                    graphsByEvent={graphByEvent}
+                    targetCatIds={targetCatIds}
+                  /> */}
+
+                  {/* 你原本的 inspector：先保留（未來擴充用） */}
+                  {/* <Divider />
                   <PlanResultInspector
                     result={planResult as PlanResult}
                     catNameById={catNameById}
-                  />
-                  <PlanStepsTable
-                    result={planResult as PlanResult}
-                    getCatHref={getCatHref}
-                    getCatImageUrl={getCatImageUrl}
-                  />
+                  /> */}
                 </Stack>
               )}
             </Stack>
@@ -474,7 +489,7 @@ export default function PlannerPage() {
         {/* Simulator（用 primary） */}
         {ui.showSimulator && (
           <Section
-            title="Simulator（主要 event；可隱藏）"
+            title="Simulator（主要 event）"
             collapsed={ui.simulatorCollapsed}
             onToggleCollapsed={() =>
               setUi((p) => ({
@@ -484,10 +499,7 @@ export default function PlannerPage() {
             }
             onHide={() => setUi((p) => ({ ...p, showSimulator: false }))}
           >
-            <SimulatorPanel
-              graph={activeGraph}
-              graphReady={!!activeGraph && graphState === "ok"}
-            />
+            <SimulatorPanel graph={activeGraph} graphReady={!!activeGraph} />
           </Section>
         )}
       </Stack>

@@ -708,7 +708,7 @@ export function planMinCost(params: {
 
       // 檢查「起點是否真的有 guaranteed edge」
       const startNode = graph.nodes?.[s.cursor_id] as PositionNode | undefined;
-      console.log("startNode for ten:", startNode);
+      // console.log("startNode for ten:", startNode);
       const hasGuaranteed =
         !!startNode?.edges?.guaranteed && !!startNode.edges.guaranteed.cat;
 

@@ -31,7 +31,7 @@ function normalizeBaseUrl(url: string): string {
   return url.replace(/\/+$/, "");
 }
 
-// ✅ 重點：用「靜態欄位」讀 VITE_*（不要用 import.meta.env[key]）
+// 重點：用「靜態欄位」讀 VITE_*（不要用 import.meta.env[key]）
 const E = import.meta.env;
 
 export const BC_ENV: BcEnv = {
@@ -46,14 +46,14 @@ export const BC_ENV: BcEnv = {
   ),
 };
 
-// DEBUG
-if (E.DEV) {
-  // eslint-disable-next-line no-console
-  console.log("[BC_ENV]", {
-    VITE_BC_UI: E.VITE_BC_UI,
-    VITE_BC_LANG: E.VITE_BC_LANG,
-    VITE_BC_PAST_EVENT_LIMIT: E.VITE_BC_PAST_EVENT_LIMIT,
-    VITE_BC_GODFAT_BASE_URL: E.VITE_BC_GODFAT_BASE_URL,
-    parsed: BC_ENV,
-  });
-}
+// // DEBUG
+// if (E.DEV) {
+//   // eslint-disable-next-line no-console
+//   console.log("[BC_ENV]", {
+//     VITE_BC_UI: E.VITE_BC_UI,
+//     VITE_BC_LANG: E.VITE_BC_LANG,
+//     VITE_BC_PAST_EVENT_LIMIT: E.VITE_BC_PAST_EVENT_LIMIT,
+//     VITE_BC_GODFAT_BASE_URL: E.VITE_BC_GODFAT_BASE_URL,
+//     parsed: BC_ENV,
+//   });
+// }

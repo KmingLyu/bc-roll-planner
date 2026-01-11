@@ -498,7 +498,7 @@ export function planMinCost(params: {
   // 若你真的需要 40+ 目標，要改 BigInt 版 mask（那會是另一個大改）
   if (targetIds.length > 30) {
     throw new PlannerError(
-      `targets 太多（${targetIds.length}）。目前 mask 使用 32-bit bitwise，請先把目標數降到 <= 30，或改用 BigInt mask 版本。`
+      `targets 太多（${targetIds.length}）。目前 mask 使用 32-bit bitwise，請先把目標數降到 <= 30`
     );
   }
 

@@ -541,7 +541,10 @@ export function planMinCost(params: {
     if (!costEq(curCost, bestKnown)) continue;
 
     expansions++;
-    if (expansions > cfg.max_expansions) break;
+    // *** 這裡先暫時把上限拿掉，避免資源還沒用完就結束 ***
+    // console.log(`Expansions: ${expansions.toLocaleString()}`);
+    // console.log(`Max_Expansions: ${cfg.max_expansions.toLocaleString()}`);
+    // if (expansions > cfg.max_expansions) break;
 
     // goal check
     if (s.mask === allMask) {

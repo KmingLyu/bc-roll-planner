@@ -106,13 +106,26 @@ export type PlannerConfig = {
 
   // 搜尋上限（避免極端狀況）
   max_expansions?: number;
+
+  /**
+   * 是否啟用「mask 支配剪枝（Dominance pruning）」：
+   * - 對同一個物理狀態 (cursor/prev/resources)，若已有 (maskA,costA) 支配 (maskB,costB)
+   *   會直接丟掉被支配的狀態，通常能大幅壓制 target 太多造成的 2^k 爆炸。
+   */
+  enable_dominance_pruning?: boolean;
+
+  /**
+   * 是否用 A*（f=g+h）而不是純 Dijkstra（f=g）：
+   * - h 是「剩餘目標 * 最小每抽等價成本」的下界，能更快收斂到全命中。
+   */
+  use_astar?: boolean;
 };
 
 function normalizeConfig(cfg?: PlannerConfig): Required<PlannerConfig> {
   const weights = {
     ticket_single: 150,
-    platinum_single: 200, // 設貴一點，優先使用金券/罐頭
-    legend_single: 300, // 設更貴一點，優先使用白金券/金券/罐頭
+    platinum_single: 200,
+    legend_single: 300,
     food_single: 150,
     food_ten: 1500,
     ...(cfg?.weights || {}),
@@ -128,7 +141,9 @@ function normalizeConfig(cfg?: PlannerConfig): Required<PlannerConfig> {
   return {
     weights,
     allowed_actions_by_pool,
-    max_expansions: cfg?.max_expansions ?? 2_000_000,
+    max_expansions: cfg?.max_expansions ?? 500_000,
+    enable_dominance_pruning: cfg?.enable_dominance_pruning ?? true,
+    use_astar: cfg?.use_astar ?? true,
   };
 }
 
@@ -137,7 +152,6 @@ function isActionAllowed(
   pool: PoolType,
   actionKey: string
 ): boolean {
-  // 用來判斷 normal/platinum/legend 三種池，跟10連抽必中池無關
   const allowed = cfg.allowed_actions_by_pool[pool];
   return Array.isArray(allowed) ? allowed.includes(actionKey) : false;
 }
@@ -162,29 +176,10 @@ function costIncForAction(
   throw new PlannerError(`未知 action_key=${actionKey}`);
 }
 
-// lexicographic compare
-// 比較邏輯：金券 > 罐頭10抽 > 罐頭單抽
-// function costLess(a: Cost, b: Cost): boolean {
-//   for (let i = 0; i < 5; i++) {
-//     if (a[i] !== b[i]) return a[i] < b[i];
-//   }
-//   return false;
-// }
-// function costEq(a: Cost, b: Cost): boolean {
-//   return (
-//     a[0] === b[0] &&
-//     a[1] === b[1] &&
-//     a[2] === b[2] &&
-//     a[3] === b[3] &&
-//     a[4] === b[4]
-//   );
-// }
-
-// 比較邏輯：罐頭10抽 > 金券 > 罐頭單抽
+// ✅ 你目前比較只看 equiv_cost
 function costLess(a: Cost, b: Cost): boolean {
   return a[0] < b[0];
 }
-
 function costEq(a: Cost, b: Cost): boolean {
   return a[0] === b[0];
 }
@@ -237,7 +232,6 @@ function maskToHitIds(mask: number, targetIds: number[]): number[] {
 }
 
 function bitCount32(n: number): number {
-  // JS number is 53-bit safe integer, but our mask is for target count; typically small
   let x = n >>> 0;
   let c = 0;
   while (x) {
@@ -259,7 +253,6 @@ function catPayload(cat?: Cat | null): {
   return { id: cat.id, name: cat.name, desc: cat.desc || "" };
 }
 
-// 單抽模擬
 function simulateSingleTransition(params: {
   graph: TrackGraph;
   cursor_id: string;
@@ -274,7 +267,9 @@ function simulateSingleTransition(params: {
   }
 
   const { edge, used } = chooseEdgeForSingleDraw(node, prev_cat_id);
+  // console.log({ edge, used });
   const p = catPayload(edge.cat);
+  // console.log(p.id, p.name);
 
   const hit: DrawHit = {
     cat_id: p.id,
@@ -289,10 +284,10 @@ function simulateSingleTransition(params: {
 
   const next_cursor_id = parsePosId(edge.to).id;
   const next_prev = p.id;
+  // console.log({ next_cursor_id, next_prev, hit });
   return { next_cursor_id, next_prev, hit };
 }
 
-// 十連抽模擬
 function simulateTenTransition(params: {
   graph: TrackGraph;
   cursor_id: string;
@@ -314,7 +309,6 @@ function simulateTenTransition(params: {
   let cur = params.cursor_id;
   let prev = params.prev_cat_id;
 
-  // 10 抽：用單抽規則
   for (let i = 0; i < 10; i++) {
     const node = graph.nodes?.[cur] as PositionNode | undefined;
     if (!node)
@@ -340,7 +334,6 @@ function simulateTenTransition(params: {
     prev = p.id;
   }
 
-  // 保底第 11 隻 + 結算落點
   if (hasGuaranteed && gEdge) {
     const p = catPayload(gEdge.cat);
     draws.push({
@@ -368,9 +361,9 @@ function simulateTenTransition(params: {
 }
 
 // -------------------------
-// Dijkstra Min-Heap
+// Min-Heap (A* / Dijkstra)
 // -------------------------
-type PQItem = { cost: Cost; seq: number; key: string; state: PlannerState };
+type PQItem = { prio: number; g: Cost; seq: number; key: string };
 
 class MinHeap {
   private a: PQItem[] = [];
@@ -394,7 +387,9 @@ class MinHeap {
   private less(i: number, j: number) {
     const A = this.a[i],
       B = this.a[j];
-    if (!costEq(A.cost, B.cost)) return costLess(A.cost, B.cost);
+    if (A.prio !== B.prio) return A.prio < B.prio;
+    // prio 相同才用 g 作 tie-break（可減少走歪路）
+    if (!costEq(A.g, B.g)) return costLess(A.g, B.g);
     return A.seq < B.seq;
   }
   private up(i: number) {
@@ -423,10 +418,9 @@ class MinHeap {
 }
 
 // -------------------------
-// State key / parent
+// State key helpers
 // -------------------------
 function stateKey(s: PlannerState): string {
-  // prev_cat_id 可能為 null
   return [
     s.cursor_id,
     s.prev_cat_id == null ? "-" : String(s.prev_cat_id),
@@ -438,7 +432,49 @@ function stateKey(s: PlannerState): string {
   ].join("|");
 }
 
-type ParentInfo = { prevKey: string | null; step: PlanStep | null };
+/**
+ * ✅ 重大優化：不再用 stateByKey 存所有 PlannerState（非常吃記憶體），
+ * 直接從 key 反解析回狀態，省掉一大塊記憶體。
+ */
+function parseStateKey(k: string): PlannerState {
+  const parts = k.split("|");
+  if (parts.length !== 7) throw new PlannerError(`stateKey 格式錯誤: ${k}`);
+  const [cursor, prevStr, t, p, l, f, m] = parts;
+  const prev = prevStr === "-" ? null : Number(prevStr);
+  return {
+    cursor_id: cursor,
+    prev_cat_id: Number.isFinite(prev as any) ? (prev as any) : null,
+    tickets_left: Number(t),
+    platinum_left: Number(p),
+    legend_left: Number(l),
+    food_left: Number(f),
+    mask: Number(m),
+  };
+}
+
+/**
+ * ✅ 物理狀態 key（不含 mask）：
+ * 用於 dominance pruning：同一物理狀態下，mask/成本被支配就直接剪掉。
+ */
+function physicalKeyFromState(s: PlannerState): string {
+  return [
+    s.cursor_id,
+    s.prev_cat_id == null ? "-" : String(s.prev_cat_id),
+    s.tickets_left,
+    s.platinum_left,
+    s.legend_left,
+    s.food_left,
+  ].join("|");
+}
+
+type ParentMove = {
+  event_value: string;
+  pool_type: PoolType;
+  actionKey: string; // ticket_single / food_single / food_ten / ...
+  method: PlanMethod;
+} | null;
+
+type ParentInfo = { prevKey: string | null; move: ParentMove };
 
 // -------------------------
 // Main planner
@@ -457,6 +493,15 @@ export function planMinCost(params: {
   const cfg = normalizeConfig(params.cfg);
 
   const targetIds = normalizeTargetIds(params.target_cats);
+
+  // ⚠️ 你現在用的是 32-bit mask，超過 30/31 會出問題（bitwise overflow）
+  // 若你真的需要 40+ 目標，要改 BigInt 版 mask（那會是另一個大改）
+  if (targetIds.length > 30) {
+    throw new PlannerError(
+      `targets 太多（${targetIds.length}）。目前 mask 使用 32-bit bitwise，請先把目標數降到 <= 30，或改用 BigInt mask 版本。`
+    );
+  }
+
   const targetIndex = buildTargetIndex(targetIds);
   const allMask = (1 << targetIds.length) - 1;
 
@@ -474,28 +519,57 @@ export function planMinCost(params: {
 
   const INF: Cost = [10 ** 18, 10 ** 18, 10 ** 18, 10 ** 18, 10 ** 18];
 
+  // dist: key -> best g-cost
   const dist = new Map<string, Cost>();
+
+  // parent: key -> (prevKey, move) （✅ 不再存巨大 draws 陣列）
   const parent = new Map<string, ParentInfo>();
-  const stateByKey = new Map<string, PlannerState>();
 
   const startKey = stateKey(startState);
   dist.set(startKey, [0, 0, 0, 0, 0]);
-  parent.set(startKey, { prevKey: null, step: null });
-  stateByKey.set(startKey, startState);
+  parent.set(startKey, { prevKey: null, move: null });
 
   let bestGoalKey: string | null = null;
   let bestGoalCost: Cost = INF;
 
   let bestPartialKey = startKey;
+  let bestPartialMask = 0;
   let bestPartialCost: Cost = [0, 0, 0, 0, 0];
 
   const pq = new MinHeap();
   let seq = 0;
+
+  // -------------------------
+  // A* heuristic（下界）
+  // -------------------------
+  const minPerDraw = (() => {
+    const w = cfg.weights;
+    const candidates: number[] = [
+      Number(w.ticket_single ?? 0),
+      Number(w.food_single ?? 0),
+      Number(w.platinum_single ?? 0),
+      Number(w.legend_single ?? 0),
+      // ten 平均每抽（含保底）更便宜也沒關係，做下界只會更保守
+      Number(w.food_ten ?? 0) / 11,
+    ].filter((x) => Number.isFinite(x) && x >= 0);
+    return candidates.length ? Math.min(...candidates) : 0;
+  })();
+
+  function heuristic(mask: number): number {
+    const remain = targetIds.length - bitCount32(mask);
+    return remain * minPerDraw;
+  }
+
+  function priorityFor(g: Cost, mask: number): number {
+    if (!cfg.use_astar) return g[0]; // Dijkstra
+    return g[0] + heuristic(mask); // A*
+  }
+
   pq.push({
-    cost: [0, 0, 0, 0, 0],
+    g: [0, 0, 0, 0, 0],
+    prio: priorityFor([0, 0, 0, 0, 0], 0),
     seq: seq++,
     key: startKey,
-    state: startState,
   });
 
   let expansions = 0;
@@ -522,40 +596,101 @@ export function planMinCost(params: {
     return costLess(aCost, bCost);
   }
 
+  // -------------------------
+  // Dominance frontier（同一物理狀態下的 Pareto 前緣）
+  // -------------------------
+  type FrontierEntry = { mask: number; cost0: number; key: string };
+
+  const frontier = new Map<string, FrontierEntry[]>();
+
+  function isDominated(
+    entries: FrontierEntry[],
+    newMask: number,
+    newCost0: number
+  ): boolean {
+    for (const e of entries) {
+      // e.mask ⊇ newMask 且 e.cost0 <= newCost0
+      if ((e.mask | newMask) === e.mask && e.cost0 <= newCost0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function pruneDominatedByNew(
+    entries: FrontierEntry[],
+    newMask: number,
+    newCost0: number
+  ): FrontierEntry[] {
+    const kept: FrontierEntry[] = [];
+    for (const e of entries) {
+      const newDominates =
+        (newMask | e.mask) === newMask && newCost0 <= e.cost0;
+      if (newDominates) {
+        // ✅ 直接刪掉被支配狀態，釋放 dist/parent（pq 裡若有殘影會被 lazy skip）
+        dist.delete(e.key);
+        parent.delete(e.key);
+        continue;
+      }
+      kept.push(e);
+    }
+    return kept;
+  }
+
   // relax state
   function relax(
     ns: PlannerState,
     fromKey: string,
     curCost: Cost,
     inc: Cost,
-    step: PlanStep
+    move: ParentMove
   ) {
     const nk = stateKey(ns);
     const newCost = addCost(curCost, inc);
     const old = dist.get(nk) || INF;
 
-    if (costLess(newCost, old)) {
-      dist.set(nk, newCost);
-      parent.set(nk, { prevKey: fromKey, step });
-      stateByKey.set(nk, ns);
-      pq.push({ cost: newCost, seq: seq++, key: nk, state: ns });
+    // 你目前的最佳化目標只看 equiv_cost
+    if (!costLess(newCost, old)) return;
+
+    // ✅ Dominance pruning（重點：壓制 target 多造成的 2^k 狀態爆炸）
+    if (cfg.enable_dominance_pruning) {
+      const pk = physicalKeyFromState(ns);
+      const entries = frontier.get(pk) || [];
+      const newCost0 = newCost[0];
+
+      if (isDominated(entries, ns.mask, newCost0)) return;
+
+      const pruned = pruneDominatedByNew(entries, ns.mask, newCost0);
+      pruned.push({ mask: ns.mask, cost0: newCost0, key: nk });
+      frontier.set(pk, pruned);
     }
+
+    dist.set(nk, newCost);
+    parent.set(nk, { prevKey: fromKey, move });
+
+    pq.push({
+      g: newCost,
+      prio: priorityFor(newCost, ns.mask),
+      seq: seq++,
+      key: nk,
+    });
   }
 
   while (pq.size()) {
     const curItem = pq.pop()!;
     const curKey = curItem.key;
-    const curCost = curItem.cost;
-    const s = curItem.state;
+    const curCost = curItem.g;
 
     const bestKnown = dist.get(curKey) || INF;
     if (!costEq(curCost, bestKnown)) continue;
 
+    const s = parseStateKey(curKey);
+
     expansions++;
-    // *** 這裡先暫時把上限拿掉，避免資源還沒用完就結束 ***
-    // console.log(`Expansions: ${expansions.toLocaleString()}`);
-    // console.log(`Max_Expansions: ${cfg.max_expansions.toLocaleString()}`);
-    // if (expansions > cfg.max_expansions) break;
+    // if (expansions > cfg.max_expansions) {
+    //   // 保險絲：避免 worker 把分頁拖到 OOM
+    //   break;
+    // }
 
     // goal check
     if (s.mask === allMask) {
@@ -563,20 +698,14 @@ export function planMinCost(params: {
         bestGoalCost = curCost;
         bestGoalKey = curKey;
       }
-      // Dijkstra：第一個到 goal 即最小
+      // A*/Dijkstra：第一個 pop 出來的 goal 即為最小（h admissible 時）
       break;
     }
 
     // partial tracking
-    if (
-      betterPartial(
-        s.mask,
-        curCost,
-        stateByKey.get(bestPartialKey)!.mask,
-        bestPartialCost
-      )
-    ) {
+    if (betterPartial(s.mask, curCost, bestPartialMask, bestPartialCost)) {
       bestPartialKey = curKey;
+      bestPartialMask = s.mask;
       bestPartialCost = curCost;
     }
 
@@ -586,8 +715,28 @@ export function planMinCost(params: {
       const graph = params.graphs_by_event[ev];
       if (!graph) continue;
 
-      /** 直接從 graph.event.pool_type 讀 */
       const pool: PoolType = graph.event.pool_type ?? "normal";
+
+      // ✅ 小剪枝：如果這個 pool 在目前資源下根本不可能做任何 action，直接略過
+      //（避免不必要的 simulateSingleTransition/try-catch）
+      const canTicket =
+        s.tickets_left >= 1 && isActionAllowed(cfg, pool, "ticket_single");
+      const canFoodSingle =
+        s.food_left >= 150 && isActionAllowed(cfg, pool, "food_single");
+      const canPlatinum =
+        s.platinum_left >= 1 && isActionAllowed(cfg, pool, "platinum_single");
+      const canLegend =
+        s.legend_left >= 1 && isActionAllowed(cfg, pool, "legend_single");
+      const canTenCost = s.food_left >= 1500; // ten 另外還要 hasGuaranteed
+      if (
+        !canTicket &&
+        !canFoodSingle &&
+        !canPlatinum &&
+        !canLegend &&
+        !canTenCost
+      ) {
+        continue;
+      }
 
       // ---- (A) 單抽 transition ----
       const key1 = `${ev}|${s.cursor_id}|${
@@ -602,6 +751,7 @@ export function planMinCost(params: {
             prev_cat_id: s.prev_cat_id,
           });
           singleCache.set(key1, single);
+          // console.log(singleCache);
         } catch {
           continue; // 此 event 在此 cursor 不可用
         }
@@ -612,7 +762,7 @@ export function planMinCost(params: {
       const nextPrev = single.next_prev;
 
       // (A1) ticket single
-      if (s.tickets_left >= 1 && isActionAllowed(cfg, pool, "ticket_single")) {
+      if (canTicket) {
         const inc = costIncForAction(cfg, "ticket_single");
         const ns: PlannerState = {
           cursor_id: nextCursorId,
@@ -626,22 +776,13 @@ export function planMinCost(params: {
         relax(ns, curKey, curCost, inc, {
           event_value: ev,
           pool_type: pool,
-          resource: "ticket",
+          actionKey: "ticket_single",
           method: "single",
-          cost_inc: inc,
-          draws: [single.hit],
-          start_cursor_id: s.cursor_id,
-          end_cursor_id: nextCursorId,
-          start_prev_cat_id: s.prev_cat_id,
-          end_prev_cat_id: nextPrev,
         });
       }
 
       // (A2) platinum single
-      if (
-        s.platinum_left >= 1 &&
-        isActionAllowed(cfg, pool, "platinum_single")
-      ) {
+      if (canPlatinum) {
         const inc = costIncForAction(cfg, "platinum_single");
         const ns: PlannerState = {
           cursor_id: nextCursorId,
@@ -655,19 +796,13 @@ export function planMinCost(params: {
         relax(ns, curKey, curCost, inc, {
           event_value: ev,
           pool_type: pool,
-          resource: "platinum_ticket",
+          actionKey: "platinum_single",
           method: "single",
-          cost_inc: inc,
-          draws: [single.hit],
-          start_cursor_id: s.cursor_id,
-          end_cursor_id: nextCursorId,
-          start_prev_cat_id: s.prev_cat_id,
-          end_prev_cat_id: nextPrev,
         });
       }
 
       // (A3) legend single
-      if (s.legend_left >= 1 && isActionAllowed(cfg, pool, "legend_single")) {
+      if (canLegend) {
         const inc = costIncForAction(cfg, "legend_single");
         const ns: PlannerState = {
           cursor_id: nextCursorId,
@@ -681,19 +816,13 @@ export function planMinCost(params: {
         relax(ns, curKey, curCost, inc, {
           event_value: ev,
           pool_type: pool,
-          resource: "legend_ticket",
+          actionKey: "legend_single",
           method: "single",
-          cost_inc: inc,
-          draws: [single.hit],
-          start_cursor_id: s.cursor_id,
-          end_cursor_id: nextCursorId,
-          start_prev_cat_id: s.prev_cat_id,
-          end_prev_cat_id: nextPrev,
         });
       }
 
       // (A4) food single
-      if (s.food_left >= 150 && isActionAllowed(cfg, pool, "food_single")) {
+      if (canFoodSingle) {
         const inc = costIncForAction(cfg, "food_single");
         const ns: PlannerState = {
           cursor_id: nextCursorId,
@@ -707,30 +836,17 @@ export function planMinCost(params: {
         relax(ns, curKey, curCost, inc, {
           event_value: ev,
           pool_type: pool,
-          resource: "food",
+          actionKey: "food_single",
           method: "single",
-          cost_inc: inc,
-          draws: [single.hit],
-          start_cursor_id: s.cursor_id,
-          end_cursor_id: nextCursorId,
-          start_prev_cat_id: s.prev_cat_id,
-          end_prev_cat_id: nextPrev,
         });
       }
 
-      // ---- (B) ten：只允許 food  ----
-
-      // 檢查「起點是否真的有 guaranteed edge」
+      // ---- (B) ten：只允許 food ----
       const startNode = graph.nodes?.[s.cursor_id] as PositionNode | undefined;
-      // console.log("startNode for ten:", startNode);
       const hasGuaranteed =
         !!startNode?.edges?.guaranteed && !!startNode.edges.guaranteed.cat;
 
-      if (
-        s.food_left >= 1500 &&
-        hasGuaranteed
-        // isActionAllowed(cfg, pool, "food_ten")
-      ) {
+      if (s.food_left >= 1500 && hasGuaranteed) {
         const key10 = `${ev}|${s.cursor_id}|${
           s.prev_cat_id == null ? "-" : s.prev_cat_id
         }`;
@@ -744,7 +860,6 @@ export function planMinCost(params: {
             });
             tenCache.set(key10, ten);
           } catch {
-            // ten 不可用
             tenCache.set(key10, {
               end_cursor_id: "",
               end_prev: null,
@@ -773,14 +888,8 @@ export function planMinCost(params: {
           relax(ns, curKey, curCost, inc, {
             event_value: ev,
             pool_type: pool,
-            resource: "food",
+            actionKey: "food_ten",
             method: "ten",
-            cost_inc: inc,
-            draws: ten.draws,
-            start_cursor_id: s.cursor_id,
-            end_cursor_id: ten.end_cursor_id,
-            start_prev_cat_id: s.prev_cat_id,
-            end_prev_cat_id: ten.end_prev,
           });
         }
       }
@@ -792,19 +901,95 @@ export function planMinCost(params: {
   // -------------------------
   const success = bestGoalKey != null;
   const endKey = success ? bestGoalKey! : bestPartialKey;
-  const endState = stateByKey.get(endKey)!;
+
+  const endState = parseStateKey(endKey);
   const endCost = dist.get(endKey) || bestPartialCost;
 
-  // 回溯 plan
-  const planSteps: PlanStep[] = [];
-  let curKey = endKey;
-  while (true) {
-    const p = parent.get(curKey);
-    if (!p || !p.prevKey || !p.step) break;
-    planSteps.push(p.step);
-    curKey = p.prevKey;
+  // -------------------------
+  // reconstruct plan (only for final path)
+  // -------------------------
+  const segments: Array<{ fromKey: string; toKey: string; move: ParentMove }> =
+    [];
+  {
+    let curKey = endKey;
+    while (true) {
+      const p = parent.get(curKey);
+      if (!p || !p.prevKey || !p.move) break;
+      segments.push({ fromKey: p.prevKey, toKey: curKey, move: p.move });
+      curKey = p.prevKey;
+    }
+    segments.reverse();
   }
-  planSteps.reverse();
+
+  function actionKeyToResource(actionKey: string): ResourceType {
+    if (actionKey === "ticket_single") return "ticket";
+    if (actionKey === "platinum_single") return "platinum_ticket";
+    if (actionKey === "legend_single") return "legend_ticket";
+    if (actionKey === "food_single" || actionKey === "food_ten") return "food";
+    throw new PlannerError(`未知 actionKey=${actionKey}`);
+  }
+
+  const planSteps: PlanStep[] = [];
+  for (const seg of segments) {
+    const fromState = parseStateKey(seg.fromKey);
+    const toState = parseStateKey(seg.toKey);
+    const move = seg.move!;
+    const graph = params.graphs_by_event[move.event_value];
+    if (!graph) throw new PlannerError(`找不到 graph: ${move.event_value}`);
+
+    const inc = costIncForAction(cfg, move.actionKey);
+
+    if (move.method === "single") {
+      const single = simulateSingleTransition({
+        graph,
+        cursor_id: fromState.cursor_id,
+        prev_cat_id: fromState.prev_cat_id,
+      });
+
+      // 保守檢查（不一致通常代表轉移規則/資料變動）
+      if (
+        single.next_cursor_id !== toState.cursor_id ||
+        single.next_prev !== toState.prev_cat_id
+      ) {
+        // 不直接 throw，避免少數資料不一致就全崩；但會讓你看到異常
+        // 你想嚴格也可以改成 throw
+        // throw new PlannerError(`回放 single 不一致: ${move.event_value}`);
+      }
+
+      planSteps.push({
+        event_value: move.event_value,
+        pool_type: move.pool_type,
+        resource: actionKeyToResource(move.actionKey),
+        method: "single",
+        cost_inc: inc,
+        draws: [single.hit],
+        start_cursor_id: fromState.cursor_id,
+        end_cursor_id: single.next_cursor_id,
+        start_prev_cat_id: fromState.prev_cat_id,
+        end_prev_cat_id: single.next_prev,
+      });
+      // console.log(planSteps);
+    } else {
+      const ten = simulateTenTransition({
+        graph,
+        cursor_id: fromState.cursor_id,
+        prev_cat_id: fromState.prev_cat_id,
+      });
+
+      planSteps.push({
+        event_value: move.event_value,
+        pool_type: move.pool_type,
+        resource: actionKeyToResource(move.actionKey),
+        method: "ten",
+        cost_inc: inc,
+        draws: ten.draws,
+        start_cursor_id: fromState.cursor_id,
+        end_cursor_id: ten.end_cursor_id,
+        start_prev_cat_id: fromState.prev_cat_id,
+        end_prev_cat_id: ten.end_prev,
+      });
+    }
+  }
 
   // 統計
   const hits = maskToHitIds(endState.mask, targetIds);
@@ -816,7 +1001,6 @@ export function planMinCost(params: {
 
   const [equiv, foodUsed, tUsed, pUsed, lUsed] = endCost;
 
-  // 輸出 expansions 統計
   console.log(`Total Expansions: ${expansions.toLocaleString()}`);
 
   return {

@@ -163,21 +163,30 @@ function costIncForAction(
 }
 
 // lexicographic compare
+// 比較邏輯：金券 > 罐頭10抽 > 罐頭單抽
+// function costLess(a: Cost, b: Cost): boolean {
+//   for (let i = 0; i < 5; i++) {
+//     if (a[i] !== b[i]) return a[i] < b[i];
+//   }
+//   return false;
+// }
+// function costEq(a: Cost, b: Cost): boolean {
+//   return (
+//     a[0] === b[0] &&
+//     a[1] === b[1] &&
+//     a[2] === b[2] &&
+//     a[3] === b[3] &&
+//     a[4] === b[4]
+//   );
+// }
+
+// 比較邏輯：罐頭10抽 > 金券 > 罐頭單抽
 function costLess(a: Cost, b: Cost): boolean {
-  for (let i = 0; i < 5; i++) {
-    if (a[i] !== b[i]) return a[i] < b[i];
-  }
-  return false;
+  return a[0] < b[0];
 }
 
 function costEq(a: Cost, b: Cost): boolean {
-  return (
-    a[0] === b[0] &&
-    a[1] === b[1] &&
-    a[2] === b[2] &&
-    a[3] === b[3] &&
-    a[4] === b[4]
-  );
+  return a[0] === b[0];
 }
 
 // -------------------------
@@ -250,6 +259,7 @@ function catPayload(cat?: Cat | null): {
   return { id: cat.id, name: cat.name, desc: cat.desc || "" };
 }
 
+// 單抽模擬
 function simulateSingleTransition(params: {
   graph: TrackGraph;
   cursor_id: string;
@@ -282,6 +292,7 @@ function simulateSingleTransition(params: {
   return { next_cursor_id, next_prev, hit };
 }
 
+// 十連抽模擬
 function simulateTenTransition(params: {
   graph: TrackGraph;
   cursor_id: string;
@@ -804,6 +815,9 @@ export function planMinCost(params: {
   for (const st of planSteps) allDraws.push(...st.draws);
 
   const [equiv, foodUsed, tUsed, pUsed, lUsed] = endCost;
+
+  // 輸出 expansions 統計
+  console.log(`Total Expansions: ${expansions.toLocaleString()}`);
 
   return {
     success,

@@ -314,25 +314,43 @@ export function buildDrawRows(params: {
       const pos = from.ok ? from.pos : null;
       const track = from.ok ? (from.track as any) : null;
 
-      const baseA = isGuaranteed
-        ? track === "A"
-          ? d.cat_name || UI_TEXT.dash
-          : pos != null
-          ? safeGetNormalCatName(g, `${pos}A`)
-          : UI_TEXT.dash
-        : pos != null
-        ? safeGetNormalCatName(g, `${pos}A`)
-        : UI_TEXT.dash;
+      // const baseA = isGuaranteed
+      //   ? track === "A"
+      //     ? d.cat_name || UI_TEXT.dash
+      //     : pos != null
+      //     ? safeGetNormalCatName(g, `${pos}A`)
+      //     : UI_TEXT.dash
+      //   : pos != null
+      //   ? safeGetNormalCatName(g, `${pos}A`)
+      //   : UI_TEXT.dash;
 
-      const baseB = isGuaranteed
-        ? track === "B"
-          ? d.cat_name || UI_TEXT.dash
-          : pos != null
-          ? safeGetNormalCatName(g, `${pos}B`)
-          : UI_TEXT.dash
-        : pos != null
-        ? safeGetNormalCatName(g, `${pos}B`)
-        : UI_TEXT.dash;
+      // const baseB = isGuaranteed
+      //   ? track === "B"
+      //     ? d.cat_name || UI_TEXT.dash
+      //     : pos != null
+      //     ? safeGetNormalCatName(g, `${pos}B`)
+      //     : UI_TEXT.dash
+      //   : pos != null
+      //   ? safeGetNormalCatName(g, `${pos}B`)
+      //   : UI_TEXT.dash;
+      const normalA =
+        pos != null ? safeGetNormalCatName(g, `${pos}A`) : UI_TEXT.dash;
+      const normalB =
+        pos != null ? safeGetNormalCatName(g, `${pos}B`) : UI_TEXT.dash;
+
+      // 預設先用 normal 軌道當底（用來顯示另一條 lane 的對照）
+      let baseA = normalA;
+      let baseB = normalB;
+
+      // 不管 used 是 normal / switch_track / guaranteed：抽到的那條 lane 一律顯示結果貓
+      if (track === "A") {
+        baseA = (d.cat_name || "").trim() ? d.cat_name : normalA;
+      } else if (track === "B") {
+        baseB = (d.cat_name || "").trim() ? d.cat_name : normalB;
+      } else {
+        // 解析不到 track 的保守處理：維持你原本習慣（當作 B）
+        baseB = (d.cat_name || "").trim() ? d.cat_name : normalB;
+      }
 
       const isTarget = d.cat_id != null && targetIdSet.has(d.cat_id);
 

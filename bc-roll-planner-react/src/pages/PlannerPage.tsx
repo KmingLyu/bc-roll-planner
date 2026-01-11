@@ -218,24 +218,24 @@ export default function PlannerPage() {
   const { runPlanner, setLoading, planState, planErr, planResult, resetPlan } =
     usePlannerWorker();
 
-  useEffect(() => {
-    resetPlan();
-  }, [resources, plannerCfg.start_pos_id, plannerCfg.max_expansions]);
+  // useEffect(() => {
+  //   resetPlan();
+  // }, [resources, plannerCfg.start_pos_id, plannerCfg.max_expansions]);
 
   async function onClickPlanner() {
     if (!selectedEventValues.length) {
-      resetPlan();
+      // resetPlan();
       return runPlanner({ kind: "errorOnly", error: "請先選擇至少一個 event" });
     }
     if (!hasSeedCount) {
-      resetPlan();
+      // resetPlan();
       return runPlanner({
         kind: "errorOnly",
         error: "請先在最上方套用 seed / count（count 必須為正整數）",
       });
     }
     if (!targetCatIds.length) {
-      resetPlan();
+      // resetPlan();
       return runPlanner({ kind: "errorOnly", error: "請先選至少一隻目標貓" });
     }
 
@@ -245,7 +245,7 @@ export default function PlannerPage() {
     try {
       graphsByEvent = await fetchGraphs();
     } catch (e) {
-      resetPlan();
+      // resetPlan();
       return runPlanner({
         kind: "errorOnly",
         error: `取得 TrackGraph 失敗：${safeErrText(e)}`,
@@ -261,7 +261,7 @@ export default function PlannerPage() {
     const ok = !!g && Object.keys(g.nodes ?? {}).length > 0;
 
     if (!ok) {
-      resetPlan();
+      // resetPlan();
       return runPlanner({
         kind: "errorOnly",
         error: "主要 event 的 TrackGraph 不存在（可能抓取失敗或回傳為空）",

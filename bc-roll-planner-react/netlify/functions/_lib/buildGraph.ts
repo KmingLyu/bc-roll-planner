@@ -30,6 +30,7 @@ export function buildTrackGraphFromCells(args: {
   raw_cells: Record<string, PickCell>;
 }): TrackGraph {
   const { seed, count, event, raw_cells } = args;
+  // console.log("raw_cells", raw_cells);
 
   const baseIds = Object.keys(raw_cells)
     .filter((pid) => {
@@ -97,7 +98,6 @@ export function buildTrackGraphFromCells(args: {
     const rCell = raw_cells[rId];
     if (rCell?.cat) {
       const to = (rCell.jump_to || `${pos + 1}${otherTrack(track)}`).trim();
-
       edges.switch_track = {
         action: "switch_track",
         to,

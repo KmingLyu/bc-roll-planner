@@ -139,7 +139,16 @@ export function parseTrackCellsFromTableHtml(
     const rarity = detectRarityFromClasses(classes);
 
     const rawText = normalizeText($td.text());
-    const { jump_to, ref_from } = extractJumpAndRef(rawText);
+    const extracted = extractJumpAndRef(rawText);
+
+    // 注意‼️：
+    // 原本的 jump_to/ref_from 是以 A->B 的顯示方式解讀；
+    // 若目前格子在 B 軌，B->A 的箭頭語意會相反，所以要對調。
+    let jump_to = extracted.jump_to;
+    let ref_from = extracted.ref_from;
+    if (parsed.track === "B") {
+      [jump_to, ref_from] = [ref_from, jump_to];
+    }
 
     const cat = parseCatFromTd($, $td);
 

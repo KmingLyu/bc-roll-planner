@@ -1,4 +1,14 @@
-// src/components/planner/PlanResultInspector.tsx
+/**
+ * （舊版）
+ * src/components/planner/PlanResultInspector.tsx
+ *
+ * 用途
+ * - 預留的「結果檢視面板」：用來放更深入的 debug / 可視化資訊。
+ * - 目前主要用 Alert 當 placeholder，方便未來擴充。
+ *
+ * 現況
+ * - 在 PlannerPage 內目前是被註解掉的（疑似暫時未使用）。
+ */
 import type { PlanResult } from "../../core/planner";
 import { Alert, Paper, Typography } from "@mui/material";
 

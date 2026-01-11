@@ -1,4 +1,14 @@
-// src/components/planner/PlanResultStatsCard.tsx
+/**
+ * src/components/planner/PlanResultStatsCard.tsx
+ *
+ * 用途
+ * - 顯示 planner 統計摘要（成功/未完成、命中數、終點位置、步驟數、draws 數等）。
+ * - 依 ACTIONS 統計各資源使用次數；並以 event 為單位統計 draws 數量。
+ *
+ * 設計選擇
+ * - byEvent 用 draws 數量統計（更接近「在這個卡池抽了多少」的體感）。
+ * - 顯示命中 / 未命中目標的名稱（由 catNameById 對照）。
+ */
 import React, { useMemo } from "react";
 import type { PlanResult } from "../../core/planner";
 import type { TrackGraph } from "../../../shared/models";

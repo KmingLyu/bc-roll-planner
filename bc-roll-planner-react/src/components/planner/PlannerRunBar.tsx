@@ -1,4 +1,14 @@
-// src/components/planner/PlannerRunBar.tsx
+/**
+ * src/components/planner/PlannerRunBar.tsx
+ *
+ * 用途
+ * - 提供「開始執行」按鈕 + loading/錯誤/提示訊息的狀態列。
+ * - 給 PlannerPage 或其他頁面使用，集中管理 planner 執行時的 UI 狀態呈現。
+ *
+ * 注意
+ * - state: idle/loading/ok/error 由外部控制
+ * - disabled: 外部控制（例如：缺 seed/count/target 時禁用）
+ */
 import {
   Alert,
   Button,

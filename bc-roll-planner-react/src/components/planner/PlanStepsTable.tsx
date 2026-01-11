@@ -1,4 +1,19 @@
-// src/components/planner/PlanStepsTable.tsx
+/**
+ * （舊版）
+ * src/components/planner/PlanStepsTable.tsx
+ *
+ * 用途
+ * - 舊版的 planner step 表格（偏 debug 取向）：每個 step 一列，可展開看 draws。
+ * - 內容包含：event/resource/method/from→to/cost_inc 以及 draws 列表。
+ *
+ * 現況
+ * - 依你貼的 PlannerPage，目前沒有 import / render（疑似已被 PlanDrawsTimelineTable 取代）。
+ *
+ * 註
+ * - 原本 React import 放在檔案底部雖然模組層級仍可運作，但可讀性與工具鏈相容性較差，
+ *   這裡改為放到頂部，避免型別/編譯器或 lint 在某些設定下出現誤判。
+ */
+
 import type { PlanResult } from "../../core/planner";
 import {
   Avatar,

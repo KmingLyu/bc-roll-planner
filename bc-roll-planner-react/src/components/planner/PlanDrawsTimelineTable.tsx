@@ -1,4 +1,21 @@
-// src/components/planner/PlanDrawsTimelineTable.tsx
+/**
+ * src/components/planner/PlanDrawsTimelineTable.tsx
+ *
+ * 用途
+ * - 以「時間軸/步驟」的方式，顯示 planner 的每一步 draws 結果。
+ * - 支援 10 連摘要列 + 展開明細列（可收合）。
+ * - A/B lane 用「圓點 + 連線」表示，並用狀態底色標示：抽中 / 保底 / 一般。
+ * - Event 欄位會依「目前顯示順序」動態分配顏色（避免 event 數量無上限時顏色不足）。
+ *
+ * 主要輸入
+ * - result: planner 的輸出結果（plan + all_draws 等）
+ * - graphsByEvent: 每個 event 對應的 TrackGraph，用於查 A/B lane 的內容
+ * - targetCatIds: 目標貓 id，用於標記 target
+ *
+ * 依賴
+ * - buildDrawRows: 將 plan/draws 轉成 table rows 的 view-model
+ * - makeEventColorPicker: 依 event 出現順序配色（同名只配一次）
+ */
 import React, { useMemo, useState } from "react";
 import type { PlanResult } from "../../core/planner";
 import type { TrackGraph } from "../../../shared/models";
@@ -36,6 +53,7 @@ import {
   makeEventColorPicker,
 } from "./planViewModel";
 
+// 單步驟的 A/B lane 顯示元件
 function StepLane(props: {
   lane: "A" | "B";
   text: string;
@@ -147,6 +165,7 @@ function StepLane(props: {
   );
 }
 
+// 簡易 pill 元件
 function Pill(props: { text: string; tone?: "normal" | "strong" }) {
   const { text, tone = "normal" } = props;
   return (

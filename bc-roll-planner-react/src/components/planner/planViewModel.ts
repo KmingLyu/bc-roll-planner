@@ -1,4 +1,15 @@
-// src/components/planner/planViewModel.ts
+/**
+ * src/components/planner/planViewModel.ts
+ *
+ * 用途
+ * - 把 planner 的原始資料（PlanResult/PlanStep/DrawHit + TrackGraph）整理成「UI 好用」的結構。
+ * - 集中管理顯示用文字（UI_TEXT）、資源名稱映射（ACTIONS/actionLabelFromStep）、
+ *   狀態樣式（STATUS_STYLE、TARGET_*）以及 Event 顏色分配策略。
+ *
+ * 這支檔案的定位
+ * - 只做「顯示層」的 mapping/formatting，不改動 planner 核心演算法輸出。
+ * - 讓 UI 元件保持乾淨：UI 元件只要吃 DrawRow 就能畫表。
+ */
 import type { PlanResult, PlanStep, DrawHit } from "../../core/planner";
 import type { TrackGraph } from "../../../shared/models";
 import { parsePosId } from "../../core/utils";

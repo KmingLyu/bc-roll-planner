@@ -1,4 +1,13 @@
-// src/components/planner/PlanResultSummary.tsx
+/**
+ * （舊版）
+ * src/components/planner/PlanResultSummary.tsx
+ *
+ * 用途
+ * - 較精簡的結果摘要（命中數、終點、花費、步驟/抽數、缺少目標）。
+ *
+ * 現況
+ * - 你在 PlannerPage 內有 import，但目前 render 被註解掉（疑似被 StatsCard 取代）。
+ */
 import type { PlanResult } from "../../core/planner";
 import { Alert, Chip, Stack, Typography } from "@mui/material";
 

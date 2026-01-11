@@ -202,10 +202,12 @@ export function PlanDrawsTimelineTable(props: {
   targetCatIds: number[];
 }) {
   const { result, graphsByEvent, targetCatIds } = props;
+  // console.log(result);
 
   const targetSet = useMemo(() => new Set(targetCatIds), [targetCatIds]);
 
   const allRows = useMemo(() => {
+    // console.log({ result, graphsByEvent, targetSet });
     return buildDrawRows({
       result,
       graphsByEvent,

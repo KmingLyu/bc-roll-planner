@@ -52,7 +52,7 @@ export type Edge = {
 };
 
 export type PositionNode = {
-  id: string; // "3A"
+  id: string;
   pos: number;
   track: "A" | "B";
   rarity?: Rarity | null;

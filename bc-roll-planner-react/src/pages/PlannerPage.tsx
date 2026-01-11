@@ -97,8 +97,8 @@ export default function PlannerPage() {
   const [seedApplied, setSeedApplied] = useState<string>("");
   const [countApplied, setCountApplied] = useState<number | null>(null);
   // ** 測試用預設值 **
-  // const [seedApplied, setSeedApplied] = useState<string>("1234");
-  // const [countApplied, setCountApplied] = useState<number | null>(1000);
+  // const [seedApplied, setSeedApplied] = useState<string>("1012104290");
+  // const [countApplied, setCountApplied] = useState<number | null>(30);
 
   // -------------------------
   // Events
@@ -201,10 +201,10 @@ export default function PlannerPage() {
     legend_tickets: 0,
     food: 0,
     // ** 測試用預設值 **
-    // tickets: 300,
+    // tickets: 30,
     // platinum_tickets: 0,
     // legend_tickets: 0,
-    // food: 10000,
+    // food: 0,
   });
 
   const [plannerCfg, setPlannerCfg] = useState<PlannerConfig>({

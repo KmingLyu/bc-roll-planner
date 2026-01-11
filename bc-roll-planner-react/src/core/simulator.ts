@@ -79,7 +79,19 @@ export function chooseEdgeForSingleDraw(
     normalCatId !== null &&
     normalCatId === prevCatId;
 
-  if (shouldSwitch && sw) return { edge: sw, used: "switch_track" };
+  // console.log({ edge: normal, used: "normal" });
+
+  if (shouldSwitch && sw) {
+    // console.log({ edge: sw, used: "switch_track" });
+    return { edge: sw, used: "switch_track" };
+  }
+  // console.log({
+  //   nodeId: node.id,
+  //   prevCatId,
+  //   normalCatId,
+  //   shouldSwitch,
+  // });
+  // 把edge印出來
   return { edge: normal, used: "normal" };
 }
 
@@ -114,6 +126,7 @@ export function simulateOnGraph(params: {
 
   for (const act of actions) {
     const method = act.method;
+    // console.log(`--- Action: ${act.event_value} / ${method} ---`);
 
     // 單抽
     if (method === "single") {
@@ -125,6 +138,7 @@ export function simulateOnGraph(params: {
       }
 
       const { edge, used } = chooseEdgeForSingleDraw(node, prevCatId);
+      // console.log(used);
       step += 1;
 
       const p = catPayload(edge.cat);

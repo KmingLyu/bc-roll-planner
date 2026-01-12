@@ -399,7 +399,7 @@ export function PlanDrawsTimelineTable(props: {
         > */}
         <Box
           sx={{
-            borderRadius: 3,
+            borderRadius: 2,
             border: 1,
             borderColor: "divider",
             bgcolor: "background.default",
@@ -410,7 +410,9 @@ export function PlanDrawsTimelineTable(props: {
             sx={{
               maxHeight: 520,
               overflow: "auto", // ✅ 內層負責捲動
-              p: 1,
+              // py: 0.5,
+              pl: 0.5,
+              pr: 2,
             }}
           >
             <Table

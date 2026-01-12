@@ -47,7 +47,7 @@ export type Edge = {
   cost_rolls: number; // 目前 functions 仍保留
 
   note?: string;
-  ref_from?: string | null;
+  // ref_from?: string | null;
   source_pick_id?: string | null; // e.g. "3AG" / "3AR"
 };
 
@@ -71,7 +71,7 @@ export type PickCell = {
   cat?: Cat | null;
 
   jump_to?: string | null; // "13B"
-  ref_from?: string | null; // "12A"
+  // ref_from?: string | null; // "12A"
 };
 
 export type TrackGraph = {

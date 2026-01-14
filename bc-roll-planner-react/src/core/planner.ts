@@ -176,7 +176,7 @@ function costIncForAction(
   throw new PlannerError(`未知 action_key=${actionKey}`);
 }
 
-// ✅ 你目前比較只看 equiv_cost
+// 目前比較只看 equiv_cost
 function costLess(a: Cost, b: Cost): boolean {
   return a[0] < b[0];
 }

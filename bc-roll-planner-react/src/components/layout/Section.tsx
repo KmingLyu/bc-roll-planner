@@ -25,6 +25,16 @@ export function Section(props: {
     <Card variant="outlined">
       <CardHeader
         title={title}
+        onClick={onToggleCollapsed}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggleCollapsed();
+          }
+        }}
+        sx={{
+          cursor: "pointer",
+        }}
         slotProps={{
           title: {
             variant: "h6", // h4/h5/h6/subtitle1/subtitle2/body1...
@@ -33,11 +43,11 @@ export function Section(props: {
             gutterBottom: true, // 下面留一點距離
             noWrap: true, // 單行省略
             sx: {
-              fontWeight: 600,
+              fontWeight: 500,
               color: "text.third", // 或 "text.secondary"
               lineHeight: 1.2,
               letterSpacing: 0.2,
-              mb: 0, // margin bottom
+              // mb: 0, // margin bottom
             },
           },
         }}
@@ -52,7 +62,10 @@ export function Section(props: {
             )} */}
             <Tooltip title={collapsed ? "展開" : "收合"}>
               <IconButton
-                onClick={onToggleCollapsed}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleCollapsed();
+                }}
                 size="small"
                 sx={{
                   transform: collapsed ? "rotate(0deg)" : "rotate(180deg)",
@@ -65,8 +78,8 @@ export function Section(props: {
           </Stack>
         }
       />
-      <Collapse in={!collapsed} timeout="auto" unmountOnExit>
-        <CardContent sx={{ pt: 0 }}>{children}</CardContent>
+      <Collapse in={!collapsed} timeout={"auto"} unmountOnExit>
+        <CardContent sx={{ pt: 1 }}>{children}</CardContent>
       </Collapse>
     </Card>
   );

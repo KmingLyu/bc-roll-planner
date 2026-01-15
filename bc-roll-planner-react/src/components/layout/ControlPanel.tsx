@@ -55,7 +55,11 @@ export function ControlPanel(props: {
     <Card variant="outlined">
       <CardHeader
         title="顯示設定（快速開關區塊）"
-        titleTypographyProps={{ fontWeight: 800 }}
+        slotProps={{
+          title: {
+            sx: { fontWeight: 800 },
+          },
+        }}
         action={
           <FormControlLabel
             control={

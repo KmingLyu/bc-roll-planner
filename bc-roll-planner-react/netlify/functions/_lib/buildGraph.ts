@@ -30,7 +30,7 @@ export function buildTrackGraphFromCells(args: {
   raw_cells: Record<string, PickCell>;
 }): TrackGraph {
   const { seed, count, event, raw_cells } = args;
-  console.log("raw_cells", raw_cells);
+  // console.log("raw_cells", raw_cells);
 
   const baseIds = Object.keys(raw_cells)
     .filter((pid) => {

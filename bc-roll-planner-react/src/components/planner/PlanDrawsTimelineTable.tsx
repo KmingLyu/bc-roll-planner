@@ -284,12 +284,11 @@ export function PlanDrawsTimelineTable(props: {
 
   const bodyCellBase = {
     bgcolor: "background.paper",
-    borderTop: "1px solid",
+    // borderTop: "1px solid",
     borderBottom: "1px solid",
     borderColor: "divider",
-    py: 1,
+    py: 1.2,
     verticalAlign: "middle",
-
     // boxSizing: "border-box",
     // overflow: "hidden",
     // textOverflow: "ellipsis",
@@ -399,10 +398,10 @@ export function PlanDrawsTimelineTable(props: {
         > */}
         <Box
           sx={{
-            borderRadius: 2,
-            border: 1,
+            // borderRadius: 2,
+            // border: 1,
             borderColor: "divider",
-            bgcolor: "background.default",
+            // bgcolor: "background.default",
             overflow: "hidden", // ✅ 外層負責裁切圓角/邊框
           }}
         >
@@ -411,18 +410,20 @@ export function PlanDrawsTimelineTable(props: {
               maxHeight: 520,
               overflow: "auto", // ✅ 內層負責捲動
               // py: 0.5,
-              pl: 0.5,
-              pr: 2,
+              // padding for scrollbar
+              px: 1,
+              // pl: 0.5,
+              // pr: 2,
             }}
           >
             <Table
               stickyHeader
-              size="small"
+              size="medium"
               sx={{
                 minWidth: 980,
                 tableLayout: "fixed",
                 borderCollapse: "separate",
-                borderSpacing: "0 10px",
+                // borderSpacing: "0 10px",
               }}
             >
               <TableHead>
@@ -431,7 +432,7 @@ export function PlanDrawsTimelineTable(props: {
                     { key: "count", label: "count", w: colW.count },
                     { key: "step", label: "抽卡步驟", w: colW.step },
                     { key: "action", label: "資源", w: colW.action },
-                    { key: "event", label: "Event", w: colW.event },
+                    { key: "event", label: "活動卡池", w: colW.event },
                     { key: "A", label: "A", w: colW.A },
                     { key: "B", label: "B", w: colW.B },
                   ].map((c) => (
@@ -444,7 +445,6 @@ export function PlanDrawsTimelineTable(props: {
                         bgcolor: "background.paper",
                         borderBottom: "1px solid",
                         borderColor: "divider",
-
                         // boxSizing: "border-box",
                         // overflow: "hidden",
                         // textOverflow: "ellipsis",
@@ -501,10 +501,10 @@ export function PlanDrawsTimelineTable(props: {
                               ...bodyCellBase,
                               width: `${colW.count}%`,
                               whiteSpace: "nowrap",
-                              borderLeft: "1px solid",
-                              borderColor: "divider",
-                              borderTopLeftRadius: isFirst ? 16 : 16,
-                              borderBottomLeftRadius: isLast ? 16 : 16,
+                              // borderLeft: "1px solid",
+                              // borderColor: "divider",
+                              // borderTopLeftRadius: isFirst ? 16 : 16,
+                              // borderBottomLeftRadius: isLast ? 16 : 16,
                             }}
                           >
                             <Stack
@@ -512,7 +512,8 @@ export function PlanDrawsTimelineTable(props: {
                               spacing={1}
                               alignItems="center"
                             >
-                              {stepHeader && isTen ? (
+                              {/* {stepHeader && isTen ? ( */}
+                              {stepHeader ? (
                                 <IconButton
                                   size="small"
                                   onClick={() =>

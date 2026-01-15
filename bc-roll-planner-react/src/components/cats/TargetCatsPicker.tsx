@@ -1,5 +1,4 @@
 // src/components/cats/TargetCatsPicker.tsx
-import type { TierGroup } from "../../hooks/useEventCats";
 import {
   Accordion,
   AccordionDetails,
@@ -17,6 +16,8 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import type { TierGroup } from "../../hooks/useEventCats";
+import { CatSelectableItem } from "./CatSelectableItem";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
 
@@ -121,134 +122,23 @@ export function TargetCatsPicker(props: {
                   >
                     {g.cats.map((c) => {
                       const checked = selectedSet.has(c.id);
-                      const href = getCatHref?.(c.id);
-                      const img = getCatImageUrl?.(c.id);
 
                       return (
-                        <Box
+                        <CatSelectableItem
                           key={c.id}
-                          role="checkbox"
-                          aria-checked={checked}
-                          tabIndex={0}
-                          onClick={() => toggle(c.id, !checked)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              toggle(c.id, !checked);
-                            }
-                          }}
-                          sx={{
-                            // border: "0.1px dashed",
-                            // borderColor: checked ? "primary.main" : "divider",
-                            borderRadius: 2,
-
-                            // 選到就整格變藍（按鈕按下去的感覺）
-                            bgcolor: checked ? "primary.main" : "transparent",
-                            color: checked
-                              ? "primary.contrastText"
-                              : "text.primary",
-
-                            cursor: "pointer",
-                            userSelect: "none",
-                            px: dense ? 1 : 1.25,
-                            py: dense ? 0.25 : 0.75,
-                            minHeight: dense ? 44 : 56,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 1,
-                            transition:
-                              "background-color .2s ease, border-color .2s ease, transform .16s ease",
-                            "&:hover": {
-                              bgcolor: checked
-                                ? "primary.dark"
-                                : "action.hover",
-                              borderColor: checked
-                                ? "primary.dark"
-                                : "text.secondary",
-                            },
-                            "&:active": {
-                              transform: "translateY(2px)",
-                            },
-                            "&:focus-visible": {
-                              outline: "2px solid",
-                              outlineColor: checked
-                                ? "primary.contrastText"
-                                : "primary.main",
-                              outlineOffset: 2,
-                            },
-                          }}
-                        >
-                          <Stack
-                            direction="row"
-                            spacing={3}
-                            alignItems="center"
-                            sx={{ width: "100%", minWidth: 0 }}
-                          >
-                            <Avatar
-                              sx={{
-                                width: 28,
-                                height: 28,
-                                // 沒圖時也跟著反白好看
-                                bgcolor: checked
-                                  ? "rgba(255,255,255,0.2)"
-                                  : "action.selected",
-                                color: checked
-                                  ? "primary.contrastText"
-                                  : "text.primary",
-                              }}
-                              src={img}
-                              variant="rounded"
-                            >
-                              {c.name?.[0] ?? "?"}
-                            </Avatar>
-
-                            <Box sx={{ minWidth: 0, flex: 1 }}>
-                              <Typography
-                                variant="body2"
-                                noWrap
-                                title={c.name}
-                                sx={{ fontWeight: 600 }}
-                              >
-                                {href ? (
-                                  <Link
-                                    href={href}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    underline="hover"
-                                    color="inherit"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    {c.name}
-                                  </Link>
-                                ) : (
-                                  c.name
-                                )}
-                              </Typography>
-
-                              <Typography
-                                variant="caption"
-                                sx={{
-                                  color: checked
-                                    ? "rgba(255,255,255,0.85)"
-                                    : "text.secondary",
-                                }}
-                              >
-                                #{c.id}
-                              </Typography>
-                            </Box>
-
-                            {/* ✅ 移除打勾提示：不要 icon / 不要預留空位 */}
-
-                            {renderCatSecondary ? (
-                              <Box
-                                sx={{ flexShrink: 0 }}
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {renderCatSecondary(c.id)}
-                              </Box>
-                            ) : null}
-                          </Stack>
-                        </Box>
+                          catId={c.id}
+                          name={c.name}
+                          checked={checked}
+                          onToggle={(next) => toggle(c.id, next)}
+                          imageUrl={getCatImageUrl?.(c.id)}
+                          href={getCatHref?.(c.id)}
+                          dense={dense}
+                          secondary={
+                            renderCatSecondary
+                              ? renderCatSecondary(c.id)
+                              : undefined
+                          }
+                        />
                       );
                     })}
                   </Box>

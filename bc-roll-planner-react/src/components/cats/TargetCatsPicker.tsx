@@ -37,11 +37,11 @@ export function TargetCatsPicker(props: {
   onChange: (next: number[]) => void;
   onClear: () => void;
 
-  // ✅ 多欄 layout 控制（可調）
+  // 多欄 layout 控制（可調）
   minColWidth?: number; // 每個 item 最小寬度，越大欄越少
   dense?: boolean; // 更緊湊
 
-  // ✅ 預留：未來顯示圖片/連結
+  // 顯示圖片/連結
   getCatHref?: (catId: number) => string | undefined;
   getCatImageUrl?: (catId: number) => string | undefined;
   renderCatSecondary?: (catId: number) => React.ReactNode;

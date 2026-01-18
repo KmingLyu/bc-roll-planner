@@ -8,7 +8,7 @@
  * 現況
  * - 你在 PlannerPage 內有 import，但目前 render 被註解掉（疑似被 StatsCard 取代）。
  */
-import type { PlanResult } from "../../core/planner";
+import type { PlanResult } from "../../../core/planner";
 import { Alert, Chip, Stack, Typography } from "@mui/material";
 
 function fmtCost(cost: any): string {

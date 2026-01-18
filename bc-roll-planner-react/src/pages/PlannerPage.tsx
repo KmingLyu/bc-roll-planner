@@ -34,8 +34,8 @@ import {
   type PlannerConfig,
 } from "../components/planner/ResourceForm";
 import { PlannerRunBar } from "../components/planner/PlannerRunBar";
-import { PlanResultSummary } from "../components/planner/PlanResultSummary";
-import { PlanResultInspector } from "../components/planner/PlanResultInspector";
+import { PlanResultSummary } from "../components/planner/legacy/PlanResultSummary";
+import { PlanResultInspector } from "../components/planner/legacy/PlanResultInspector";
 import { SimulatorPanel } from "../components/simulator/SimulatorPanel";
 
 // ✅ New result UI
@@ -81,8 +81,14 @@ export default function PlannerPage() {
     showTargetCats: true,
     targetCatsCollapsed: false,
 
-    showPlanner: true,
+    showPlanner: false,
     plannerCollapsed: false,
+
+    showPlannerResultSummary: true,
+    plannerResultSummaryCollapsed: false,
+
+    showPlannerResultTable: true,
+    plannerResultTableCollapsed: true,
 
     showGraphDebug: false,
     graphDebugCollapsed: true,
@@ -309,157 +315,270 @@ export default function PlannerPage() {
   const getCatImageUrl = (catId: number) => undefined as string | undefined;
 
   return (
-    <Container maxWidth="lg" sx={{ py: 2 }}>
-      <Stack spacing={2}>
-        <Stack spacing={1} alignItems="flex-start">
-          <Typography variant="h5" fontWeight={800}>
-            🐾 貓咪大戰爭抽卡規劃（測試版）
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            流程：輸入 seed/count → 選卡池(多選) → 選目標貓咪(多選) → 輸入資源 →
-            執行抽卡規劃
-          </Typography>
-        </Stack>
+    <Container maxWidth="xl" sx={{ py: 2 }}>
+      {/* 標題 */}
+      <Stack spacing={1} alignItems="flex-start" padding={2}>
+        <Typography variant="h5" fontWeight={800}>
+          🐾 貓咪大戰爭抽卡規劃（測試版）
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          流程：輸入 seed/count → 選卡池(多選) → 選目標貓咪(多選) → 輸入資源 →
+          執行抽卡規劃
+        </Typography>
+      </Stack>
+      {/* 內容 */}
+      <Stack
+        spacing={2}
+        direction={"row"}
+        alignItems="flex-start"
+        justifyContent="center"
+      >
+        <Stack
+          direction="column"
+          spacing={1}
+          alignItems="flex-start"
+          sx={{
+            // flex: "1 1 0",
+            maxHeight: "85vh",
+            overflowY: "auto",
+            flexGrow: 1,
+          }}
+        >
+          {/* Seed/Count + Events */}
+          {ui.showSeedCount && (
+            <Section
+              title="輸入seed/count、卡池"
+              collapsed={ui.seedCountCollapsed}
+              onToggleCollapsed={() =>
+                setUi((p) => ({
+                  ...p,
+                  seedCountCollapsed: !p.seedCountCollapsed,
+                }))
+              }
+              onHide={() => setUi((p) => ({ ...p, showSeedCount: false }))}
+            >
+              <Stack spacing={1.5}>
+                {/* <Stack
+                  spacing={2}
+                  direction="row"
+                  justifyContent="space-between"
+                > */}
+                <SeedCountForm
+                  seedApplied={seedApplied}
+                  countApplied={countApplied}
+                  onChange={({ seed, count }) => {
+                    setSeedApplied(seed);
+                    setCountApplied(count);
+                  }}
+                />
 
-        {/* Seed/Count + Events */}
-        {ui.showSeedCount && (
-          <Section
-            title="輸入seed/count、卡池"
-            collapsed={ui.seedCountCollapsed}
-            onToggleCollapsed={() =>
-              setUi((p) => ({
-                ...p,
-                seedCountCollapsed: !p.seedCountCollapsed,
-              }))
-            }
-            onHide={() => setUi((p) => ({ ...p, showSeedCount: false }))}
-          >
-            <Stack spacing={0.5}>
-              <SeedCountForm
-                seedApplied={seedApplied}
-                countApplied={countApplied}
-                onChange={({ seed, count }) => {
-                  setSeedApplied(seed);
-                  setCountApplied(count);
-                }}
-              />
+                <ResourceForm
+                  value={resources}
+                  cfg={plannerCfg}
+                  onChange={setResources}
+                  onCfgChange={setPlannerCfg}
+                />
+                {/* </Stack> */}
 
-              <EventsPicker
-                loadState={eventsState as LoadState}
-                error={eventsErr}
-                upcomingEvents={upcomingEvents}
-                pastEvents={pastEvents}
-                value={selectedEventValues}
-                onChange={(next) => setSelectedEventValues(next)}
-                primaryValue={primaryEventValue}
-                onPrimaryChange={(v) => setPrimaryEventValue(v)}
-              />
-            </Stack>
-          </Section>
-        )}
+                <EventsPicker
+                  loadState={eventsState as LoadState}
+                  error={eventsErr}
+                  upcomingEvents={upcomingEvents}
+                  pastEvents={pastEvents}
+                  value={selectedEventValues}
+                  onChange={(next) => setSelectedEventValues(next)}
+                  primaryValue={primaryEventValue}
+                  onPrimaryChange={(v) => setPrimaryEventValue(v)}
+                />
 
-        {/* Target Cats */}
-        {ui.showTargetCats && (
-          <Section
-            title="選擇目標貓咪"
-            collapsed={ui.targetCatsCollapsed}
-            onToggleCollapsed={() =>
-              setUi((p) => ({
-                ...p,
-                targetCatsCollapsed: !p.targetCatsCollapsed,
-              }))
-            }
-            onHide={() => setUi((p) => ({ ...p, showTargetCats: false }))}
-          >
-            <TargetCatsPicker
-              loadState={catsState as LoadState}
-              error={catsErr}
-              groups={tierGroupsSorted}
-              selectedIds={targetCatIds}
-              onChange={setTargetCatIds}
-              onClear={() => setTargetCatIds([])}
-              getCatHref={getCatHref}
-              getCatImageUrl={getCatImageUrl}
-              minColWidth={220}
-              dense
-            />
-          </Section>
-        )}
+                <PlannerRunBar
+                  state={planState as LoadState}
+                  onRun={onClickPlanner}
+                  disabled={
+                    planState === "loading" ||
+                    !selectedEventValues.length ||
+                    !hasSeedCount ||
+                    targetCatIds.length === 0
+                  }
+                  hint={
+                    !selectedEventValues.length
+                      ? "請先選至少一個 event"
+                      : !hasSeedCount
+                      ? "請先套用 seed / count"
+                      : !targetCatIds.length
+                      ? "請先選目標貓"
+                      : ""
+                  }
+                  error={planState === "error" ? planErr : ""}
+                />
+              </Stack>
+            </Section>
+          )}
 
-        {/* Planner */}
-        {ui.showPlanner && (
-          <Section
-            title="輸入資源"
-            collapsed={ui.plannerCollapsed}
-            onToggleCollapsed={() =>
-              setUi((p) => ({ ...p, plannerCollapsed: !p.plannerCollapsed }))
-            }
-            onHide={() => setUi((p) => ({ ...p, showPlanner: false }))}
-          >
-            <Stack spacing={2}>
-              <ResourceForm
-                value={resources}
-                cfg={plannerCfg}
-                onChange={setResources}
-                onCfgChange={setPlannerCfg}
-              />
+          {/* Planner */}
+          {ui.showPlanner && (
+            <Section
+              title="輸入資源"
+              collapsed={ui.plannerCollapsed}
+              onToggleCollapsed={() =>
+                setUi((p) => ({ ...p, plannerCollapsed: !p.plannerCollapsed }))
+              }
+              onHide={() => setUi((p) => ({ ...p, showPlanner: false }))}
+            >
+              <Stack spacing={2}>
+                {/* <ResourceForm
+                  value={resources}
+                  cfg={plannerCfg}
+                  onChange={setResources}
+                  onCfgChange={setPlannerCfg}
+                /> */}
 
-              <PlannerRunBar
-                state={planState as LoadState}
-                onRun={onClickPlanner}
-                disabled={
-                  planState === "loading" ||
-                  !selectedEventValues.length ||
-                  !hasSeedCount ||
-                  targetCatIds.length === 0
-                }
-                hint={
-                  !selectedEventValues.length
-                    ? "請先選至少一個 event"
-                    : !hasSeedCount
-                    ? "請先套用 seed / count"
-                    : !targetCatIds.length
-                    ? "請先選目標貓"
-                    : ""
-                }
-                error={planState === "error" ? planErr : ""}
-              />
+                <PlannerRunBar
+                  state={planState as LoadState}
+                  onRun={onClickPlanner}
+                  disabled={
+                    planState === "loading" ||
+                    !selectedEventValues.length ||
+                    !hasSeedCount ||
+                    targetCatIds.length === 0
+                  }
+                  hint={
+                    !selectedEventValues.length
+                      ? "請先選至少一個 event"
+                      : !hasSeedCount
+                      ? "請先套用 seed / count"
+                      : !targetCatIds.length
+                      ? "請先選目標貓"
+                      : ""
+                  }
+                  error={planState === "error" ? planErr : ""}
+                />
 
-              {planState === "ok" && planResult && (
-                <Stack spacing={2}>
-                  {/* <PlanResultSummary
+                {planState === "ok" && planResult && (
+                  <Stack spacing={2}>
+                    {/* <PlanResultSummary
                     result={planResult as PlanResult}
                     missingText={missingText}
                   /> */}
 
+                    <PlanResultStatsCard
+                      result={planResult as PlanResult}
+                      graphsByEvent={graphByEvent}
+                      catNameById={catNameById}
+                    />
+
+                    <PlanDrawsTimelineTable
+                      result={planResult as PlanResult}
+                      graphsByEvent={graphByEvent}
+                      targetCatIds={targetCatIds}
+                    />
+
+                    {/* <EventTrackGraphsView
+                    result={planResult as PlanResult}
+                    graphsByEvent={graphByEvent}
+                    targetCatIds={targetCatIds}
+                  /> */}
+
+                    {/* 你原本的 inspector：先保留（未來擴充用） */}
+                    {/* <Divider />
+                  <PlanResultInspector
+                    result={planResult as PlanResult}
+                    catNameById={catNameById}
+                  /> */}
+                  </Stack>
+                )}
+              </Stack>
+            </Section>
+          )}
+
+          {/* Result Summary*/}
+          {ui.showPlannerResultSummary && (
+            <Section
+              title="結果統計"
+              collapsed={ui.plannerResultSummaryCollapsed}
+              onToggleCollapsed={() =>
+                setUi((p) => ({
+                  ...p,
+                  plannerResultSummaryCollapsed:
+                    !p.plannerResultSummaryCollapsed,
+                }))
+              }
+              onHide={() =>
+                setUi((p) => ({ ...p, showPlannerResultSummary: false }))
+              }
+            >
+              {planState === "ok" && (
+                <Stack spacing={2}>
                   <PlanResultStatsCard
                     result={planResult as PlanResult}
                     graphsByEvent={graphByEvent}
                     catNameById={catNameById}
                   />
-
-                  <PlanDrawsTimelineTable
-                    result={planResult as PlanResult}
-                    graphsByEvent={graphByEvent}
-                    targetCatIds={targetCatIds}
-                  />
-
-                  {/* <EventTrackGraphsView
-                    result={planResult as PlanResult}
-                    graphsByEvent={graphByEvent}
-                    targetCatIds={targetCatIds}
-                  /> */}
-
-                  {/* 你原本的 inspector：先保留（未來擴充用） */}
-                  {/* <Divider />
-                  <PlanResultInspector
-                    result={planResult as PlanResult}
-                    catNameById={catNameById}
-                  /> */}
                 </Stack>
               )}
-            </Stack>
-          </Section>
+            </Section>
+          )}
+
+          {/* Result Table */}
+          {ui.showPlannerResultTable && (
+            <Section
+              title="詳細步驟"
+              collapsed={ui.plannerResultTableCollapsed}
+              onToggleCollapsed={() =>
+                setUi((p) => ({
+                  ...p,
+                  plannerResultTableCollapsed: !p.plannerResultTableCollapsed,
+                }))
+              }
+              onHide={() =>
+                setUi((p) => ({ ...p, showPlannerResultTable: false }))
+              }
+            >
+              {planResult && (
+                <PlanDrawsTimelineTable
+                  result={planResult as PlanResult}
+                  graphsByEvent={graphByEvent}
+                  targetCatIds={targetCatIds}
+                />
+              )}
+            </Section>
+          )}
+        </Stack>
+        {/* Right: Target Cats */}
+        {ui.showTargetCats && (
+          <Box
+            sx={{
+              width: 360,
+              flex: "0 0 360px",
+              maxHeight: "85vh",
+              overflowY: "auto",
+            }}
+          >
+            <Section
+              title="選擇目標貓咪"
+              collapsed={ui.targetCatsCollapsed}
+              onToggleCollapsed={() =>
+                setUi((p) => ({
+                  ...p,
+                  targetCatsCollapsed: !p.targetCatsCollapsed,
+                }))
+              }
+              onHide={() => setUi((p) => ({ ...p, showTargetCats: false }))}
+            >
+              <TargetCatsPicker
+                loadState={catsState as LoadState}
+                error={catsErr}
+                groups={tierGroupsSorted}
+                selectedIds={targetCatIds}
+                onChange={setTargetCatIds}
+                onClear={() => setTargetCatIds([])}
+                getCatHref={getCatHref}
+                getCatImageUrl={getCatImageUrl}
+                minColWidth={100}
+                dense
+              />
+            </Section>
+          </Box>
         )}
 
         {/* Graph Debug（用 primary） */}

@@ -9,7 +9,7 @@
  * 現況
  * - 在 PlannerPage 內目前是被註解掉的（疑似暫時未使用）。
  */
-import type { PlanResult } from "../../core/planner";
+import type { PlanResult } from "../../../core/planner";
 import { Alert, Paper, Typography } from "@mui/material";
 
 export function PlanResultInspector(props: {

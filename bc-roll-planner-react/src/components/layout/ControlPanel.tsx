@@ -25,6 +25,12 @@ export type UiFlags = {
   showPlanner: boolean;
   plannerCollapsed: boolean;
 
+  showPlannerResultSummary: boolean;
+  plannerResultSummaryCollapsed: boolean;
+
+  showPlannerResultTable: boolean;
+  plannerResultTableCollapsed: boolean;
+
   showGraphDebug: boolean;
   graphDebugCollapsed: boolean;
 
@@ -47,6 +53,8 @@ export function ControlPanel(props: {
     { key: "showEvents", label: "顯示 Events" },
     { key: "showTargetCats", label: "顯示 Target Cats" },
     { key: "showPlanner", label: "顯示 Planner" },
+    { key: "showPlannerResultSummary", label: "顯示 Planner 結果摘要" },
+    { key: "showPlannerResultTable", label: "顯示 Planner 結果表格" },
     { key: "showGraphDebug", label: "顯示 Graph Debug" },
     { key: "showSimulator", label: "顯示 Simulator" },
   ];

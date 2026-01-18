@@ -25,10 +25,14 @@ export function ResourceForm(props: {
   const { value, cfg, onChange, onCfgChange, showAdvanced = false } = props;
 
   return (
-    <Stack spacing={1.5}>
+    <Stack spacing={1.5} sx={{ width: "100%" }}>
       {/* <Typography fontWeight={800}>輸入資源</Typography> */}
 
-      <Grid container spacing={2} sx={{ maxWidth: 720, width: "100%" }}>
+      <Grid
+        container
+        spacing={2}
+        sx={{ width: "100%", justifyContent: "space-between" }}
+      >
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <NumberField
             label="金券"

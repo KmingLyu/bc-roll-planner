@@ -69,7 +69,7 @@ export function SeedCountForm(props: {
         直接輸入即可生效；若 seed / count 不完整或不合法，規劃按鈕會自動停用。
       </Typography> */}
 
-      <Grid container spacing={2} sx={{ maxWidth: 640, width: "100%" }}>
+      <Grid container spacing={2} sx={{ width: "100%" }}>
         <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth

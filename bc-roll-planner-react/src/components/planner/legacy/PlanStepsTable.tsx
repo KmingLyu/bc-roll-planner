@@ -14,7 +14,7 @@
  *   這裡改為放到頂部，避免型別/編譯器或 lint 在某些設定下出現誤判。
  */
 
-import type { PlanResult } from "../../core/planner";
+import type { PlanResult } from "../../../core/planner";
 import {
   Avatar,
   Box,

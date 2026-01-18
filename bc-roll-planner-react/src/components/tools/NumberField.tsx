@@ -43,6 +43,8 @@ export default function NumberField({
           required={state.required}
           error={error}
           variant="outlined"
+          fullWidth // 撐滿父層
+          sx={{ minWidth: 0 }} // 避免 flexbox 爆寬
         >
           {props.children}
         </FormControl>
@@ -65,6 +67,7 @@ export default function NumberField({
             slotProps={{
               input: props,
             }}
+            fullWidth // ✅ 輸入框本身也撐滿
             endAdornment={
               <InputAdornment
                 position="end"
@@ -101,7 +104,7 @@ export default function NumberField({
                 </BaseNumberField.Decrement>
               </InputAdornment>
             }
-            sx={{ pr: 0 }}
+            sx={{ pr: 0, width: 1 }}
           />
         )}
       />

@@ -306,16 +306,52 @@ export function PlanDrawsTimelineTable(props: {
 
   return (
     // <Paper variant="outlined" sx={{ p: 2 }}>
-    <Stack spacing={2}>
+    <Stack spacing={2} sx={{ backgroundColor: "background.paper" }}>
       <Stack
         direction={{ xs: "column", sm: "row" }}
         spacing={1}
         alignItems={{ xs: "flex-start", sm: "center" }}
         justifyContent="space-between"
+        sx={(theme) => ({
+          position: "sticky",
+          top: 0, // 有 fixed AppBar 就改成 top: 64
+          zIndex: theme.zIndex.appBar + 1,
+          bgcolor: theme.palette.background.paper,
+          backdropFilter: "blur(10px)",
+          py: 1,
+          px: 2,
+          // borderBottom: `1px solid ${theme.palette.divider}`,
+          // radius
+          borderTopLeftRadius: theme.shape.borderRadius,
+          borderTopRightRadius: theme.shape.borderRadius,
+        })}
       >
         <Typography fontWeight={900}>規劃結果：步驟表（A/B Lane）</Typography>
-
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+          {showLegend && (
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Chip
+                size="small"
+                label="抽中"
+                sx={{ bgcolor: STATUS_STYLE.hit.bg }}
+              />
+              <Chip
+                size="small"
+                label="目標"
+                sx={{
+                  bgcolor: "action.hover",
+                  ...TARGET_BORDER_STYLE,
+                }}
+              />
+              <Chip
+                size="small"
+                label="保底"
+                sx={{ bgcolor: STATUS_STYLE.guaranteed.bg }}
+              />
+            </Stack>
+          )}
+
+          {/* <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap"> */}
           <FormControlLabel
             control={
               <Switch
@@ -326,14 +362,15 @@ export function PlanDrawsTimelineTable(props: {
             label={<Typography variant="body2">圖例</Typography>}
           />
 
-          <Button
-            size="small"
-            variant={showTargetsOnly ? "contained" : "outlined"}
-            onClick={() => setShowTargetsOnly((v) => !v)}
-            sx={{ borderRadius: 999 }}
-          >
-            {showTargetsOnly ? "顯示全部步驟" : "只看目標步驟"}
-          </Button>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={showTargetsOnly}
+                onChange={(e) => setShowTargetsOnly(e.target.checked)}
+              />
+            }
+            label={<Typography variant="body2">只看目標步驟</Typography>}
+          />
 
           <FormControlLabel
             control={
@@ -347,7 +384,7 @@ export function PlanDrawsTimelineTable(props: {
         </Stack>
       </Stack>
 
-      {showLegend && (
+      {/* {showLegend && (
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           <Chip
             size="small"
@@ -367,15 +404,11 @@ export function PlanDrawsTimelineTable(props: {
             label="保底"
             sx={{ bgcolor: STATUS_STYLE.guaranteed.bg }}
           />
-          {/* <Chip size="small" label="圓點+連線：A/B Lane" variant="outlined" /> */}
-          {/* <Chip
-              size="small"
-              label="Event 色點：自動 hash"
-              variant="outlined"
-            /> */}
-          {/* <Chip size="small" label="10連：可展開/收合" variant="outlined" /> */}
+          <Chip size="small" label="圓點+連線：A/B Lane" variant="outlined" />
+          <Chip size="small" label="Event 色點：自動 hash" variant="outlined" />
+          <Chip size="small" label="10連：可展開/收合" variant="outlined" />
         </Stack>
-      )}
+      )} */}
 
       <Divider />
 
@@ -388,7 +421,7 @@ export function PlanDrawsTimelineTable(props: {
           // border: 1,
           // borderColor: "divider",
           // overflowX: "auto",
-          // bgcolor: "background.default",
+          // bgcolor: "background.paper",
           p: 1,
         }}
       >

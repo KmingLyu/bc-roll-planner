@@ -87,8 +87,8 @@ export default function PlannerPage() {
     showPlannerResultSummary: true,
     plannerResultSummaryCollapsed: false,
 
-    showPlannerResultTable: true,
-    plannerResultTableCollapsed: true,
+    showPlannerResultTable: false,
+    plannerResultTableCollapsed: false,
 
     showGraphDebug: false,
     graphDebugCollapsed: true,
@@ -333,6 +333,7 @@ export default function PlannerPage() {
         alignItems="flex-start"
         justifyContent="center"
       >
+        {/* Left + Center: Controls + Planner */}
         <Stack
           direction="column"
           spacing={1}
@@ -344,7 +345,7 @@ export default function PlannerPage() {
             flexGrow: 1,
           }}
         >
-          {/* Seed/Count + Events */}
+          {/* Seed/Count + Events + 資源 */}
           {ui.showSeedCount && (
             <Section
               title="輸入seed/count、卡池"
@@ -358,11 +359,6 @@ export default function PlannerPage() {
               onHide={() => setUi((p) => ({ ...p, showSeedCount: false }))}
             >
               <Stack spacing={1.5}>
-                {/* <Stack
-                  spacing={2}
-                  direction="row"
-                  justifyContent="space-between"
-                > */}
                 <SeedCountForm
                   seedApplied={seedApplied}
                   countApplied={countApplied}
@@ -378,7 +374,6 @@ export default function PlannerPage() {
                   onChange={setResources}
                   onCfgChange={setPlannerCfg}
                 />
-                {/* </Stack> */}
 
                 <EventsPicker
                   loadState={eventsState as LoadState}
@@ -415,82 +410,6 @@ export default function PlannerPage() {
             </Section>
           )}
 
-          {/* Planner */}
-          {ui.showPlanner && (
-            <Section
-              title="輸入資源"
-              collapsed={ui.plannerCollapsed}
-              onToggleCollapsed={() =>
-                setUi((p) => ({ ...p, plannerCollapsed: !p.plannerCollapsed }))
-              }
-              onHide={() => setUi((p) => ({ ...p, showPlanner: false }))}
-            >
-              <Stack spacing={2}>
-                {/* <ResourceForm
-                  value={resources}
-                  cfg={plannerCfg}
-                  onChange={setResources}
-                  onCfgChange={setPlannerCfg}
-                /> */}
-
-                <PlannerRunBar
-                  state={planState as LoadState}
-                  onRun={onClickPlanner}
-                  disabled={
-                    planState === "loading" ||
-                    !selectedEventValues.length ||
-                    !hasSeedCount ||
-                    targetCatIds.length === 0
-                  }
-                  hint={
-                    !selectedEventValues.length
-                      ? "請先選至少一個 event"
-                      : !hasSeedCount
-                      ? "請先套用 seed / count"
-                      : !targetCatIds.length
-                      ? "請先選目標貓"
-                      : ""
-                  }
-                  error={planState === "error" ? planErr : ""}
-                />
-
-                {planState === "ok" && planResult && (
-                  <Stack spacing={2}>
-                    {/* <PlanResultSummary
-                    result={planResult as PlanResult}
-                    missingText={missingText}
-                  /> */}
-
-                    <PlanResultStatsCard
-                      result={planResult as PlanResult}
-                      graphsByEvent={graphByEvent}
-                      catNameById={catNameById}
-                    />
-
-                    <PlanDrawsTimelineTable
-                      result={planResult as PlanResult}
-                      graphsByEvent={graphByEvent}
-                      targetCatIds={targetCatIds}
-                    />
-
-                    {/* <EventTrackGraphsView
-                    result={planResult as PlanResult}
-                    graphsByEvent={graphByEvent}
-                    targetCatIds={targetCatIds}
-                  /> */}
-
-                    {/* 你原本的 inspector：先保留（未來擴充用） */}
-                    {/* <Divider />
-                  <PlanResultInspector
-                    result={planResult as PlanResult}
-                    catNameById={catNameById}
-                  /> */}
-                  </Stack>
-                )}
-              </Stack>
-            </Section>
-          )}
-
           {/* Result Summary*/}
           {ui.showPlannerResultSummary && (
             <Section
@@ -519,6 +438,14 @@ export default function PlannerPage() {
             </Section>
           )}
 
+          {planResult && (
+            <PlanDrawsTimelineTable
+              result={planResult as PlanResult}
+              graphsByEvent={graphByEvent}
+              targetCatIds={targetCatIds}
+            />
+          )}
+
           {/* Result Table */}
           {ui.showPlannerResultTable && (
             <Section
@@ -544,12 +471,14 @@ export default function PlannerPage() {
             </Section>
           )}
         </Stack>
+
         {/* Right: Target Cats */}
         {ui.showTargetCats && (
           <Box
             sx={{
-              width: 360,
-              flex: "0 0 360px",
+              maxWidth: 360,
+              minWidth: 210,
+              flex: "0 1 30%",
               maxHeight: "85vh",
               overflowY: "auto",
             }}
@@ -579,47 +508,6 @@ export default function PlannerPage() {
               />
             </Section>
           </Box>
-        )}
-
-        {/* Graph Debug（用 primary） */}
-        {ui.showGraphDebug && (
-          <Section
-            title="TrackGraph Debug（主要 event）"
-            collapsed={ui.graphDebugCollapsed}
-            onToggleCollapsed={() =>
-              setUi((p) => ({
-                ...p,
-                graphDebugCollapsed: !p.graphDebugCollapsed,
-              }))
-            }
-            onHide={() => setUi((p) => ({ ...p, showGraphDebug: false }))}
-          >
-            <GraphSummaryCard
-              seedApplied={seedApplied}
-              countApplied={countApplied}
-              selectedEventValue={primaryEventValue}
-              graphState={graphState as LoadState}
-              graphErr={graphErr}
-              graph={activeGraph}
-            />
-          </Section>
-        )}
-
-        {/* Simulator（用 primary） */}
-        {ui.showSimulator && (
-          <Section
-            title="Simulator（主要 event）"
-            collapsed={ui.simulatorCollapsed}
-            onToggleCollapsed={() =>
-              setUi((p) => ({
-                ...p,
-                simulatorCollapsed: !p.simulatorCollapsed,
-              }))
-            }
-            onHide={() => setUi((p) => ({ ...p, showSimulator: false }))}
-          >
-            <SimulatorPanel graph={activeGraph} graphReady={!!activeGraph} />
-          </Section>
         )}
       </Stack>
     </Container>

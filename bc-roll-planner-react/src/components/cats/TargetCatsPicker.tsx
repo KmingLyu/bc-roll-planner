@@ -94,10 +94,10 @@ export function TargetCatsPicker(props: {
 
       {loadState === "ok" && (
         <Box>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          {/* <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
             目前為「選到的所有 events 的貓咪聯集」。未來多選 events
             時，不用改這個元件。
-          </Typography>
+          </Typography> */}
 
           <Stack spacing={1}>
             {groups.map((g) => (
@@ -106,7 +106,7 @@ export function TargetCatsPicker(props: {
                 defaultExpanded={g.tier === "legendary" || g.tier === "uber"}
               >
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography fontWeight={800}>
+                  <Typography fontWeight={800} variant="subtitle2">
                     {tierLabel(g.tier)}（{g.cats.length}）
                   </Typography>
                 </AccordionSummary>

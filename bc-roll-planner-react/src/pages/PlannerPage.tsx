@@ -40,7 +40,7 @@ import { SimulatorPanel } from "../components/simulator/SimulatorPanel";
 
 // ✅ New result UI
 import { PlanResultStatsCard } from "../components/planner/PlanResultStatsCard";
-import { PlanDrawsTimelineTable } from "../components/planner/PlanDrawsTimelineTable";
+import { PlanDrawsTimelineTable } from "../components/planner/ResultTable";
 import { EventTrackGraphsView } from "../components/planner/EventTrackGraphsView";
 
 // Planner types
@@ -315,16 +315,16 @@ export default function PlannerPage() {
   const getCatImageUrl = (catId: number) => undefined as string | undefined;
 
   return (
-    <Container maxWidth="xl" sx={{ py: 2 }}>
+    <Container maxWidth={false} sx={{ py: 2 }}>
       {/* 標題 */}
-      <Stack spacing={1} alignItems="flex-start" padding={2}>
-        <Typography variant="h5" fontWeight={800}>
+      <Stack spacing={1} alignItems={"flex-start"} padding={2}>
+        <Typography variant="h4" fontWeight={800}>
           🐾 貓咪大戰爭抽卡規劃（測試版）
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        {/* <Typography variant="body2" color="text.secondary">
           流程：輸入 seed/count → 選卡池(多選) → 選目標貓咪(多選) → 輸入資源 →
           執行抽卡規劃
-        </Typography>
+        </Typography> */}
       </Stack>
       {/* 內容 */}
       <Stack
@@ -340,9 +340,11 @@ export default function PlannerPage() {
           alignItems="flex-start"
           sx={{
             // flex: "1 1 0",
+            maxWidth: ui.showTargetCats ? "70%" : "100%",
             maxHeight: "85vh",
             overflowY: "auto",
             flexGrow: 1,
+            scrollbarGutter: "stable",
           }}
         >
           {/* Seed/Count + Events + 資源 */}
@@ -399,10 +401,10 @@ export default function PlannerPage() {
                     !selectedEventValues.length
                       ? "請先選至少一個 event"
                       : !hasSeedCount
-                      ? "請先套用 seed / count"
-                      : !targetCatIds.length
-                      ? "請先選目標貓"
-                      : ""
+                        ? "請先套用 seed / count"
+                        : !targetCatIds.length
+                          ? "請先選目標貓"
+                          : ""
                   }
                   error={planState === "error" ? planErr : ""}
                 />

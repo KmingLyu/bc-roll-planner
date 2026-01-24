@@ -19,11 +19,12 @@ export function Section(props: {
   onToggleCollapsed?: () => void;
   onHide?: () => void;
   children: ReactNode;
+  sx?: object;
 }) {
-  const { title, collapsed, onToggleCollapsed, onHide, children } = props;
+  const { title, collapsed, onToggleCollapsed, onHide, children, sx } = props;
 
   return (
-    <Box sx={{ width: "100%" }}>
+    <Box sx={{ width: "100%", ...sx }}>
       <Card variant="outlined">
         <CardHeader
           title={title}

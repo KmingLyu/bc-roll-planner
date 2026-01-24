@@ -7,15 +7,83 @@ import {
 
 export function StepLane(props: {
   lane: "A" | "B";
+  countText: string; // 用來組合成 1A / 1B（一般列用）
   text: string;
   status: "normal" | "hit" | "guaranteed";
   isTarget?: boolean;
   hasNext: boolean;
   isEllipsis?: boolean;
+
+  /** ✅ 新增：保底列的另一條線用這個隱藏整格（不顯示圓圈與貓） */
+  hideLane?: boolean;
 }) {
-  const { lane, text, status, isTarget = false, hasNext, isEllipsis } = props;
-  const laneW = 26;
-  const nodeSize = isEllipsis ? 10 : 18;
+  const {
+    lane,
+    countText,
+    text,
+    status,
+    isTarget = false,
+    hasNext,
+    isEllipsis,
+    hideLane = false,
+  } = props;
+
+  const laneW = 34;
+
+  // ✅ 若被要求隱藏（保底列的另一條線），就整格變成占位「—」
+  if (hideLane) {
+    return (
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
+        {/* 不顯示圓圈、不顯示連線，但保留同樣寬度避免對齊跑掉 */}
+        <Box
+        // sx={{
+        //   width: laneW,
+        //   flex: `0 0 ${laneW}px`,
+        //   height: 34,
+        // }}
+        />
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            px: 1,
+            py: 0.65,
+            borderRadius: 999,
+            bgcolor: "action.hover",
+            border: "1px solid",
+            borderColor: "divider",
+            minWidth: 0,
+            flex: "1 1 auto",
+            opacity: 0.45,
+          }}
+        >
+          <Typography variant="body2" noWrap sx={{ minWidth: 0 }}>
+            —
+          </Typography>
+        </Box>
+      </Box>
+    );
+  }
+
+  // ✅ 保底那條 lane：圓圈改顯示「保A/保B」
+  const nodeLabel = isEllipsis
+    ? ""
+    : status === "guaranteed"
+      ? "保底"
+      : `${countText}${lane}`;
+
+  // ✅ 圓圈固定同尺寸、且大一點
+  const nodeSize = isEllipsis ? 12 : 35;
+
+  // ✅ 圓圈字體：依字數縮放，避免超出圓圈
+  const labelLen = nodeLabel.length;
+  const fontSize = isEllipsis
+    ? 0
+    : labelLen <= 2
+      ? 13
+      : labelLen === 3
+        ? 11
+        : 9;
 
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
@@ -77,9 +145,14 @@ export function StepLane(props: {
               sx={{
                 lineHeight: 1,
                 color: isTarget ? TARGET_NODE_STYLE.textColor : "text.primary",
+                fontSize,
+                maxWidth: nodeSize - 8,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
               }}
             >
-              {lane}
+              {nodeLabel}
             </Typography>
           )}
         </Box>

@@ -11,79 +11,104 @@ import {
   Box,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 
 export function Section(props: {
   title: string;
-  collapsed: boolean;
+
+  /** 是否收合（僅在 collapsible=true 時才有意義） */
+  collapsed?: boolean;
+
+  /** 是否允許收合功能（預設 true） */
+  collapsible?: boolean;
+
+  /** header 是否可點（預設等於 collapsible） */
+  headerClickable?: boolean;
+
   onToggleCollapsed?: () => void;
   onHide?: () => void;
+
   children: ReactNode;
   sx?: object;
 }) {
-  const { title, collapsed, onToggleCollapsed, onHide, children, sx } = props;
+  const {
+    title,
+    collapsed = false,
+    collapsible = true,
+    headerClickable = collapsible,
+    onToggleCollapsed,
+    onHide,
+    children,
+    sx,
+  } = props;
+
+  const canToggle = collapsible && !!onToggleCollapsed;
 
   return (
     <Box sx={{ width: "100%", ...sx }}>
       <Card variant="outlined">
         <CardHeader
           title={title}
-          onClick={onToggleCollapsed}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              onToggleCollapsed?.();
-            }
-          }}
+          onClick={headerClickable ? onToggleCollapsed : undefined}
+          onKeyDown={
+            headerClickable
+              ? (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onToggleCollapsed?.();
+                  }
+                }
+              : undefined
+          }
           sx={{
-            cursor: "pointer",
+            cursor: headerClickable ? "pointer" : "default",
           }}
           slotProps={{
             title: {
-              variant: "h6", // h4/h5/h6/subtitle1/subtitle2/body1...
-              component: "div", // 渲染成什麼 tag
-              align: "left", // left/center/right/justify
-              gutterBottom: true, // 下面留一點距離
-              noWrap: true, // 單行省略
+              variant: "h6",
+              component: "div",
+              align: "left",
+              gutterBottom: true,
+              noWrap: true,
               sx: {
                 fontWeight: 500,
-                color: "text.third", // 或 "text.secondary"
+                color: "text.third",
                 lineHeight: 1.2,
                 letterSpacing: 0.2,
-                // mb: 0, // margin bottom
               },
             },
           }}
           action={
             <Stack direction="row" spacing={1} alignItems="center">
-              {/* {onHide && (
-              <Tooltip title="隱藏此區塊">
-                <IconButton onClick={onHide} size="small">
-                  <VisibilityOffIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            )} */}
-              <Tooltip title={collapsed ? "展開" : "收合"}>
-                <IconButton
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleCollapsed?.();
-                  }}
-                  size="small"
-                  sx={{
-                    transform: collapsed ? "rotate(0deg)" : "rotate(180deg)",
-                    transition: "transform 180ms ease",
-                  }}
-                >
-                  <ExpandMoreIcon />
-                </IconButton>
-              </Tooltip>
+              {/* 之後如果要 onHide，這裡再加回去 */}
+              {collapsible && (
+                <Tooltip title={collapsed ? "展開" : "收合"}>
+                  <IconButton
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleCollapsed?.();
+                    }}
+                    size="small"
+                    disabled={!canToggle}
+                    sx={{
+                      transform: collapsed ? "rotate(0deg)" : "rotate(180deg)",
+                      transition: "transform 180ms ease",
+                    }}
+                  >
+                    <ExpandMoreIcon />
+                  </IconButton>
+                </Tooltip>
+              )}
             </Stack>
           }
         />
-        <Collapse in={!collapsed} timeout={10} unmountOnExit>
+
+        {collapsible ? (
+          <Collapse in={!collapsed} timeout={10} unmountOnExit>
+            <CardContent sx={{ pt: 1 }}>{children}</CardContent>
+          </Collapse>
+        ) : (
           <CardContent sx={{ pt: 1 }}>{children}</CardContent>
-        </Collapse>
+        )}
       </Card>
     </Box>
   );

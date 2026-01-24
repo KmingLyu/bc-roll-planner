@@ -71,9 +71,9 @@ const theme = createTheme({
     h6: { fontSize: "1rem", fontWeight: 600 },
   },
 
-  shape: {
-    borderRadius: 8,
-  },
+  // shape: {
+  //   borderRadius: 8,
+  // },
 
   spacing: 8,
 
@@ -89,7 +89,7 @@ const theme = createTheme({
           },
           "&::-webkit-scrollbar-thumb": {
             backgroundColor: "#c1c1c1",
-            borderRadius: 4,
+            // borderRadius: 4,
           },
         },
       },

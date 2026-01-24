@@ -9,35 +9,35 @@ import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 
 export function makeDefaultColumns(): DrawTableColumn[] {
   const columns: DrawTableColumn[] = [
-    {
-      id: "count",
-      widthKey: "count",
-      render: (r, ctx) => {
-        return (
-          <Stack direction="row" spacing={1} alignItems="center">
-            {ctx.countCell.kind === "toggle" ? (
-              <IconButton
-                size="small"
-                onClick={ctx.countCell.onToggle}
-                aria-label={ctx.countCell.ariaLabel || "toggle"}
-              >
-                {ctx.countCell.open ? (
-                  <KeyboardArrowUpIcon />
-                ) : (
-                  <KeyboardArrowDownIcon />
-                )}
-              </IconButton>
-            ) : (
-              <Box sx={{ width: 34 }} />
-            )}
+    // {
+    //   id: "count",
+    //   widthKey: "count",
+    //   render: (r, ctx) => {
+    //     return (
+    //       <Stack direction="row" spacing={1} alignItems="center">
+    //         {ctx.countCell.kind === "toggle" ? (
+    //           <IconButton
+    //             size="small"
+    //             onClick={ctx.countCell.onToggle}
+    //             aria-label={ctx.countCell.ariaLabel || "toggle"}
+    //           >
+    //             {ctx.countCell.open ? (
+    //               <KeyboardArrowUpIcon />
+    //             ) : (
+    //               <KeyboardArrowDownIcon />
+    //             )}
+    //           </IconButton>
+    //         ) : (
+    //           <Box sx={{ width: 34 }} />
+    //         )}
 
-            <Typography variant="body2" fontWeight={900}>
-              {r.countText}
-            </Typography>
-          </Stack>
-        );
-      },
-    },
+    //         <Typography variant="body2" fontWeight={900}>
+    //           {r.countText}
+    //         </Typography>
+    //       </Stack>
+    //     );
+    //   },
+    // },
     // {
     //   id: "step",
     //   widthKey: "step",
@@ -51,13 +51,53 @@ export function makeDefaultColumns(): DrawTableColumn[] {
     {
       id: "action",
       widthKey: "action",
-      render: (r) => (
-        <Pill
-          text={r.actionText}
-          tone={r.isTen && r.isHeader ? "strong" : "normal"}
-        />
-      ),
+      render: (r, ctx) => {
+        return (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              // gap: 1,
+              minWidth: 0, // ✅ 讓 cell 允許縮小，避免撐爆
+              width: "100%",
+            }}
+          >
+            {/* toggle / placeholder */}
+            {ctx.countCell.kind === "toggle" ? (
+              <IconButton
+                size="small"
+                onClick={ctx.countCell.onToggle}
+                aria-label={ctx.countCell.ariaLabel || "toggle"}
+                sx={{ flex: "0 0 auto" }}
+              >
+                {ctx.countCell.open ? (
+                  <KeyboardArrowUpIcon />
+                ) : (
+                  <KeyboardArrowDownIcon />
+                )}
+              </IconButton>
+            ) : (
+              <Box sx={{ width: 34, flex: "0 0 34px" }} />
+            )}
+
+            {/* ✅ Pill 容器可 shrink + 可截斷 */}
+            <Box
+              sx={{
+                minWidth: 0,
+                flex: "1 1 auto",
+                overflow: "hidden",
+              }}
+            >
+              <Pill
+                text={r.actionText}
+                tone={r.isTen && r.isHeader ? "strong" : "normal"}
+              />
+            </Box>
+          </Box>
+        );
+      },
     },
+
     {
       id: "event",
       widthKey: "event",
@@ -77,14 +117,19 @@ export function makeDefaultColumns(): DrawTableColumn[] {
       widthKey: "A",
       render: (r, ctx) => {
         const isEllipsis = r.countText === "⋯";
+        const isGuaranteedRow =
+          r.statusA === "guaranteed" || r.statusB === "guaranteed";
+
         return (
           <StepLane
             lane="A"
+            countText={r.countText}
             text={r.A}
             status={r.statusA}
             isTarget={!isEllipsis && r.isTargetA}
             hasNext={ctx.hasNextInBlock}
             isEllipsis={isEllipsis}
+            hideLane={isGuaranteedRow && r.statusA !== "guaranteed"} // ✅ 保底列的另一條線隱藏
           />
         );
       },
@@ -94,14 +139,19 @@ export function makeDefaultColumns(): DrawTableColumn[] {
       widthKey: "B",
       render: (r, ctx) => {
         const isEllipsis = r.countText === "⋯";
+        const isGuaranteedRow =
+          r.statusA === "guaranteed" || r.statusB === "guaranteed";
+
         return (
           <StepLane
             lane="B"
+            countText={r.countText}
             text={r.B}
             status={r.statusB}
             isTarget={!isEllipsis && r.isTargetB}
             hasNext={ctx.hasNextInBlock}
             isEllipsis={isEllipsis}
+            hideLane={isGuaranteedRow && r.statusB !== "guaranteed"} // ✅ 保底列的另一條線隱藏
           />
         );
       },

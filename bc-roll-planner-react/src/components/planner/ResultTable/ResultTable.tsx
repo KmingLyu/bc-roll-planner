@@ -27,7 +27,7 @@ import type { DrawTableColumn } from "./types";
 import { makeDefaultColumns } from "./table/columns";
 import { StepBlock } from "./table/StepBlock";
 
-export function PlanDrawsTimelineTable(props: {
+export function ResultTable(props: {
   result: PlanResult;
   graphsByEvent: Record<string, TrackGraph>;
   targetCatIds: number[];
@@ -207,10 +207,10 @@ export function PlanDrawsTimelineTable(props: {
       </TableContainer>
 
       {/* 說明 */}
-      <Typography variant="caption" color="text.secondary">
+      {/* <Typography variant="caption" color="text.secondary">
         說明：A/B 欄位不是「這一步抽到哪邊」，而是「此位置在該 event 的 A/B 兩條
         lane 的內容」； 抽到/目標/保底會標在「實際使用的 lane」上。
-      </Typography>
+      </Typography> */}
 
       {/* 你目前 showLegend 只影響 Header 顯示；未來你要加 TableHead 也很容易，
           因為 columns 已經定義好了（可直接用 columns map 出 header）。 */}

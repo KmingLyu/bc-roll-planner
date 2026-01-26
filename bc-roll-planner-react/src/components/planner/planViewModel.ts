@@ -38,13 +38,7 @@ export function formatTargetCount(n: number): string {
   return `${UI_TEXT.targetPrefix}${n}`;
 }
 
-export const ACTIONS = [
-  "金券",
-  "白金券",
-  "傳說券",
-  "罐頭單抽",
-  "罐頭10連抽",
-] as const;
+export const ACTIONS = ["金券", "白金券", "傳說券", "罐頭", "10連抽"] as const;
 export type ActionLabel = (typeof ACTIONS)[number];
 
 export type StatusKey = "normal" | "hit" | "guaranteed";
@@ -158,14 +152,14 @@ export function actionLabelFromStep(step: PlanStep): ActionLabel {
     return "白金券";
   if (step.resource === "legend_ticket" && step.method === "single")
     return "傳說券";
-  if (step.resource === "food" && step.method === "single") return "罐頭單抽";
-  if (step.resource === "food" && step.method === "ten") return "罐頭10連抽";
+  if (step.resource === "food" && step.method === "single") return "罐頭";
+  if (step.resource === "food" && step.method === "ten") return "10連抽";
   return "金券";
 }
 
 export function safeGetNormalCatName(
   g: TrackGraph | null | undefined,
-  posId: string
+  posId: string,
 ): string {
   const node = g?.nodes?.[posId as any];
   const cat = node?.edges?.normal?.cat;
@@ -377,14 +371,14 @@ export function buildDrawRows(params: {
         isGuaranteed && isTen
           ? UI_TEXT.guaranteedCountText
           : pos != null
-          ? String(pos)
-          : UI_TEXT.dash;
+            ? String(pos)
+            : UI_TEXT.dash;
 
       const stepText = isTen
         ? UI_TEXT.dash
         : di === 0
-        ? formatStepText(si + 1)
-        : UI_TEXT.dash;
+          ? formatStepText(si + 1)
+          : UI_TEXT.dash;
 
       out.push({
         key: `s${si}-d${di}-${d.from_pos_id}-${d.cat_id ?? "x"}`,

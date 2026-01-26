@@ -1,16 +1,14 @@
 // src/components/layout/Section.tsx
 import type { ReactNode } from "react";
 import {
-  Card,
-  CardHeader,
-  CardContent,
+  Box,
   Collapse,
   IconButton,
   Stack,
   Tooltip,
-  Box,
+  Typography,
 } from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 export function Section(props: {
   title: string;
@@ -36,7 +34,7 @@ export function Section(props: {
     collapsible = true,
     headerClickable = collapsible,
     onToggleCollapsed,
-    onHide,
+    onHide, // 先保留介面，暫不使用
     children,
     sx,
   } = props;
@@ -44,72 +42,97 @@ export function Section(props: {
   const canToggle = collapsible && !!onToggleCollapsed;
 
   return (
-    <Box sx={{ width: "100%", ...sx }}>
-      <Card variant="outlined">
-        <CardHeader
-          title={title}
-          onClick={headerClickable ? onToggleCollapsed : undefined}
-          onKeyDown={
-            headerClickable
-              ? (e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    onToggleCollapsed?.();
-                  }
+    <Box
+      sx={{
+        width: "100%",
+        minWidth: 0,
+        ...sx,
+      }}
+    >
+      {/* Header（箭頭在左側，右=收合、下=展開） */}
+      <Stack
+        direction="row"
+        alignItems="center"
+        justifyContent="space-between"
+        spacing={1}
+        role={headerClickable ? "button" : undefined}
+        tabIndex={headerClickable ? 0 : undefined}
+        onClick={headerClickable ? onToggleCollapsed : undefined}
+        onKeyDown={
+          headerClickable
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onToggleCollapsed?.();
                 }
-              : undefined
-          }
-          sx={{
-            cursor: headerClickable ? "pointer" : "default",
-          }}
-          slotProps={{
-            title: {
-              variant: "h6",
-              component: "div",
-              align: "left",
-              gutterBottom: true,
-              noWrap: true,
-              sx: {
-                fontWeight: 500,
-                color: "text.third",
-                lineHeight: 1.2,
-                letterSpacing: 0.2,
-              },
-            },
-          }}
-          action={
-            <Stack direction="row" spacing={1} alignItems="center">
-              {/* 之後如果要 onHide，這裡再加回去 */}
-              {collapsible && (
-                <Tooltip title={collapsed ? "展開" : "收合"}>
-                  <IconButton
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleCollapsed?.();
-                    }}
-                    size="small"
-                    disabled={!canToggle}
-                    sx={{
-                      transform: collapsed ? "rotate(0deg)" : "rotate(180deg)",
-                      transition: "transform 180ms ease",
-                    }}
-                  >
-                    <ExpandMoreIcon />
-                  </IconButton>
-                </Tooltip>
-              )}
-            </Stack>
-          }
-        />
+              }
+            : undefined
+        }
+        sx={(theme) => ({
+          width: "100%",
+          minWidth: 0,
+          py: 1,
+          cursor: headerClickable ? "pointer" : "default",
+          userSelect: "none",
+          // borderBottom: `1px solid ${theme.palette.divider}`,
+        })}
+      >
+        {/* Left: chevron + title */}
+        <Stack
+          direction="row"
+          spacing={0.5}
+          alignItems="center"
+          sx={{ minWidth: 0 }}
+        >
+          {collapsible && (
+            <Tooltip title={collapsed ? "展開" : "收合"}>
+              <IconButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleCollapsed?.();
+                }}
+                size="small"
+                disabled={!canToggle}
+                sx={{
+                  flex: "0 0 auto",
+                  // collapsed: 右箭頭；展開: 旋轉 90 度變下箭頭
+                  transform: collapsed ? "rotate(0deg)" : "rotate(90deg)",
+                  transition: "transform 180ms ease",
+                }}
+              >
+                <ChevronRightIcon />
+              </IconButton>
+            </Tooltip>
+          )}
 
-        {collapsible ? (
-          <Collapse in={!collapsed} timeout={10} unmountOnExit>
-            <CardContent sx={{ pt: 1 }}>{children}</CardContent>
-          </Collapse>
-        ) : (
-          <CardContent sx={{ pt: 1 }}>{children}</CardContent>
-        )}
-      </Card>
+          <Typography
+            variant="subtitle1"
+            component="div"
+            noWrap
+            sx={{
+              minWidth: 0,
+              fontWeight: 700,
+              lineHeight: 1.2,
+              letterSpacing: 0.2,
+              color: "text.primary",
+            }}
+          >
+            {title}
+          </Typography>
+        </Stack>
+
+        {/* Right: 保留空間（如果未來要放 actions） */}
+        <Box sx={{ flex: "0 0 auto" }} />
+      </Stack>
+
+      {/* Content */}
+      {collapsible ? (
+        <Collapse in={!collapsed} timeout={120} unmountOnExit>
+          <Box sx={{ pt: 1, width: "100%", minWidth: 0 }}>{children}</Box>
+        </Collapse>
+      ) : (
+        <Box sx={{ pt: 1, width: "100%", minWidth: 0 }}>{children}</Box>
+      )}
     </Box>
   );
 }

@@ -305,7 +305,6 @@ export default function PlannerPage() {
 
   // 小螢幕：用 Drawer；大螢幕：右欄
   const shouldUseDrawer = isMdDown;
-  // const shouldUseDrawer = true;
 
   // 主欄寬度：小螢幕永遠 100%；大螢幕依右欄顯示與否調整
   const mainMaxWidth = shouldUseDrawer
@@ -340,7 +339,7 @@ export default function PlannerPage() {
         onClear={() => setTargetCatIds([])}
         getCatHref={getCatHref}
         getCatImageUrl={getCatImageUrl}
-        minColWidth={100}
+        minColWidth={130}
         dense
       />
     </Section>
@@ -354,12 +353,12 @@ export default function PlannerPage() {
         alignItems={"flex-start"}
         padding={2}
         direction="row"
-        justifyContent="space-between"
+        justifyContent="flex-end"
         sx={{ width: "100%", gap: 2 }}
       >
-        <Typography variant="h4" fontWeight={800}>
+        {/* <Typography variant="h4" fontWeight={800}>
           🐾 貓咪大戰爭抽卡規劃（測試版）
-        </Typography>
+        </Typography> */}
 
         {/* 小螢幕：用按鈕打開 Drawer */}
         {shouldUseDrawer && ui.showTargetCats && (
@@ -390,7 +389,7 @@ export default function PlannerPage() {
         spacing={2}
         direction={"row"}
         alignItems="flex-start"
-        justifyContent="center"
+        justifyContent="space-around"
         sx={{ position: "relative" }}
       >
         {/* Left + Center: Controls + Planner */}
@@ -409,8 +408,10 @@ export default function PlannerPage() {
           {/* Seed/Count + Events + 資源 */}
           {ui.showSeedCount && (
             <Section
-              title="輸入seed/count、卡池"
+              // title="輸入seed/count、卡池"
+              title="🐾 貓咪大戰爭抽卡規劃（測試版）"
               collapsed={ui.seedCountCollapsed}
+              collapsible={false}
               onToggleCollapsed={() =>
                 setUi((p) => ({
                   ...p,

@@ -36,7 +36,8 @@ const theme = createTheme({
     },
 
     background: {
-      default: "#f4f6f8", // ❗非純白，整體背景
+      // default: "#f4f6f8", // ❗非純白，整體背景
+      default: "#ffffff",
       paper: "#ffffff", // 卡片 / 表格底色
     },
 
@@ -81,7 +82,8 @@ const theme = createTheme({
     MuiCssBaseline: {
       styleOverrides: {
         body: {
-          backgroundColor: "#f4f6f8",
+          // backgroundColor: "#f4f6f8",
+          backgroundColor: "#ffffff",
           scrollbarColor: "#c1c1c1 #f4f6f8",
           "&::-webkit-scrollbar": {
             width: 8,

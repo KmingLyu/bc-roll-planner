@@ -46,14 +46,15 @@ export function Section(props: {
       sx={{
         width: "100%",
         minWidth: 0,
+        px: 0,
+        py: 0,
         ...sx,
       }}
     >
-      {/* Header（箭頭在左側，右=收合、下=展開） */}
       <Stack
         direction="row"
         alignItems="center"
-        justifyContent="space-between"
+        justifyContent="flex-start"
         spacing={1}
         role={headerClickable ? "button" : undefined}
         tabIndex={headerClickable ? 0 : undefined}
@@ -68,16 +69,14 @@ export function Section(props: {
               }
             : undefined
         }
-        sx={(theme) => ({
+        sx={{
           width: "100%",
           minWidth: 0,
-          py: 1,
+          py: 0.5,
           cursor: headerClickable ? "pointer" : "default",
           userSelect: "none",
-          // borderBottom: `1px solid ${theme.palette.divider}`,
-        })}
+        }}
       >
-        {/* Left: chevron + title */}
         <Stack
           direction="row"
           spacing={0.5}
@@ -95,7 +94,6 @@ export function Section(props: {
                 disabled={!canToggle}
                 sx={{
                   flex: "0 0 auto",
-                  // collapsed: 右箭頭；展開: 旋轉 90 度變下箭頭
                   transform: collapsed ? "rotate(0deg)" : "rotate(90deg)",
                   transition: "transform 180ms ease",
                 }}
@@ -120,18 +118,14 @@ export function Section(props: {
             {title}
           </Typography>
         </Stack>
-
-        {/* Right: 保留空間（如果未來要放 actions） */}
-        <Box sx={{ flex: "0 0 auto" }} />
       </Stack>
 
-      {/* Content */}
       {collapsible ? (
         <Collapse in={!collapsed} timeout={120} unmountOnExit>
-          <Box sx={{ pt: 1, width: "100%", minWidth: 0 }}>{children}</Box>
+          <Box sx={{ pt: 0.75, width: "100%", minWidth: 0 }}>{children}</Box>
         </Collapse>
       ) : (
-        <Box sx={{ pt: 1, width: "100%", minWidth: 0 }}>{children}</Box>
+        <Box sx={{ pt: 0.75, width: "100%", minWidth: 0 }}>{children}</Box>
       )}
     </Box>
   );

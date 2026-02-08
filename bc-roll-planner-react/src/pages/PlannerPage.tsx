@@ -12,7 +12,6 @@ import {
   IconButton,
   Tooltip,
   Fab,
-  Collapse,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
@@ -307,25 +306,12 @@ export default function PlannerPage() {
   // 小螢幕：用 Drawer；大螢幕：右欄
   const shouldUseDrawer = isMdDown;
 
-  // 主欄寬度：小螢幕永遠 100%；大螢幕依右欄顯示與否調整
-  const mainMaxWidth = shouldUseDrawer
-    ? "100%"
-    : ui.showTargetCats
-      ? "70%"
-      : "100%";
-
   // 右側內容（共用：Drawer / 右欄）
   const targetCatsContent = (
     <Section
       title="選擇目標貓咪"
       collapsed={ui.targetCatsCollapsed}
       collapsible={false}
-      onToggleCollapsed={() =>
-        setUi((p) => ({
-          ...p,
-          targetCatsCollapsed: !p.targetCatsCollapsed,
-        }))
-      }
       onHide={() => {
         setUi((p) => ({ ...p, showTargetCats: false }));
         setTargetCatsDrawerOpen(false);
@@ -347,212 +333,193 @@ export default function PlannerPage() {
   );
 
   return (
-    <Container maxWidth={false} sx={{ py: 2 }}>
-      {/* 標題 + 小螢幕目標貓入口 */}
-      <Stack
-        spacing={1}
-        alignItems={"flex-start"}
-        padding={2}
-        direction="row"
-        justifyContent="flex-end"
-        sx={{ width: "100%", gap: 2 }}
-      >
-        {/* <Typography variant="h4" fontWeight={800}>
-          🐾 貓咪大戰爭抽卡規劃（測試版）
-        </Typography> */}
-
-        {/* 小螢幕：用按鈕打開 Drawer */}
-        {shouldUseDrawer && ui.showTargetCats && (
-          <Tooltip title="打開目標貓列表">
-            <IconButton
-              onClick={() => setTargetCatsDrawerOpen(true)}
-              sx={{
-                alignSelf: "center",
-                border: "1px solid",
-                borderColor: "divider",
-                borderRadius: 2,
-              }}
-            >
-              <Badge
-                color="secondary"
-                badgeContent={targetCatIds.length}
-                overlap="circular"
-              >
-                <PetsIcon />
-              </Badge>
-            </IconButton>
-          </Tooltip>
-        )}
-      </Stack>
-
-      <Box sx={{ px: 2, pb: 1 }}>
-        <DataSourceDisclaimerNote />
-      </Box>
-
-      {/* 內容 */}
-      <Stack
-        spacing={2}
-        direction={"row"}
-        alignItems="flex-start"
-        justifyContent="space-around"
-        sx={{ position: "relative" }}
-      >
-        {/* Left + Center: Controls + Planner */}
+    <Container
+      maxWidth={false}
+      disableGutters
+      sx={{ px: { xs: 1.5, sm: 2, md: 3 }, py: { xs: 1.5, md: 2 } }}
+    >
+      <Stack spacing={{ xs: 1.25, sm: 1.5, md: 2 }} sx={{ width: "100%" }}>
         <Stack
-          direction="column"
           spacing={1}
-          alignItems="flex-start"
+          alignItems="center"
+          justifyContent="space-between"
+          sx={{ width: "100%" }}
+          direction="row"
+        >
+          <Typography
+            variant="h6"
+            component="h1"
+            sx={{ fontWeight: 800, lineHeight: 1.2 }}
+          >
+            貓咪大戰爭抽卡規劃（測試版）
+          </Typography>
+
+          {/* 小螢幕：用按鈕打開 Drawer */}
+          {shouldUseDrawer && ui.showTargetCats && (
+            <Tooltip title="打開目標貓列表">
+              <IconButton
+                onClick={() => setTargetCatsDrawerOpen(true)}
+                sx={{
+                  alignSelf: "center",
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: 2,
+                }}
+              >
+                <Badge
+                  color="secondary"
+                  badgeContent={targetCatIds.length}
+                  overlap="circular"
+                >
+                  <PetsIcon />
+                </Badge>
+              </IconButton>
+            </Tooltip>
+          )}
+        </Stack>
+
+        <DataSourceDisclaimerNote />
+
+        <Box
           sx={{
-            maxWidth: mainMaxWidth,
-            maxHeight: "85vh",
-            overflowY: "auto",
-            flexGrow: 1,
-            scrollbarGutter: "stable",
+            display: "grid",
+            gridTemplateColumns:
+              shouldUseDrawer || !ui.showTargetCats
+                ? "minmax(0, 1fr)"
+                : "minmax(0, 1fr) minmax(280px, 360px)",
+            gap: { xs: 1.25, sm: 1.5, md: 2 },
+            alignItems: "start",
           }}
         >
-          {/* Seed/Count + Events + 資源 */}
-          {ui.showSeedCount && (
-            <Section
-              // title="輸入seed/count、卡池"
-              title="🐾 貓咪大戰爭抽卡規劃（測試版）"
-              collapsed={ui.seedCountCollapsed}
-              collapsible={false}
-              onToggleCollapsed={() =>
-                setUi((p) => ({
-                  ...p,
-                  seedCountCollapsed: !p.seedCountCollapsed,
-                }))
-              }
-              onHide={() => setUi((p) => ({ ...p, showSeedCount: false }))}
-            >
-              <Stack spacing={1.5}>
-                <SeedCountForm
-                  seedApplied={seedApplied}
-                  countApplied={countApplied}
-                  onChange={({ seed, count }) => {
-                    setSeedApplied(seed);
-                    setCountApplied(count);
-                  }}
-                />
+          <Stack direction="column" spacing={{ xs: 1.25, sm: 1.5 }}>
+            {ui.showSeedCount && (
+              <Section
+                title="輸入條件與資源"
+                collapsed={ui.seedCountCollapsed}
+                // collapsible={true}
+                onToggleCollapsed={() =>
+                  setUi((p) => ({
+                    ...p,
+                    seedCountCollapsed: !p.seedCountCollapsed,
+                  }))
+                }
+                onHide={() => setUi((p) => ({ ...p, showSeedCount: false }))}
+              >
+                <Stack spacing={1.5}>
+                  <SeedCountForm
+                    seedApplied={seedApplied}
+                    countApplied={countApplied}
+                    onChange={({ seed, count }) => {
+                      setSeedApplied(seed);
+                      setCountApplied(count);
+                    }}
+                  />
 
-                <ResourceForm
-                  value={resources}
-                  cfg={plannerCfg}
-                  onChange={setResources}
-                  onCfgChange={setPlannerCfg}
-                />
+                  <ResourceForm
+                    value={resources}
+                    cfg={plannerCfg}
+                    onChange={setResources}
+                    onCfgChange={setPlannerCfg}
+                  />
 
-                <EventsPicker
-                  loadState={eventsState as LoadState}
-                  error={eventsErr}
-                  upcomingEvents={upcomingEvents}
-                  pastEvents={pastEvents}
-                  value={selectedEventValues}
-                  onChange={(next) => setSelectedEventValues(next)}
-                  primaryValue={primaryEventValue}
-                  onPrimaryChange={(v) => setPrimaryEventValue(v)}
-                />
+                  <EventsPicker
+                    loadState={eventsState as LoadState}
+                    error={eventsErr}
+                    upcomingEvents={upcomingEvents}
+                    pastEvents={pastEvents}
+                    value={selectedEventValues}
+                    onChange={(next) => setSelectedEventValues(next)}
+                    primaryValue={primaryEventValue}
+                    onPrimaryChange={(v) => setPrimaryEventValue(v)}
+                  />
 
-                <PlannerRunBar
-                  state={planState as LoadState}
-                  onRun={onClickPlanner}
-                  disabled={
-                    planState === "loading" ||
-                    !selectedEventValues.length ||
-                    !hasSeedCount ||
-                    targetCatIds.length === 0
-                  }
-                  hint={
-                    !selectedEventValues.length
-                      ? "請先選至少一個 event"
-                      : !hasSeedCount
-                        ? "請先套用 seed / count"
-                        : !targetCatIds.length
-                          ? "請先選目標貓"
-                          : ""
-                  }
-                  error={planState === "error" ? planErr : ""}
-                />
-              </Stack>
-            </Section>
-          )}
+                  <PlannerRunBar
+                    state={planState as LoadState}
+                    onRun={onClickPlanner}
+                    disabled={
+                      planState === "loading" ||
+                      !selectedEventValues.length ||
+                      !hasSeedCount ||
+                      targetCatIds.length === 0
+                    }
+                    hint={
+                      !selectedEventValues.length
+                        ? "請先選至少一個 event"
+                        : !hasSeedCount
+                          ? "請先套用 seed / count"
+                          : !targetCatIds.length
+                            ? "請先選目標貓"
+                            : ""
+                    }
+                    error={planState === "error" ? planErr : ""}
+                  />
+                </Stack>
+              </Section>
+            )}
 
-          {/* Result Summary*/}
-          {ui.showPlannerResultSummary && (
-            <Section
-              title="結果統計"
-              collapsed={ui.plannerResultSummaryCollapsed}
-              onToggleCollapsed={() =>
-                setUi((p) => ({
-                  ...p,
-                  plannerResultSummaryCollapsed:
-                    !p.plannerResultSummaryCollapsed,
-                }))
-              }
-              onHide={() =>
-                setUi((p) => ({ ...p, showPlannerResultSummary: false }))
-              }
-            >
-              {planState === "ok" && (
-                <Stack spacing={2}>
+            {ui.showPlannerResultSummary && (
+              <Section
+                title="結果統計"
+                collapsed={ui.plannerResultSummaryCollapsed}
+                onToggleCollapsed={() =>
+                  setUi((p) => ({
+                    ...p,
+                    plannerResultSummaryCollapsed:
+                      !p.plannerResultSummaryCollapsed,
+                  }))
+                }
+                onHide={() =>
+                  setUi((p) => ({ ...p, showPlannerResultSummary: false }))
+                }
+              >
+                {planState === "ok" && (
                   <PlanResultStatsCard
                     result={planResult as PlanResult}
                     graphsByEvent={graphByEvent}
                     catNameById={catNameById}
                   />
-                </Stack>
-              )}
-            </Section>
-          )}
-
-          {/* Result Table（你原本就有直接顯示） */}
-          {planResult && (
-            <ResultTable
-              result={planResult as PlanResult}
-              graphsByEvent={graphByEvent}
-              targetCatIds={targetCatIds}
-            />
-          )}
-        </Stack>
-
-        {/* 大螢幕：右欄用水平 Collapse，達成「從側邊縮進去」 */}
-        {!shouldUseDrawer && (
-          <>
-            <Collapse
-              in={ui.showTargetCats}
-              orientation="horizontal"
-              timeout={200}
-              sx={{ alignSelf: "stretch" }}
-            >
-              <Box
-                sx={{
-                  width: 360,
-                  minWidth: 210,
-                  maxHeight: "85vh",
-                  overflowY: "auto",
-                }}
-              >
-                {targetCatsContent}
-              </Box>
-            </Collapse>
-
-            {/* 右欄收合後，提供一顆浮動按鈕叫回來 */}
-            {!ui.showTargetCats && (
-              <Fab
-                size="small"
-                color="primary"
-                onClick={() => setUi((p) => ({ ...p, showTargetCats: true }))}
-                sx={{
-                  position: "fixed",
-                  right: 16,
-                  bottom: 16,
-                  zIndex: theme.zIndex.modal + 1,
-                }}
-              >
-                <ChevronRightIcon />
-              </Fab>
+                )}
+              </Section>
             )}
-          </>
+
+            {planResult && (
+              <ResultTable
+                result={planResult as PlanResult}
+                graphsByEvent={graphByEvent}
+                targetCatIds={targetCatIds}
+              />
+            )}
+          </Stack>
+
+          {!shouldUseDrawer && ui.showTargetCats && (
+            <Box
+              sx={{
+                position: "sticky",
+                top: 12,
+                maxHeight: "calc(100vh - 24px)",
+                overflowY: "auto",
+              }}
+            >
+              {targetCatsContent}
+            </Box>
+          )}
+        </Box>
+
+        {/* 大螢幕右欄被隱藏時，提供快速打開入口 */}
+        {!shouldUseDrawer && !ui.showTargetCats && (
+          <Fab
+            size="small"
+            color="primary"
+            onClick={() => setUi((p) => ({ ...p, showTargetCats: true }))}
+            sx={{
+              position: "fixed",
+              right: 16,
+              bottom: 16,
+              zIndex: theme.zIndex.modal + 1,
+            }}
+          >
+            <ChevronRightIcon />
+          </Fab>
         )}
 
         {/* 小螢幕：Drawer 從右側滑入 */}

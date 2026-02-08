@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Avatar, Box, Link, Stack, Typography } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 
 function getCatImageUrl(catId: number) {
   const index = catId - 1;
@@ -86,18 +87,20 @@ export function CatSelectableItem(props: CatSelectableItemProps) {
         <Avatar
           src={resolvedImageUrl}
           variant="rounded"
-          sx={{
+          sx={(theme) => ({
             width: 35,
             height: 35,
             overflow: "hidden", // 確保 zoom 不會溢出
-            bgcolor: checked ? "rgba(255,255,255,0.2)" : "action.selected",
+            bgcolor: checked
+              ? alpha(theme.palette.common.white, 0.22)
+              : "action.selected",
             color: checked ? "primary.contrastText" : "text.primary",
 
             "& img": {
               transform: "scale(1.7)", // ← 這裡調整 zoom 程度
               transformOrigin: "center",
             },
-          }}
+          })}
         >
           {name?.[0] ?? "?"}
         </Avatar>
@@ -127,9 +130,11 @@ export function CatSelectableItem(props: CatSelectableItemProps) {
 
           <Typography
             variant="caption"
-            sx={{
-              color: checked ? "rgba(255,255,255,0.85)" : "text.secondary",
-            }}
+            sx={(theme) => ({
+              color: checked
+                ? alpha(theme.palette.common.white, 0.9)
+                : "text.secondary",
+            })}
           >
             #{catId}
           </Typography>

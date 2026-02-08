@@ -13,6 +13,7 @@
 import type { PlanResult, PlanStep, DrawHit } from "@/domain/planner";
 import type { TrackGraph } from "@/shared/models";
 import { parsePosId } from "@/domain/utils";
+import { APP_THEME_TOKENS } from "@/app/theme/tokens";
 
 /**
  * ============================================================
@@ -48,17 +49,17 @@ export const STATUS_STYLE: Record<
 > = {
   // 抽到：黃底
   hit: {
-    bg: "rgba(253, 224, 71, 0.32)",
-    node: "rgba(253, 224, 71, 0.95)",
+    bg: APP_THEME_TOKENS.planner.status.hitBg,
+    node: APP_THEME_TOKENS.planner.status.hitNode,
   },
 
-  // 保底：粉紫
+  // 保底：藍色
   guaranteed: {
-    bg: "rgba(217, 70, 239, 0.16)",
-    node: "rgba(217, 70, 239, 0.82)",
+    bg: APP_THEME_TOKENS.planner.status.guaranteedBg,
+    node: APP_THEME_TOKENS.planner.status.guaranteedNode,
   },
 
-  normal: { bg: "action.hover", node: "background.paper" },
+  normal: { bg: "action.hover", node: "background.default" },
 };
 
 /**
@@ -67,11 +68,9 @@ export const STATUS_STYLE: Record<
  * - 淺綠底稍微再淡一點，避免壓過內容
  */
 export const TARGET_BORDER_STYLE = {
-  border: "2.5px solid rgba(16, 185, 129, 0.95)",
-  boxShadow:
-    "0 0 0 2px rgba(16, 185, 129, 0.28), 0 10px 20px rgba(16, 185, 129, 0.16)",
-  background:
-    "linear-gradient(0deg, rgba(16, 185, 129, 0.10), rgba(16, 185, 129, 0.10))",
+  border: `2.5px solid ${APP_THEME_TOKENS.planner.target.border}`,
+  boxShadow: APP_THEME_TOKENS.planner.target.ring,
+  background: `linear-gradient(0deg, ${APP_THEME_TOKENS.planner.target.background}, ${APP_THEME_TOKENS.planner.target.background})`,
 };
 
 /**
@@ -80,11 +79,10 @@ export const TARGET_BORDER_STYLE = {
  * - 用 boxShadow 做「外圈」與「發光」，辨識度大幅提升
  */
 export const TARGET_NODE_STYLE = {
-  bg: "rgba(16, 185, 129, 0.92)", // 更明顯的綠
-  borderColor: "rgba(16, 185, 129, 1)",
-  ringShadow:
-    "0 0 0 2px rgba(16, 185, 129, 0.30), 0 8px 16px rgba(16, 185, 129, 0.18)",
-  textColor: "rgba(0, 0, 0, 0.85)", // 綠底上 A/B 字更清楚
+  bg: APP_THEME_TOKENS.planner.target.nodeBg,
+  borderColor: APP_THEME_TOKENS.planner.target.border,
+  ringShadow: APP_THEME_TOKENS.planner.target.ring,
+  textColor: APP_THEME_TOKENS.planner.target.nodeText,
 };
 
 export function hashString(s: string): number {
@@ -97,8 +95,7 @@ export function hashString(s: string): number {
 
 // 30 色（Hue 調色盤）
 export const EVENT_HUES_30 = [
-  240, 24, 180, 288, 0, 216, 324, 48, 204, 336, 12, 252, 276, 36, 228, 312, 192,
-  348, 264, 96, 108, 120, 132, 144, 156, 168, 72, 84, 60, 300,
+  ...APP_THEME_TOKENS.planner.eventHues,
 ] as const;
 
 export function makeEventColorPicker(eventValuesInOrder: string[]) {

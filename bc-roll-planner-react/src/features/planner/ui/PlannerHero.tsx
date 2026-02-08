@@ -1,12 +1,5 @@
 import PetsIcon from "@mui/icons-material/Pets";
-import {
-  Box,
-  Button,
-  Chip,
-  Paper,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
 import { DataSourceDisclaimerNote } from "@/shared/ui/DataSourceDisclaimerNote";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
@@ -68,7 +61,12 @@ export function PlannerHero(props: {
         )}
       </Stack>
 
-      <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 1.5, gap: 1 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        flexWrap="wrap"
+        sx={{ mt: 1.5, gap: 1 }}
+      >
         <Chip
           size="small"
           label={hasSeedCount ? "Seed/Count 已設定" : "Seed/Count 未完成"}
@@ -91,7 +89,7 @@ export function PlannerHero(props: {
       </Stack>
 
       <Box sx={{ mt: 1.5 }}>
-        <DataSourceDisclaimerNote compact />
+        <DataSourceDisclaimerNote />
       </Box>
     </Paper>
   );

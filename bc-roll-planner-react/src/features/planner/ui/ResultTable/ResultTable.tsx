@@ -50,6 +50,11 @@ export function ResultTable(props: {
    * 可選：標題
    */
   title?: string;
+
+  /**
+   * 是否顯示表格內標題（外層已提供標題時可關閉）
+   */
+  showTitle?: boolean;
 }) {
   const {
     result,
@@ -58,6 +63,7 @@ export function ResultTable(props: {
     columns,
     onRowContextMenu,
     title = "規劃結果",
+    showTitle = true,
   } = props;
 
   const targetSet = useMemo(() => new Set(targetCatIds), [targetCatIds]);
@@ -76,7 +82,7 @@ export function ResultTable(props: {
   const [openTen, setOpenTen] = useState<Record<number, boolean>>({});
   const [showTargetsOnly, setShowTargetsOnly] = useState(false);
   const [showTargetDrawsOnly, setShowTargetDrawsOnly] = useState(false);
-  const [showLegend, setShowLegend] = useState(true);
+  const [showLegend, setShowLegend] = useState(false);
 
   // filter: 只看目標步驟
   const filteredRows = useMemo(() => {
@@ -111,7 +117,7 @@ export function ResultTable(props: {
 
   const bodyCellSx = useMemo(
     () => ({
-      bgcolor: "background.paper",
+      bgcolor: "background.default",
       borderBottom: "1px solid",
       borderColor: "divider",
       py: 1.2,
@@ -142,10 +148,10 @@ export function ResultTable(props: {
   return (
     <Stack
       spacing={1}
-      sx={{ width: "100%", minWidth: 0, backgroundColor: "transparent" }}
+      sx={{ width: "100%", minWidth: 0, backgroundColor: "background.default" }}
     >
       <StickyHeaderBar
-        title={title}
+        title={showTitle ? title : undefined}
         rowsCount={filteredRows.length}
         stepsCount={steps.length}
         showLegend={showLegend}
@@ -162,6 +168,7 @@ export function ResultTable(props: {
           width: "100%",
           maxWidth: "100%",
           minWidth: 0,
+          backgroundColor: "background.default",
           overflowX: "auto",
           overflowY: "hidden",
           px: { xs: 0, sm: 0.25 },

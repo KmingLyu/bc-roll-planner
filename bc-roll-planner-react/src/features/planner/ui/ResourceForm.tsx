@@ -1,5 +1,5 @@
 // src/features/planner/ui/ResourceForm.tsx
-import { Stack, TextField, Typography } from "@mui/material";
+import { Stack, TextField } from "@mui/material";
 import Grid from "@mui/material/Grid";
 import NumberField from "@/shared/ui/NumberField";
 
@@ -25,15 +25,15 @@ export function ResourceForm(props: {
   const { value, cfg, onChange, onCfgChange, showAdvanced = false } = props;
 
   return (
-    <Stack spacing={1.5} sx={{ width: "100%" }}>
+    <Stack spacing={1.25} sx={{ width: "100%" }}>
       {/* <Typography fontWeight={800}>輸入資源</Typography> */}
 
       <Grid
         container
-        spacing={2}
+        spacing={1.25}
         sx={{ width: "100%", justifyContent: "space-between" }}
       >
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <NumberField
             label="金券"
             min={0}
@@ -48,7 +48,7 @@ export function ResourceForm(props: {
           />
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <NumberField
             label="白金券"
             min={0}
@@ -63,7 +63,7 @@ export function ResourceForm(props: {
           />
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <NumberField
             label="傳說券"
             min={0}
@@ -78,7 +78,7 @@ export function ResourceForm(props: {
           />
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <NumberField
             label="罐頭"
             min={0}

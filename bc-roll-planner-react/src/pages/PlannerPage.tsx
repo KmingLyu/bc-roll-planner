@@ -312,6 +312,22 @@ export default function PlannerPage() {
       title="選擇目標貓咪"
       collapsed={ui.targetCatsCollapsed}
       collapsible={false}
+      sx={
+        shouldUseDrawer
+          ? {
+              border: "none",
+              backgroundColor: "transparent",
+              backdropFilter: "none",
+              WebkitBackdropFilter: "none",
+              boxShadow: "none",
+              px: 0,
+              py: 0,
+            }
+          : {
+              px: { xs: 1.25, sm: 1.5 },
+              py: { xs: 1, sm: 1.25 },
+            }
+      }
       onHide={() => {
         setUi((p) => ({ ...p, showTargetCats: false }));
         setTargetCatsDrawerOpen(false);
@@ -395,6 +411,7 @@ export default function PlannerPage() {
             {ui.showSeedCount && (
               <Section
                 title="輸入條件與資源"
+                variant="planner"
                 collapsed={ui.seedCountCollapsed}
                 // collapsible={true}
                 onToggleCollapsed={() =>
@@ -405,54 +422,71 @@ export default function PlannerPage() {
                 }
                 onHide={() => setUi((p) => ({ ...p, showSeedCount: false }))}
               >
-                <Stack spacing={1.5}>
-                  <SeedCountForm
-                    seedApplied={seedApplied}
-                    countApplied={countApplied}
-                    onChange={({ seed, count }) => {
-                      setSeedApplied(seed);
-                      setCountApplied(count);
-                    }}
-                  />
+                <Stack spacing={0}>
+                  <Stack spacing={1} sx={{ py: 0.5 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Seed / Count
+                    </Typography>
+                    <SeedCountForm
+                      seedApplied={seedApplied}
+                      countApplied={countApplied}
+                      onChange={({ seed, count }) => {
+                        setSeedApplied(seed);
+                        setCountApplied(count);
+                      }}
+                    />
+                  </Stack>
 
-                  <ResourceForm
-                    value={resources}
-                    cfg={plannerCfg}
-                    onChange={setResources}
-                    onCfgChange={setPlannerCfg}
-                  />
+                  <Stack spacing={1} sx={{ py: 1 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      可用資源
+                    </Typography>
+                    <ResourceForm
+                      value={resources}
+                      cfg={plannerCfg}
+                      onChange={setResources}
+                      onCfgChange={setPlannerCfg}
+                    />
+                  </Stack>
 
-                  <EventsPicker
-                    loadState={eventsState as LoadState}
-                    error={eventsErr}
-                    upcomingEvents={upcomingEvents}
-                    pastEvents={pastEvents}
-                    value={selectedEventValues}
-                    onChange={(next) => setSelectedEventValues(next)}
-                    primaryValue={primaryEventValue}
-                    onPrimaryChange={(v) => setPrimaryEventValue(v)}
-                  />
+                  <Stack spacing={1} sx={{ py: 1 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      卡池選擇
+                    </Typography>
+                    <EventsPicker
+                      loadState={eventsState as LoadState}
+                      error={eventsErr}
+                      upcomingEvents={upcomingEvents}
+                      pastEvents={pastEvents}
+                      value={selectedEventValues}
+                      onChange={(next) => setSelectedEventValues(next)}
+                      primaryValue={primaryEventValue}
+                      onPrimaryChange={(v) => setPrimaryEventValue(v)}
+                    />
+                  </Stack>
 
-                  <PlannerRunBar
-                    state={planState as LoadState}
-                    onRun={onClickPlanner}
-                    disabled={
-                      planState === "loading" ||
-                      !selectedEventValues.length ||
-                      !hasSeedCount ||
-                      targetCatIds.length === 0
-                    }
-                    hint={
-                      !selectedEventValues.length
-                        ? "請先選至少一個 event"
-                        : !hasSeedCount
-                          ? "請先套用 seed / count"
-                          : !targetCatIds.length
-                            ? "請先選目標貓"
-                            : ""
-                    }
-                    error={planState === "error" ? planErr : ""}
-                  />
+                  <Box sx={{ pt: 1, pb: 0.5 }}>
+                    <PlannerRunBar
+                      state={planState as LoadState}
+                      onRun={onClickPlanner}
+                      disabled={
+                        planState === "loading" ||
+                        !selectedEventValues.length ||
+                        !hasSeedCount ||
+                        targetCatIds.length === 0
+                      }
+                      hint={
+                        !selectedEventValues.length
+                          ? "請先選至少一個 event"
+                          : !hasSeedCount
+                            ? "請先套用 seed / count"
+                            : !targetCatIds.length
+                              ? "請先選目標貓"
+                              : ""
+                      }
+                      error={planState === "error" ? planErr : ""}
+                    />
+                  </Box>
                 </Stack>
               </Section>
             )}
@@ -460,6 +494,7 @@ export default function PlannerPage() {
             {ui.showPlannerResultSummary && (
               <Section
                 title="結果統計"
+                variant="planner"
                 collapsed={ui.plannerResultSummaryCollapsed}
                 onToggleCollapsed={() =>
                   setUi((p) => ({
@@ -483,11 +518,25 @@ export default function PlannerPage() {
             )}
 
             {planResult && (
-              <ResultTable
-                result={planResult as PlanResult}
-                graphsByEvent={graphByEvent}
-                targetCatIds={targetCatIds}
-              />
+              <Section
+                title="規劃結果"
+                variant="planner"
+                collapsed={ui.plannerResultTableCollapsed}
+                headerBorderBottom="none"
+                onToggleCollapsed={() =>
+                  setUi((p) => ({
+                    ...p,
+                    plannerResultTableCollapsed: !p.plannerResultTableCollapsed,
+                  }))
+                }
+              >
+                <ResultTable
+                  result={planResult as PlanResult}
+                  graphsByEvent={graphByEvent}
+                  targetCatIds={targetCatIds}
+                  showTitle={false}
+                />
+              </Section>
             )}
           </Stack>
 

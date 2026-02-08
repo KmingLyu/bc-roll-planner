@@ -1,56 +1,59 @@
 // src/app/theme/index.ts
 import { createTheme } from "@mui/material/styles";
+import { APP_THEME_TOKENS } from "./tokens";
 
 /**
  * MUI Theme 設定（亮色，但非全白）
  * - 適合資料表 / planner / 視覺標記密集型 UI
  * - 長時間使用不刺眼
  */
+const { palette, surface, input, chip } = APP_THEME_TOKENS;
+
 const theme = createTheme({
   palette: {
     mode: "light",
 
     primary: {
-      main: "#1976d2", // 藍（主要操作、Event）
+      main: palette.primary,
       contrastText: "#fff",
     },
 
     secondary: {
-      main: "#2e7d32", // 綠（目標、成功）
+      main: palette.secondary,
     },
 
     success: {
-      main: "#388e3c",
+      main: palette.success,
     },
 
     warning: {
-      main: "#ed6c02",
+      main: palette.warning,
     },
 
     error: {
-      main: "#d32f2f",
+      main: palette.error,
     },
 
     info: {
-      main: "#0288d1",
+      main: palette.info,
     },
 
     background: {
-      // default: "#f4f6f8", // ❗非純白，整體背景
-      default: "#ffffff",
-      paper: "#ffffff", // 卡片 / 表格底色
+      default: palette.backgroundDefault,
+      paper: palette.backgroundPaper,
     },
 
-    divider: "rgba(0,0,0,0.12)",
+    divider: palette.divider,
 
     text: {
-      primary: "#1f2933",
-      secondary: "#4b5563",
+      primary: palette.textPrimary,
+      secondary: palette.textSecondary,
     },
   },
 
   typography: {
     fontFamily: [
+      "IBM Plex Sans",
       "Inter",
       "Noto Sans TC",
       "-apple-system",
@@ -72,27 +75,46 @@ const theme = createTheme({
     h6: { fontSize: "1rem", fontWeight: 600 },
   },
 
-  // shape: {
-  //   borderRadius: 8,
-  // },
+  shape: {
+    borderRadius: 10,
+  },
 
   spacing: 8,
 
   components: {
     MuiCssBaseline: {
       styleOverrides: {
+        "html, body, #root": {
+          minHeight: "100%",
+        },
         body: {
-          // backgroundColor: "#f4f6f8",
-          backgroundColor: "#ffffff",
-          scrollbarColor: "#c1c1c1 #f4f6f8",
+          backgroundColor: palette.backgroundDefault,
+          backgroundImage: `linear-gradient(180deg, ${surface.bodyTop} 0%, ${surface.bodyBottom} 100%)`,
+          backgroundRepeat: "no-repeat",
+          backgroundSize: "cover",
+          color: palette.textPrimary,
+          scrollbarColor: `${surface.scrollbarThumb} ${palette.backgroundDefault}`,
           "&::-webkit-scrollbar": {
             width: 8,
             height: 8,
           },
           "&::-webkit-scrollbar-thumb": {
-            backgroundColor: "#c1c1c1",
-            // borderRadius: 4,
+            backgroundColor: surface.scrollbarThumb,
+            borderRadius: 999,
+            border: "2px solid transparent",
+            backgroundClip: "padding-box",
           },
+          "& input[type=number]": {
+            MozAppearance: "textfield",
+          },
+          "& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button":
+            {
+              WebkitAppearance: "none",
+              margin: 0,
+            },
+        },
+        a: {
+          color: palette.primary,
         },
       },
     },
@@ -113,7 +135,9 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           backgroundImage: "none",
-          border: "1px solid rgba(0,0,0,0.06)",
+          border: `1px solid ${surface.paperBorder}`,
+          backgroundColor: palette.backgroundPaper,
+          boxShadow: surface.paperShadow,
         },
       },
     },
@@ -121,12 +145,45 @@ const theme = createTheme({
     MuiTableCell: {
       styleOverrides: {
         root: {
-          borderBottom: "1px solid rgba(0,0,0,0.08)",
+          borderBottom: `1px solid ${surface.tableRowBorder}`,
           padding: "8px 12px",
         },
         head: {
           fontWeight: 600,
-          backgroundColor: "#f0f2f5", // 表頭淡灰
+          backgroundColor: surface.tableHead,
+        },
+      },
+    },
+
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          borderRadius: 10,
+          backgroundColor: input.background,
+          transition:
+            "background-color 140ms ease, box-shadow 140ms ease, border-color 140ms ease",
+          "& fieldset": {
+            borderColor: input.border,
+          },
+          "&:hover fieldset": {
+            borderColor: input.borderHover,
+          },
+          "&.Mui-focused": {
+            backgroundColor: palette.backgroundPaper,
+            boxShadow: `0 0 0 2px ${input.focusRing}`,
+            "& fieldset": {
+              borderColor: palette.primary,
+            },
+          },
+        },
+      },
+    },
+
+    MuiInputLabel: {
+      styleOverrides: {
+        root: {
+          color: palette.textSecondary,
+          fontSize: 13,
         },
       },
     },
@@ -135,6 +192,41 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           fontWeight: 500,
+          borderRadius: 8,
+        },
+        outlined: {
+          borderColor: chip.border,
+          backgroundColor: chip.background,
+        },
+      },
+    },
+
+    MuiAccordion: {
+      styleOverrides: {
+        root: {
+          border: `1px solid ${surface.paperBorder}`,
+          boxShadow: "none",
+          backgroundColor: palette.backgroundPaper,
+          "&:before": {
+            display: "none",
+          },
+        },
+      },
+    },
+
+    MuiTableContainer: {
+      styleOverrides: {
+        root: {
+          backgroundColor: palette.backgroundPaper,
+        },
+      },
+    },
+
+    MuiDrawer: {
+      styleOverrides: {
+        paper: {
+          backgroundColor: palette.backgroundPaper,
+          borderLeft: `1px solid ${surface.paperBorder}`,
         },
       },
     },

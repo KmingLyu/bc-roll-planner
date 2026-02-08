@@ -15,7 +15,6 @@ import {
   OutlinedInput,
   Select,
   Stack,
-  Typography,
 } from "@mui/material";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
@@ -97,7 +96,7 @@ export function EventsPicker(props: {
   };
 
   return (
-    <Stack spacing={1.5}>
+    <Stack spacing={1.25}>
       <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
         {/* <Typography variant="body2" color="text.secondary">
           狀態：<b>{loadState}</b>

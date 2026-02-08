@@ -10,7 +10,7 @@
 import React, { useMemo } from "react";
 import type { PlanResult } from "@/domain/planner";
 import type { TrackGraph } from "@/shared/models";
-import { Alert, Box, Chip, Stack, Typography, Divider } from "@mui/material";
+import { Alert, Box, Chip, Stack, Typography } from "@mui/material";
 // 【MUI v7 關鍵修正】從 Grid2 引入，這是新版標準 Grid
 import Grid from "@mui/material/Grid";
 import { actionLabelFromStep, ACTIONS } from "./planViewModel";
@@ -142,8 +142,6 @@ export function PlanResultStatsCard(props: {
         </Grid>
       </Box>
 
-      <Divider flexItem />
-
       {/* 3. 資源消耗與卡池分布 (使用 Stack 排列 Tag) */}
       <Stack spacing={1.5}>
         {/* 資源消耗 */}
@@ -202,8 +200,6 @@ export function PlanResultStatsCard(props: {
             })}
         </Box>
       </Stack>
-
-      <Divider flexItem />
 
       {/* 4. 目標清單 */}
       <Stack spacing={1}>

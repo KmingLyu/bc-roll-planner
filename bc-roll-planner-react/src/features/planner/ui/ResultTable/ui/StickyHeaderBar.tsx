@@ -1,31 +1,33 @@
-import {
-  Box,
-  Chip,
-  Stack,
-  Typography,
-} from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { Box, FormControlLabel, Stack, Switch } from "@mui/material";
 import { STATUS_STYLE } from "../../planViewModel";
+import { APP_THEME_TOKENS } from "@/app/theme/tokens";
 
-function ToggleChip(props: {
+function ToggleSwitch(props: {
   label: string;
   checked: boolean;
   onToggle: (next: boolean) => void;
 }) {
   const { label, checked, onToggle } = props;
   return (
-    <Chip
-      clickable
-      size="small"
-      label={label}
-      onClick={() => onToggle(!checked)}
-      variant={checked ? "filled" : "outlined"}
+    <FormControlLabel
       sx={{
-        borderRadius: 999,
-        fontWeight: 700,
-        bgcolor: checked ? "action.selected" : "transparent",
-        borderColor: "divider",
+        m: 0,
+        mr: 0.75,
+        "& .MuiFormControlLabel-label": {
+          fontSize: 13,
+          fontWeight: 600,
+          color: "text.secondary",
+          whiteSpace: "nowrap",
+        },
       }}
+      control={
+        <Switch
+          size="small"
+          checked={checked}
+          onChange={(_, next) => onToggle(next)}
+        />
+      }
+      label={label}
     />
   );
 }
@@ -54,7 +56,7 @@ function LegendTag(props: { label: string; sx?: object }) {
 }
 
 export function StickyHeaderBar(props: {
-  title: string;
+  title?: string;
   rowsCount?: number;
   stepsCount?: number;
 
@@ -81,30 +83,26 @@ export function StickyHeaderBar(props: {
 
   return (
     <Box
-      sx={(theme) => ({
-        position: "sticky",
-        top: 0,
-        zIndex: theme.zIndex.appBar,
-        backgroundColor: alpha(theme.palette.background.default, 0.86),
-        backdropFilter: "blur(8px)",
+      sx={{
+        backgroundColor: "background.default",
         borderBottom: "1px solid",
         borderColor: "divider",
         py: 0.9,
         px: { xs: 0.5, sm: 0.75 },
-      })}
+      }}
     >
       <Stack spacing={0.75}>
-        <Stack
+        {/* <Stack
           direction="row"
           spacing={1}
           alignItems="baseline"
-          justifyContent="space-between"
+          justifyContent={title ? "space-between" : "flex-end"}
         >
-          <Typography fontWeight={800}>{title}</Typography>
+          {title ? <Typography fontWeight={800}>{title}</Typography> : null}
           <Typography variant="caption" color="text.secondary" noWrap>
             {stepsCount} steps / {rowsCount} rows
           </Typography>
-        </Stack>
+        </Stack> */}
 
         <Box
           sx={{
@@ -117,17 +115,17 @@ export function StickyHeaderBar(props: {
             scrollbarWidth: "none",
           }}
         >
-          <ToggleChip
+          {/* <ToggleChip
             label="圖例"
             checked={showLegend}
             onToggle={onToggleLegend}
-          />
-          <ToggleChip
+          /> */}
+          <ToggleSwitch
             label="只看目標步驟"
             checked={showTargetsOnly}
             onToggle={onToggleTargetsOnly}
           />
-          <ToggleChip
+          <ToggleSwitch
             label="10連只看目標"
             checked={showTargetDrawsOnly}
             onToggle={onToggleTargetDrawsOnly}
@@ -142,7 +140,7 @@ export function StickyHeaderBar(props: {
               sx={{
                 bgcolor: "action.hover",
                 borderWidth: 2,
-                borderColor: "rgba(16,185,129,0.8)",
+                borderColor: APP_THEME_TOKENS.planner.target.borderSoft,
               }}
             />
             <LegendTag

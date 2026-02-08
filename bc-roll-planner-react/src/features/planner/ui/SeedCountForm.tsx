@@ -1,6 +1,6 @@
 // src/features/planner/ui/SeedCountForm.tsx
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Stack, TextField } from "@mui/material";
 import Grid from "@mui/material/Grid";
 
 export function SeedCountForm(props: {
@@ -64,12 +64,12 @@ export function SeedCountForm(props: {
   }, [parsed.seed, parsed.count, parsed.err]);
 
   return (
-    <Stack spacing={1.5}>
+    <Stack spacing={1.25}>
       {/* <Typography variant="body2" color="text.secondary">
         直接輸入即可生效；若 seed / count 不完整或不合法，規劃按鈕會自動停用。
       </Typography> */}
 
-      <Grid container spacing={2} sx={{ width: "100%" }}>
+      <Grid container spacing={1.25} sx={{ width: "100%" }}>
         <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth

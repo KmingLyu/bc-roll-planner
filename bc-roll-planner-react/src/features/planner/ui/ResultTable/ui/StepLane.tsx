@@ -126,7 +126,7 @@ export function StepLane(props: {
             height: nodeSize,
             borderRadius: 999,
             bgcolor: isEllipsis
-              ? "background.paper"
+              ? "background.default"
               : isTarget
                 ? TARGET_NODE_STYLE.bg
                 : STATUS_STYLE[status].node,

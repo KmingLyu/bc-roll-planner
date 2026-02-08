@@ -12,6 +12,8 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 export function Section(props: {
   title: string;
+  variant?: "default" | "planner";
+  headerBorderBottom?: string;
 
   /** 是否收合（僅在 collapsible=true 時才有意義） */
   collapsed?: boolean;
@@ -30,6 +32,8 @@ export function Section(props: {
 }) {
   const {
     title,
+    variant = "default",
+    headerBorderBottom,
     collapsed = false,
     collapsible = true,
     headerClickable = collapsible,
@@ -40,14 +44,26 @@ export function Section(props: {
   } = props;
 
   const canToggle = collapsible && !!onToggleCollapsed;
+  const isPlannerVariant = variant === "planner";
+  const resolvedHeaderBorderBottom =
+    headerBorderBottom ?? (isPlannerVariant ? "1px solid" : "none");
 
   return (
     <Box
       sx={{
         width: "100%",
         minWidth: 0,
-        px: 0,
-        py: 0,
+        px: isPlannerVariant ? 0 : { xs: 1, sm: 1.25 },
+        py: isPlannerVariant ? 0 : { xs: 0.75, sm: 1 },
+        borderRadius: isPlannerVariant ? 0 : 1.75,
+        border: isPlannerVariant ? "none" : "1px solid",
+        borderColor: "divider",
+        backgroundColor: isPlannerVariant
+          ? "background.default"
+          : "background.paper",
+        boxShadow: isPlannerVariant
+          ? "none"
+          : "0 1px 4px rgba(15, 23, 42, 0.04)",
         ...sx,
       }}
     >
@@ -72,9 +88,12 @@ export function Section(props: {
         sx={{
           width: "100%",
           minWidth: 0,
-          py: 0.5,
+          py: isPlannerVariant ? 0.9 : 0.4,
+          px: isPlannerVariant ? { xs: 0.5, sm: 0.75 } : 0,
           cursor: headerClickable ? "pointer" : "default",
           userSelect: "none",
+          borderBottom: resolvedHeaderBorderBottom,
+          borderColor: "divider",
         }}
       >
         <Stack
@@ -96,6 +115,11 @@ export function Section(props: {
                   flex: "0 0 auto",
                   transform: collapsed ? "rotate(0deg)" : "rotate(90deg)",
                   transition: "transform 180ms ease",
+                  ...(isPlannerVariant
+                    ? {
+                        "&:hover": { bgcolor: "transparent" },
+                      }
+                    : {}),
                 }}
               >
                 <ChevronRightIcon />
@@ -109,7 +133,7 @@ export function Section(props: {
             noWrap
             sx={{
               minWidth: 0,
-              fontWeight: 700,
+              fontWeight: isPlannerVariant ? 800 : 700,
               lineHeight: 1.2,
               letterSpacing: 0.2,
               color: "text.primary",
@@ -122,10 +146,30 @@ export function Section(props: {
 
       {collapsible ? (
         <Collapse in={!collapsed} timeout={120} unmountOnExit>
-          <Box sx={{ pt: 0.75, width: "100%", minWidth: 0 }}>{children}</Box>
+          <Box
+            sx={{
+              pt: isPlannerVariant ? 1 : 0.9,
+              pb: isPlannerVariant ? 0.5 : 0,
+              px: isPlannerVariant ? { xs: 0.5, sm: 0.75 } : 0,
+              width: "100%",
+              minWidth: 0,
+            }}
+          >
+            {children}
+          </Box>
         </Collapse>
       ) : (
-        <Box sx={{ pt: 0.75, width: "100%", minWidth: 0 }}>{children}</Box>
+        <Box
+          sx={{
+            pt: isPlannerVariant ? 1 : 0.9,
+            pb: isPlannerVariant ? 0.5 : 0,
+            px: isPlannerVariant ? { xs: 0.5, sm: 0.75 } : 0,
+            width: "100%",
+            minWidth: 0,
+          }}
+        >
+          {children}
+        </Box>
       )}
     </Box>
   );

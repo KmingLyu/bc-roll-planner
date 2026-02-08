@@ -1,13 +1,8 @@
 import * as React from "react";
 import { NumberField as BaseNumberField } from "@base-ui/react/number-field";
-import IconButton from "@mui/material/IconButton";
 import FormControl from "@mui/material/FormControl";
-import FormHelperText from "@mui/material/FormHelperText";
 import OutlinedInput from "@mui/material/OutlinedInput";
-import InputAdornment from "@mui/material/InputAdornment";
 import InputLabel from "@mui/material/InputLabel";
-import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 
 /**
  * This component is a placeholder for FormControl to correctly set the shrink label state on SSR.
@@ -44,7 +39,7 @@ export default function NumberField({
           error={error}
           variant="outlined"
           fullWidth // 撐滿父層
-          sx={{ minWidth: 0 }} // 避免 flexbox 爆寬
+          style={{ minWidth: 0 }} // 避免 flexbox 爆寬
         >
           {props.children}
         </FormControl>
@@ -68,43 +63,7 @@ export default function NumberField({
               input: props,
             }}
             fullWidth // ✅ 輸入框本身也撐滿
-            endAdornment={
-              <InputAdornment
-                position="end"
-                sx={{
-                  flexDirection: "column",
-                  maxHeight: "unset",
-                  alignSelf: "stretch",
-                  borderLeft: "1px solid",
-                  borderColor: "divider",
-                  ml: 0,
-                  "& button": {
-                    py: 0,
-                    flex: 1,
-                    borderRadius: 0.5,
-                  },
-                }}
-              >
-                <BaseNumberField.Increment
-                  render={<IconButton size={size} aria-label="Increase" />}
-                >
-                  <KeyboardArrowUpIcon
-                    fontSize={size}
-                    sx={{ transform: "translateY(2px)" }}
-                  />
-                </BaseNumberField.Increment>
-
-                <BaseNumberField.Decrement
-                  render={<IconButton size={size} aria-label="Decrease" />}
-                >
-                  <KeyboardArrowDownIcon
-                    fontSize={size}
-                    sx={{ transform: "translateY(-2px)" }}
-                  />
-                </BaseNumberField.Decrement>
-              </InputAdornment>
-            }
-            sx={{ pr: 0, width: 1 }}
+            sx={{ width: 1 }}
           />
         )}
       />

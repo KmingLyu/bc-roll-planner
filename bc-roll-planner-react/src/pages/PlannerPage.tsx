@@ -39,6 +39,7 @@ import { usePlannerWorker } from "@/features/planner/model/usePlannerWorker";
 // Components
 import { Section } from "@/shared/ui/Section";
 import type { UiFlags } from "@/shared/ui/ControlPanel";
+import { DataSourceDisclaimerNote } from "@/shared/ui/DataSourceDisclaimerNote";
 import { SeedCountForm } from "@/features/planner/ui/SeedCountForm";
 import { EventsPicker } from "@/features/events/ui/EventsPicker";
 import { TargetCatsPicker } from "@/features/cats/ui/TargetCatsPicker";
@@ -383,6 +384,10 @@ export default function PlannerPage() {
           </Tooltip>
         )}
       </Stack>
+
+      <Box sx={{ px: 2, pb: 1 }}>
+        <DataSourceDisclaimerNote />
+      </Box>
 
       {/* 內容 */}
       <Stack

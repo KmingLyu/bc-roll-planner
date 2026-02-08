@@ -6,7 +6,8 @@
  */
 export const DATA_SOURCES = {
   crawler: {
-    name: "bc.godfat（抽卡軌道/卡池資料來源）",
+    // name: "bc.godfat（抽卡軌道/卡池資料來源）",
+    name: "",
     url: "https://bc.godfat.org",
   },
 } as const;

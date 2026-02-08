@@ -20,55 +20,70 @@ bc-roll-planner-react/
 ├── shared
 │   └── models.ts                    # 前後端共用型別（Event/TrackGraph/Cat/Edge 等單一真實來源）
 ├── src
-│   ├── App.css                      # App 全域樣式（少量補強與覆寫）
-│   ├── App.tsx                      # App 根元件（Router/頁面框架、共用 Layout）
-│   ├── index.css                    # 全站基礎 CSS（reset、字體、body 背景等）
 │   ├── main.tsx                     # React 入口（createRoot、掛載 App、注入 providers）
-│   ├── config
-│   │   └── bcEnv.ts                 # 前端環境設定（讀 Vite env、組出 bc.godfat 相關參數）
-│   ├── api
-│   │   ├── eventCatsApi.ts          # 前端呼叫 eventCats function 的 API wrapper（含 query 組裝）
-│   │   ├── eventsApi.ts             # 前端呼叫 events function 的 API wrapper（活動列表請求）
-│   │   ├── netlifyClient.ts         # Netlify functions HTTP client（錯誤處理、base path、typing）
-│   │   └── trackGraphApi.ts         # 前端呼叫 trackGraph function 的 API wrapper（抓 graph）
-│   ├── components
-│   │   ├── cats
-│   │   │   └── TargetCatsPicker.tsx # 目標貓選擇器（依 eventCats 分組顯示、選取目標）
-│   │   ├── events
-│   │   │   └── EventsPicker.tsx     # 活動選擇器（upcoming/past 分區、顯示活動名稱與資訊）
-│   │   ├── graph
-│   │   │   └── GraphSummaryCard.tsx # TrackGraph 摘要卡（顯示 seed/count、軌道資訊摘要）
-│   │   ├── inputs
-│   │   │   └── SeedCountForm.tsx    # seed/count 輸入表單（規劃與抓 graph 需要的參數）
-│   │   ├── layout
-│   │   │   ├── ControlPanel.tsx     # 右側/上方控制面板（UI flags、開關、表單集合）
-│   │   │   └── Section.tsx          # 版面區塊容器（標題、間距、一致化樣式的 wrapper）
-│   │   ├── planner
-│   │   │   ├── EventTrackGraphsView.tsx   # 規劃結果：依 event 畫出 A/B 軌視覺化與標記步驟
-│   │   │   ├── PlanDrawsTimelineTable.tsx # 規劃結果：抽卡步驟時間軸表（A/B lane、命中/保底）
-│   │   │   ├── PlannerRunBar.tsx          # 規劃執行控制列（Run/Loading/狀態提示/摘要）
-│   │   │   ├── PlanResultStatsCard.tsx    # 規劃結果統計卡（成本、資源消耗、命中數等）
-│   │   │   ├── planViewModel.ts           # 規劃結果的 view model（label、狀態樣式、顯示轉換）
-│   │   │   └── ResourceForm.tsx           # 規劃輸入：資源表單（金券/白金/傳說/罐頭等）
-│   │   ├── simulator
-│   │   │   └── SimulatorPanel.tsx    # 模擬面板（用 graph 跑模擬、顯示抽卡結果/測試）
-│   │   └── tools
-│   │       └── NumberField.tsx       # 自訂數字輸入元件（包裝 MUI NumberField/輸入限制）
-│   ├── core
-│   │   ├── planner.ts                # 核心規劃演算法（資源成本、最短路徑/策略、輸出 PlanResult）
-│   │   ├── simulator.ts              # 核心模擬器（單抽/十連抽規則、走邊、更新 cursor/prev_cat）
-│   │   └── utils.ts                  # 核心共用工具（posId 解析、lane/track 操作、小工具函式）
-│   ├── hooks
-│   │   ├── useEventCats.ts           # Hook：取得 eventCats（快取、loading/error、分組整理）
-│   │   ├── useEvents.ts              # Hook：取得 events（upcoming/past 合併、狀態管理）
-│   │   ├── usePlannerWorker.ts       # Hook：用 Web Worker 跑 planner（避免阻塞 UI、回傳結果）
-│   │   └── useTrackGraphs.ts         # Hook：取得 trackGraph（依 event/seed/count 抓取與快取）
+│   ├── app
+│   │   ├── App.tsx                  # App 根元件（頁面框架）
+│   │   ├── theme
+│   │   │   └── index.ts             # MUI theme
+│   │   └── styles
+│   │       ├── App.css              # App 全域樣式（少量補強與覆寫）
+│   │       └── index.css            # 全站基礎 CSS（reset、字體、body 背景等）
 │   ├── pages
-│   │   ├── HomePage.tsx              # 首頁（入口導覽、簡介、連到 Planner/Simulator 等）
-│   │   └── PlannerPage.tsx           # 規劃頁（整合表單、抓 graph、跑 planner、呈現結果）
-│   └── workers
-├── tsconfig.app.json
-├── tsconfig.json
-├── tsconfig.node.json
-└── vite.config.ts
+│   │   ├── HomePage.tsx             # 首頁（目前轉向 PlannerPage）
+│   │   └── PlannerPage.tsx          # 規劃頁（整合資料抓取、執行 planner、呈現結果）
+│   ├── domain
+│   │   ├── planner.ts               # 核心規劃演算法（資源成本、策略、輸出 PlanResult）
+│   │   ├── simulator.ts             # 核心模擬器（單抽/十連抽規則、走邊、更新 cursor）
+│   │   └── utils.ts                 # 核心共用工具（posId/track parsing）
+│   ├── features
+│   │   ├── cats
+│   │   │   ├── model
+│   │   │   │   └── useEventCats.ts  # 取得 eventCats、分組整理
+│   │   │   └── ui
+│   │   │       ├── TargetCatsPicker.tsx     # 目標貓選擇器
+│   │   │       └── CatSelectableItem
+│   │   │           └── index.tsx            # 單一貓咪可選項目
+│   │   ├── events
+│   │   │   ├── model
+│   │   │   │   └── useEvents.ts     # 取得活動列表（upcoming/past）
+│   │   │   └── ui
+│   │   │       └── EventsPicker.tsx # 活動選擇器
+│   │   ├── track-graph
+│   │   │   ├── model
+│   │   │   │   └── useTrackGraphs.ts # 取得 TrackGraph
+│   │   │   └── ui
+│   │   │       └── GraphSummaryCard.tsx # TrackGraph 摘要卡
+│   │   ├── planner
+│   │   │   ├── model
+│   │   │   │   └── usePlannerWorker.ts # Web Worker 執行 planner
+│   │   │   ├── worker
+│   │   │   │   └── planner.worker.ts   # planner worker
+│   │   │   └── ui
+│   │   │       ├── SeedCountForm.tsx
+│   │   │       ├── ResourceForm.tsx
+│   │   │       ├── PlannerRunBar.tsx
+│   │   │       ├── PlanResultStatsCard.tsx
+│   │   │       ├── EventTrackGraphsView.tsx
+│   │   │       └── ResultTable          # 規劃結果表（可擴充）
+│   │   └── simulator
+│   │       └── ui
+│   │           └── SimulatorPanel.tsx   # 模擬面板
+│   └── shared
+│       ├── api
+│       │   ├── eventCatsApi.ts         # 呼叫 eventCats function
+│       │   ├── eventsApi.ts            # 呼叫 events function
+│       │   ├── netlifyClient.ts        # Netlify functions HTTP client
+│       │   └── trackGraphApi.ts        # 呼叫 trackGraph function
+│       ├── config
+│       │   ├── bcEnv.ts                # 前端環境設定（讀 Vite env）
+│       │   └── dataSources.ts          # 資料來源清單
+│       ├── ui
+│       │   ├── Section.tsx             # 版面區塊容器
+│       │   ├── ControlPanel.tsx        # 顯示區塊控制面板
+│       │   ├── StickyHeader.tsx        # 吸附式 header 容器
+│       │   └── NumberField.tsx         # 數字輸入元件（Base UI + MUI）
+│       └── models.ts                   # re-export shared/models.ts
 ```
+
+備註
+- `tsconfig.app.json` 設定 `@/*` alias 指向 `src/*`，跨層級引用會比較乾淨。

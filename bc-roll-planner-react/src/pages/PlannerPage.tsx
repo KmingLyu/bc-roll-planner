@@ -21,43 +21,43 @@ import PetsIcon from "@mui/icons-material/Pets";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 // Models
-import type { Event, TrackGraph } from "../../shared/models";
+import type { Event, TrackGraph } from "@/shared/models";
 
 // APIs
-import { ApiError } from "../api/netlifyClient";
+import { ApiError } from "@/shared/api/netlifyClient";
 
 // Hooks
-import { useEvents } from "../hooks/useEvents";
+import { useEvents } from "@/features/events/model/useEvents";
 import {
   useEventCats,
   type TierGroup,
   type CatTier,
-} from "../hooks/useEventCats";
-import { useTrackGraphs } from "../hooks/useTrackGraphs";
-import { usePlannerWorker } from "../hooks/usePlannerWorker";
+} from "@/features/cats/model/useEventCats";
+import { useTrackGraphs } from "@/features/track-graph/model/useTrackGraphs";
+import { usePlannerWorker } from "@/features/planner/model/usePlannerWorker";
 
 // Components
-import { Section } from "../components/layout/Section";
-import { ControlPanel, type UiFlags } from "../components/layout/ControlPanel";
-import { SeedCountForm } from "../components/inputs/SeedCountForm";
-import { EventsPicker } from "../components/events/EventsPicker";
-import { TargetCatsPicker } from "../components/cats/TargetCatsPicker";
+import { Section } from "@/shared/ui/Section";
+import type { UiFlags } from "@/shared/ui/ControlPanel";
+import { SeedCountForm } from "@/features/planner/ui/SeedCountForm";
+import { EventsPicker } from "@/features/events/ui/EventsPicker";
+import { TargetCatsPicker } from "@/features/cats/ui/TargetCatsPicker";
 import {
   ResourceForm,
   type PlannerResources,
   type PlannerConfig,
-} from "../components/planner/ResourceForm";
-import { PlannerRunBar } from "../components/planner/PlannerRunBar";
+} from "@/features/planner/ui/ResourceForm";
+import { PlannerRunBar } from "@/features/planner/ui/PlannerRunBar";
 
 // ✅ New result UI
-import { PlanResultStatsCard } from "../components/planner/PlanResultStatsCard";
-import { ResultTable } from "../components/planner/ResultTable";
+import { PlanResultStatsCard } from "@/features/planner/ui/PlanResultStatsCard";
+import { ResultTable } from "@/features/planner/ui/ResultTable";
 
 // Planner types
-import type { PlanResult } from "../core/planner";
+import type { PlanResult } from "@/domain/planner";
 
 // env
-import { BC_ENV } from "../config/bcEnv";
+import { BC_ENV } from "@/shared/config/bcEnv";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
 

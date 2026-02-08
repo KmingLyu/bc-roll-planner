@@ -11,13 +11,14 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
+        "npm:@base-ui/react@1",
         "npm:@emotion/react@^11.14.0",
         "npm:@emotion/styled@^11.14.1",
         "npm:@eslint/js@^9.39.1",
         "npm:@mui/icons-material@^7.3.6",
         "npm:@mui/material@^7.3.6",
         "npm:@netlify/functions@^5.1.2",
-        "npm:@types/node@^24.10.1",
+        "npm:@types/node@^24.10.8",
         "npm:@types/react-dom@^19.2.3",
         "npm:@types/react@^19.2.5",
         "npm:@vitejs/plugin-react@^5.1.1",

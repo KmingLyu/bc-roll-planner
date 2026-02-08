@@ -58,9 +58,7 @@ export function Section(props: {
         borderRadius: isPlannerVariant ? 0 : 1.75,
         border: isPlannerVariant ? "none" : "1px solid",
         borderColor: "divider",
-        backgroundColor: isPlannerVariant
-          ? "background.default"
-          : "background.paper",
+        backgroundColor: isPlannerVariant ? "transparent" : "background.paper",
         boxShadow: isPlannerVariant
           ? "none"
           : "0 1px 4px rgba(15, 23, 42, 0.04)",

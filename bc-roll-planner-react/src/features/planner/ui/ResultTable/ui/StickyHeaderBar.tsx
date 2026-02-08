@@ -84,7 +84,7 @@ export function StickyHeaderBar(props: {
   return (
     <Box
       sx={{
-        backgroundColor: "background.default",
+        backgroundColor: "transparent",
         borderBottom: "1px solid",
         borderColor: "divider",
         py: 0.9,

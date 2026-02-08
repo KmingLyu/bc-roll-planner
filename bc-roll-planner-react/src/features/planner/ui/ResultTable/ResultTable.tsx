@@ -117,7 +117,7 @@ export function ResultTable(props: {
 
   const bodyCellSx = useMemo(
     () => ({
-      bgcolor: "background.default",
+      bgcolor: "transparent",
       borderBottom: "1px solid",
       borderColor: "divider",
       py: 1.2,
@@ -148,7 +148,7 @@ export function ResultTable(props: {
   return (
     <Stack
       spacing={1}
-      sx={{ width: "100%", minWidth: 0, backgroundColor: "background.default" }}
+      sx={{ width: "100%", minWidth: 0, backgroundColor: "transparent" }}
     >
       <StickyHeaderBar
         title={showTitle ? title : undefined}
@@ -168,7 +168,7 @@ export function ResultTable(props: {
           width: "100%",
           maxWidth: "100%",
           minWidth: 0,
-          backgroundColor: "background.default",
+          backgroundColor: "transparent",
           overflowX: "auto",
           overflowY: "hidden",
           px: { xs: 0, sm: 0.25 },

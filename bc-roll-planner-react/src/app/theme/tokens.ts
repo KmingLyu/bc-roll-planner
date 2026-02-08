@@ -53,8 +53,7 @@ export const APP_THEME_TOKENS = {
       background: "rgba(16, 185, 129, 0.1)",
       nodeBg: "rgba(16, 185, 129, 0.92)",
       nodeText: "rgba(0, 0, 0, 0.85)",
-      ring:
-        "0 0 0 2px rgba(16, 185, 129, 0.3), 0 8px 16px rgba(16, 185, 129, 0.18)",
+      ring: "0 0 0 2px rgba(16, 185, 129, 0.3), 0 8px 16px rgba(16, 185, 129, 0.18)",
     },
     eventHues: [
       240, 24, 180, 288, 0, 216, 324, 48, 204, 336, 12, 252, 276, 36, 228, 312,

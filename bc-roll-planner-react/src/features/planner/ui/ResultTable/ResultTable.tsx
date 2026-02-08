@@ -12,6 +12,8 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
 
 import {
   buildDrawRows,
@@ -59,6 +61,8 @@ export function ResultTable(props: {
   } = props;
 
   const targetSet = useMemo(() => new Set(targetCatIds), [targetCatIds]);
+  const theme = useTheme();
+  const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
 
   const allRows = useMemo(() => {
     return buildDrawRows({
@@ -137,11 +141,13 @@ export function ResultTable(props: {
 
   return (
     <Stack
-      spacing={2}
-      sx={{ width: "100%", minWidth: 0, backgroundColor: "background.paper" }}
+      spacing={1}
+      sx={{ width: "100%", minWidth: 0, backgroundColor: "transparent" }}
     >
       <StickyHeaderBar
         title={title}
+        rowsCount={filteredRows.length}
+        stepsCount={steps.length}
         showLegend={showLegend}
         onToggleLegend={setShowLegend}
         showTargetsOnly={showTargetsOnly}
@@ -158,13 +164,14 @@ export function ResultTable(props: {
           minWidth: 0,
           overflowX: "auto",
           overflowY: "hidden",
-          p: 1,
+          px: { xs: 0, sm: 0.25 },
+          pb: 0.5,
         }}
       >
         <Table
           size="medium"
           sx={{
-            minWidth: 980,
+            minWidth: isSmDown ? 860 : 980,
             tableLayout: "fixed",
             borderCollapse: "separate",
           }}

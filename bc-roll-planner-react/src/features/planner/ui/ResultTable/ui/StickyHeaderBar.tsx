@@ -1,14 +1,62 @@
 import {
+  Box,
   Chip,
-  FormControlLabel,
   Stack,
-  Switch,
   Typography,
 } from "@mui/material";
-import { STATUS_STYLE, TARGET_BORDER_STYLE } from "../../planViewModel";
+import { alpha } from "@mui/material/styles";
+import { STATUS_STYLE } from "../../planViewModel";
+
+function ToggleChip(props: {
+  label: string;
+  checked: boolean;
+  onToggle: (next: boolean) => void;
+}) {
+  const { label, checked, onToggle } = props;
+  return (
+    <Chip
+      clickable
+      size="small"
+      label={label}
+      onClick={() => onToggle(!checked)}
+      variant={checked ? "filled" : "outlined"}
+      sx={{
+        borderRadius: 999,
+        fontWeight: 700,
+        bgcolor: checked ? "action.selected" : "transparent",
+        borderColor: "divider",
+      }}
+    />
+  );
+}
+
+function LegendTag(props: { label: string; sx?: object }) {
+  const { label, sx } = props;
+  return (
+    <Box
+      sx={{
+        display: "inline-flex",
+        alignItems: "center",
+        px: 0.9,
+        py: 0.35,
+        borderRadius: 999,
+        border: "1px solid",
+        borderColor: "divider",
+        fontSize: 12,
+        fontWeight: 700,
+        color: "text.secondary",
+        ...sx,
+      }}
+    >
+      {label}
+    </Box>
+  );
+}
 
 export function StickyHeaderBar(props: {
   title: string;
+  rowsCount?: number;
+  stepsCount?: number;
 
   showLegend: boolean;
   onToggleLegend: (v: boolean) => void;
@@ -21,6 +69,8 @@ export function StickyHeaderBar(props: {
 }) {
   const {
     title,
+    rowsCount = 0,
+    stepsCount = 0,
     showLegend,
     onToggleLegend,
     showTargetsOnly,
@@ -30,77 +80,78 @@ export function StickyHeaderBar(props: {
   } = props;
 
   return (
-    <Stack
-      direction={{ xs: "column", sm: "row" }}
-      spacing={1}
-      alignItems={{ xs: "flex-start", sm: "center" }}
-      justifyContent="space-between"
+    <Box
       sx={(theme) => ({
         position: "sticky",
         top: 0,
-        zIndex: theme.zIndex.appBar + 1,
-        bgcolor: theme.palette.background.paper,
-        backdropFilter: "blur(10px)",
-        py: 1,
-        px: 2,
-        borderTopLeftRadius: theme.shape.borderRadius,
-        borderTopRightRadius: theme.shape.borderRadius,
-        boxShadow: theme.shadows[1],
+        zIndex: theme.zIndex.appBar,
+        backgroundColor: alpha(theme.palette.background.default, 0.86),
+        backdropFilter: "blur(8px)",
+        borderBottom: "1px solid",
+        borderColor: "divider",
+        py: 0.9,
+        px: { xs: 0.5, sm: 0.75 },
       })}
     >
-      <Typography fontWeight={900}>{title}</Typography>
+      <Stack spacing={0.75}>
+        <Stack
+          direction="row"
+          spacing={1}
+          alignItems="baseline"
+          justifyContent="space-between"
+        >
+          <Typography fontWeight={800}>{title}</Typography>
+          <Typography variant="caption" color="text.secondary" noWrap>
+            {stepsCount} steps / {rowsCount} rows
+          </Typography>
+        </Stack>
 
-      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+        <Box
+          sx={{
+            display: "flex",
+            gap: 0.75,
+            overflowX: "auto",
+            whiteSpace: "nowrap",
+            pb: 0.25,
+            "&::-webkit-scrollbar": { display: "none" },
+            scrollbarWidth: "none",
+          }}
+        >
+          <ToggleChip
+            label="圖例"
+            checked={showLegend}
+            onToggle={onToggleLegend}
+          />
+          <ToggleChip
+            label="只看目標步驟"
+            checked={showTargetsOnly}
+            onToggle={onToggleTargetsOnly}
+          />
+          <ToggleChip
+            label="10連只看目標"
+            checked={showTargetDrawsOnly}
+            onToggle={onToggleTargetDrawsOnly}
+          />
+        </Box>
+
         {showLegend && (
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Chip
-              size="small"
-              label="抽中"
-              sx={{ bgcolor: STATUS_STYLE.hit.bg }}
-            />
-            <Chip
-              size="small"
+          <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
+            <LegendTag label="抽中" sx={{ bgcolor: STATUS_STYLE.hit.bg }} />
+            <LegendTag
               label="目標"
-              sx={{ bgcolor: "action.hover", ...TARGET_BORDER_STYLE }}
+              sx={{
+                bgcolor: "action.hover",
+                borderWidth: 2,
+                borderColor: "rgba(16,185,129,0.8)",
+              }}
             />
-            <Chip
-              size="small"
+            <LegendTag
               label="保底"
               sx={{ bgcolor: STATUS_STYLE.guaranteed.bg }}
             />
           </Stack>
         )}
-
-        <FormControlLabel
-          control={
-            <Switch
-              checked={showLegend}
-              onChange={(e) => onToggleLegend(e.target.checked)}
-            />
-          }
-          label={<Typography variant="body2">圖例</Typography>}
-        />
-
-        <FormControlLabel
-          control={
-            <Switch
-              checked={showTargetsOnly}
-              onChange={(e) => onToggleTargetsOnly(e.target.checked)}
-            />
-          }
-          label={<Typography variant="body2">只看目標步驟</Typography>}
-        />
-
-        <FormControlLabel
-          control={
-            <Switch
-              checked={showTargetDrawsOnly}
-              onChange={(e) => onToggleTargetDrawsOnly(e.target.checked)}
-            />
-          }
-          label={<Typography variant="body2">10連展開只看目標</Typography>}
-        />
       </Stack>
-    </Stack>
+    </Box>
   );
 }

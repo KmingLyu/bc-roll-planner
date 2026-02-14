@@ -88,8 +88,10 @@ const theme = createTheme({
           minHeight: "100%",
         },
         body: {
-          backgroundColor: palette.backgroundDefault,
-          backgroundImage: `linear-gradient(180deg, ${surface.bodyTop} 0%, ${surface.bodyBottom} 100%)`,
+          // backgroundColor: palette.backgroundDefault,
+          // backgroundImage: `linear-gradient(180deg, ${surface.bodyTop} 0%, ${surface.bodyBottom} 100%)`,
+          // backgroundColor: "transparent",
+          backgroundImage: `linear-gradient(rgba(255,255,255,0.6), rgba(255,255,255,0.6)), url("/background.jpg")`,
           backgroundRepeat: "no-repeat",
           backgroundSize: "cover",
           color: palette.textPrimary,

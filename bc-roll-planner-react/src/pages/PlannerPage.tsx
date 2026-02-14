@@ -382,12 +382,12 @@ export default function PlannerPage() {
               gap: 0.5,
             }}
           >
-            <Box component="span" sx={{ color: "#60A5FA" }}>
+            <Box component="span" sx={{ color: "#60a8ffff" }}>
               貓咪大戰爭
             </Box>
 
             <Box component="span" sx={{ color: "#FBBF24", mx: 0.25 }}>
-              .
+              ⦁
             </Box>
 
             <Box component="span" sx={{ color: "#E5E7EB" }}>

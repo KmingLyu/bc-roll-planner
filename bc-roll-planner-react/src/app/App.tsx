@@ -1,5 +1,10 @@
-import HomePage from "@/pages/HomePage";
+import AppProviders from "@/app/providers/AppProviders";
+import AppRouter from "@/app/router";
 
 export default function App() {
-  return <HomePage />;
+  return (
+    <AppProviders>
+      <AppRouter />
+    </AppProviders>
+  );
 }

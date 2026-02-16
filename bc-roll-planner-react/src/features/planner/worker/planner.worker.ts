@@ -1,9 +1,9 @@
 /// <reference lib="webworker" />
 
 // src/features/planner/worker/planner.worker.ts
-import type { TrackGraph, Cat } from "@/shared/models";
-import type { EventMeta, PlannerConfig, PlanResult } from "@/domain/planner";
-import { planMinCost } from "@/domain/planner";
+import type { TrackGraph, Cat } from "@/types/models";
+import type { EventMeta, PlannerConfig, PlanResult } from "@/features/planner/logic/core";
+import { planMinCost } from "@/features/planner/logic/core";
 
 export type PlannerWorkerRequest = {
   graphs_by_event: Record<string, TrackGraph>;

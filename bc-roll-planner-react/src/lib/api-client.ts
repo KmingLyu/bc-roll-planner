@@ -1,4 +1,3 @@
-// src/shared/api/netlifyClient.ts
 type Query = Record<string, string | number | boolean | null | undefined>;
 
 export class ApiError extends Error {
@@ -32,7 +31,7 @@ function toQueryString(q: Query): string {
 export async function netlifyGet<T>(
   fnName: string,
   query: Query = {},
-  init?: RequestInit
+  init?: RequestInit,
 ): Promise<T> {
   const url = `/.netlify/functions/${fnName}${toQueryString(query)}`;
   const resp = await fetch(url, {

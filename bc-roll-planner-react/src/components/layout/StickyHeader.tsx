@@ -1,4 +1,4 @@
-// src/shared/ui/StickyHeader.tsx
+// src/components/ui/layout/StickyHeader.tsx
 import type { ReactNode } from "react";
 import { Box } from "@mui/material";
 import { alpha } from "@mui/material/styles";

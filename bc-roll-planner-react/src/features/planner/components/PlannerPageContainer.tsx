@@ -7,7 +7,6 @@ import {
   Container,
   Stack,
   Typography,
-  Drawer,
   Badge,
   IconButton,
   Tooltip,
@@ -18,7 +17,6 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 
 import PetsIcon from "@mui/icons-material/Pets";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import CloseIcon from "@mui/icons-material/Close";
 
 // Models
 import type { Event, TrackGraph } from "@/types/models";
@@ -28,22 +26,19 @@ import { ApiError } from "@/lib/api-client";
 
 // Hooks
 import { EventsPicker, useEvents } from "@/features/events";
-import {
-  TargetCatsPicker,
-  useEventCats,
-  type TierGroup,
-  type CatTier,
-} from "@/features/cats";
+import { TargetCatsSelectionContent, useEventCats } from "@/features/cats";
 import { useTrackGraphs } from "@/features/track-graph";
 import { usePlannerWorker } from "../hooks/usePlannerWorker";
 
 // Components
-import { DataSourceDisclaimerNote, Section } from "@/components/specialized";
+import { Section } from "@/components";
 import { PlanResultStatsCard } from "./PlanResultStatsCard";
 import { PlannerRunBar } from "./PlannerRunBar";
 import { ResourceForm } from "./ResourceForm";
 import { SeedCountForm } from "./SeedCountForm";
 import { ResultTable } from "./ResultTable";
+import { PlannerTargetCatsRegion } from "./PlannerTargetCatsRegion";
+import { DataSourceDisclaimerNote } from "./common";
 
 // Planner types
 import type { PlanResult } from "@/features/planner/logic/core";
@@ -53,13 +48,6 @@ import type { PlannerResources, PlannerUiConfig, UiFlags } from "../types";
 import { BC_ENV } from "@/config/bcEnv";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
-
-function tierOrder(t: CatTier): number {
-  if (t === "legendary") return 0;
-  if (t === "uber") return 1;
-  if (t === "super") return 2;
-  return 3;
-}
 
 function safeErrText(e: unknown): string {
   if (e instanceof ApiError) return `${e.message} (HTTP ${e.status})`;
@@ -286,71 +274,12 @@ export function PlannerPageContainer() {
     });
   }
 
-  const tierGroupsSorted = useMemo(() => {
-    const gs = [...(tierGroups as TierGroup[])];
-    gs.sort((a, b) => tierOrder(a.tier) - tierOrder(b.tier));
-    return gs;
-  }, [tierGroups]);
-
   // 預留：圖片/連結
   const getCatHref = (catId: number) => undefined as string | undefined;
   const getCatImageUrl = (catId: number) => undefined as string | undefined;
 
   // 小螢幕：用 Drawer；大螢幕：右欄
   const shouldUseDrawer = isMdDown;
-
-  // 右側內容（共用：Drawer / 右欄）
-  const targetCatsContent = (
-    <Section
-      title="選擇目標貓咪"
-      collapsed={ui.targetCatsCollapsed}
-      collapsible={false}
-      headerRight={
-        shouldUseDrawer ? (
-          <IconButton
-            size="medium"
-            aria-label="關閉目標貓列表"
-            onClick={() => setTargetCatsDrawerOpen(false)}
-          >
-            <CloseIcon fontSize="large" />
-          </IconButton>
-        ) : undefined
-      }
-      sx={
-        shouldUseDrawer
-          ? {
-              border: "none",
-              backgroundColor: "transparent",
-              backdropFilter: "none",
-              WebkitBackdropFilter: "none",
-              boxShadow: "none",
-              px: 0,
-              py: 0,
-            }
-          : {
-              px: { xs: 1.25, sm: 1.5 },
-              py: { xs: 1, sm: 1.25 },
-            }
-      }
-      onHide={() => {
-        setUi((p) => ({ ...p, showTargetCats: false }));
-        setTargetCatsDrawerOpen(false);
-      }}
-    >
-      <TargetCatsPicker
-        loadState={catsState as LoadState}
-        error={catsErr}
-        groups={tierGroupsSorted}
-        selectedIds={targetCatIds}
-        onChange={setTargetCatIds}
-        onClear={() => setTargetCatIds([])}
-        getCatHref={getCatHref}
-        getCatImageUrl={getCatImageUrl}
-        minColWidth={130}
-        dense
-      />
-    </Section>
-  );
 
   return (
     <>
@@ -605,17 +534,26 @@ export function PlannerPageContainer() {
               )}
             </Stack>
 
-            {!shouldUseDrawer && ui.showTargetCats && (
-              <Box
-                sx={{
-                  position: "sticky",
-                  top: 12,
-                  maxHeight: "calc(100vh - 24px)",
-                  overflowY: "auto",
-                }}
+            {ui.showTargetCats && (
+              <PlannerTargetCatsRegion
+                isMobile={shouldUseDrawer}
+                drawerOpen={targetCatsDrawerOpen}
+                onCloseDrawer={() => setTargetCatsDrawerOpen(false)}
+                onHideDesktop={() => setUi((p) => ({ ...p, showTargetCats: false }))}
               >
-                {targetCatsContent}
-              </Box>
+                <TargetCatsSelectionContent
+                  loadState={catsState as LoadState}
+                  error={catsErr}
+                  groups={tierGroups}
+                  selectedIds={targetCatIds}
+                  onChange={setTargetCatIds}
+                  onClear={() => setTargetCatIds([])}
+                  getCatHref={getCatHref}
+                  getCatImageUrl={getCatImageUrl}
+                  minColWidth={130}
+                  dense
+                />
+              </PlannerTargetCatsRegion>
             )}
           </Box>
 
@@ -634,26 +572,6 @@ export function PlannerPageContainer() {
             >
               <ChevronRightIcon />
             </Fab>
-          )}
-
-          {/* 小螢幕：Drawer 從右側滑入 */}
-          {shouldUseDrawer && ui.showTargetCats && (
-            <Drawer
-              anchor="right"
-              open={targetCatsDrawerOpen}
-              onClose={() => setTargetCatsDrawerOpen(false)}
-              ModalProps={{ keepMounted: true }} // 手機效能較佳
-              PaperProps={{
-                sx: {
-                  width: "min(92vw, 380px)",
-                  p: 1,
-                },
-              }}
-            >
-              <Box sx={{ height: "100%", minHeight: 0, overflowY: "auto" }}>
-                {targetCatsContent}
-              </Box>
-            </Drawer>
           )}
         </Stack>
       </Container>

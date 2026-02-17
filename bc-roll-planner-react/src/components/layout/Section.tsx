@@ -1,4 +1,4 @@
-// src/shared/ui/Section.tsx
+// src/components/ui/layout/Section.tsx
 import type { ReactNode } from "react";
 import {
   Box,
@@ -40,7 +40,6 @@ export function Section(props: {
     headerClickable = collapsible,
     headerRight,
     onToggleCollapsed,
-    onHide, // 先保留介面，暫不使用
     children,
     sx,
   } = props;

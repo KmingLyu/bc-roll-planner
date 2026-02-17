@@ -1,7 +1,7 @@
 // src/features/planner/ui/ResourceForm.tsx
 import { Stack, TextField } from "@mui/material";
 import Grid from "@mui/material/Grid";
-import NumberField from "@/components/ui/NumberField";
+import NumberField from "@/components/inputs/NumberField";
 import type {
   PlannerResources,
   PlannerUiConfig,

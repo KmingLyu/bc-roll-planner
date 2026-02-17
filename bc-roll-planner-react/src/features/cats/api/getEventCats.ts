@@ -1,4 +1,3 @@
-// src/shared/api/eventCatsApi.ts
 import { netlifyGet } from "@/lib/api-client";
 import type { Event, Cat, CatTier, PoolType } from "@/types/models";
 

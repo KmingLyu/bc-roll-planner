@@ -1,6 +1,6 @@
 import PetsIcon from "@mui/icons-material/Pets";
 import { Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
-import { DataSourceDisclaimerNote } from "@/components/specialized/DataSourceDisclaimerNote";
+import { DataSourceDisclaimerNote } from "./common";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
 

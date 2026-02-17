@@ -18,6 +18,7 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 
 import PetsIcon from "@mui/icons-material/Pets";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import CloseIcon from "@mui/icons-material/Close";
 
 // Models
 import type { Event, TrackGraph } from "@/types/models";
@@ -304,6 +305,17 @@ export function PlannerPageContainer() {
       title="選擇目標貓咪"
       collapsed={ui.targetCatsCollapsed}
       collapsible={false}
+      headerRight={
+        shouldUseDrawer ? (
+          <IconButton
+            size="medium"
+            aria-label="關閉目標貓列表"
+            onClick={() => setTargetCatsDrawerOpen(false)}
+          >
+            <CloseIcon fontSize="large" />
+          </IconButton>
+        ) : undefined
+      }
       sx={
         shouldUseDrawer
           ? {
@@ -638,7 +650,7 @@ export function PlannerPageContainer() {
                 },
               }}
             >
-              <Box sx={{ height: "100%", overflowY: "auto" }}>
+              <Box sx={{ height: "100%", minHeight: 0, overflowY: "auto" }}>
                 {targetCatsContent}
               </Box>
             </Drawer>

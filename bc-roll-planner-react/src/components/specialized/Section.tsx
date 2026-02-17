@@ -23,6 +23,7 @@ export function Section(props: {
 
   /** header 是否可點（預設等於 collapsible） */
   headerClickable?: boolean;
+  headerRight?: ReactNode;
 
   onToggleCollapsed?: () => void;
   onHide?: () => void;
@@ -37,6 +38,7 @@ export function Section(props: {
     collapsed = false,
     collapsible = true,
     headerClickable = collapsible,
+    headerRight,
     onToggleCollapsed,
     onHide, // 先保留介面，暫不使用
     children,
@@ -68,7 +70,7 @@ export function Section(props: {
       <Stack
         direction="row"
         alignItems="center"
-        justifyContent="flex-start"
+        justifyContent="space-between"
         spacing={1}
         role={headerClickable ? "button" : undefined}
         tabIndex={headerClickable ? 0 : undefined}
@@ -98,7 +100,7 @@ export function Section(props: {
           direction="row"
           spacing={0.5}
           alignItems="center"
-          sx={{ minWidth: 0 }}
+          sx={{ minWidth: 0, flex: 1 }}
         >
           {collapsible && (
             <Tooltip title={collapsed ? "展開" : "收合"}>
@@ -140,6 +142,16 @@ export function Section(props: {
             {title}
           </Typography>
         </Stack>
+
+        {headerRight && (
+          <Box
+            sx={{ flex: "0 0 auto" }}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            {headerRight}
+          </Box>
+        )}
       </Stack>
 
       {collapsible ? (

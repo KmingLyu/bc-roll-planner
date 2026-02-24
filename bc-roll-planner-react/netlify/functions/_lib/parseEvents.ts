@@ -29,9 +29,8 @@ function extractDatesFromEventName(name: string): {
 function inferPoolTypeFromEventName(nameRaw: string): PoolType {
   const name = normalizeText(nameRaw);
 
-  // 先判斷傳說（通常比白金更「特殊」；避免同時命中時被白金吃掉）
-  if (name.includes("傳說")) return "legend";
-  if (name.includes("白金")) return "platinum";
+  if (name.includes("傳說轉蛋")) return "legend";
+  if (name.includes("白金轉蛋")) return "platinum";
 
   // 保守：也支援英文關鍵字（以防 ui/lang 變動）
   const lower = name.toLowerCase();

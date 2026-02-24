@@ -8,13 +8,19 @@
   # Functions runtime
   BC_UI = "tw"
   BC_LANG = "tw"
+
   BC_GODFAT_BASE_URL = "https://bc.godfat.org"
+  # BC_GODFAT_BASE_URL = "https://bcgodfat.onrender.com"
+  # BC_GODFAT_BASE_URL = "http://localhost:8080"
 
   # Vite build-time env
   VITE_BC_UI = "tw"
   VITE_BC_LANG = "tw"
   VITE_BC_PAST_EVENT_LIMIT = "100"
+  
   VITE_BC_GODFAT_BASE_URL = "https://bc.godfat.org"
+  # VITE_BC_GODFAT_BASE_URL = "https://bcgodfat.onrender.com"
+  # VITE_BC_GODFAT_BASE_URL = "http://localhost:8080"
 
 [dev]
   base = "bc-roll-planner-react"

@@ -40,8 +40,8 @@ function normalizePoolType(v: unknown): PoolType | null {
 
 function inferPoolTypeFromName(nameRaw: string): PoolType {
   const name = normalizeText(nameRaw);
-  if (name.includes("傳說")) return "legend";
-  if (name.includes("白金")) return "platinum";
+  if (name.includes("傳說轉蛋")) return "legend";
+  if (name.includes("白金轉蛋")) return "platinum";
   const lower = name.toLowerCase();
   if (lower.includes("legend")) return "legend";
   if (lower.includes("platinum")) return "platinum";

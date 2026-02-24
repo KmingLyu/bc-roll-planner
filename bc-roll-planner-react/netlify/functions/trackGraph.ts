@@ -44,8 +44,11 @@ function normalizePoolType(v: unknown): PoolType | null {
 
 function inferPoolTypeFromName(nameRaw: string): PoolType {
   const name = normalizeText(nameRaw);
-  if (name.includes("傳說")) return "legend";
-  if (name.includes("白金")) return "platinum";
+  // ***********************************************************************
+  // ‼️ 這裡用卡池名稱判斷「傳說轉蛋」、「白金轉蛋」有點危險，之後可能要想有沒有更好的方法
+  // ***********************************************************************
+  if (name.includes("傳說轉蛋")) return "legend";
+  if (name.includes("白金轉蛋")) return "platinum";
   const lower = name.toLowerCase();
   if (lower.includes("legend")) return "legend";
   if (lower.includes("platinum")) return "platinum";
@@ -83,7 +86,7 @@ export const handler: Handler = async (event) => {
     const ui = String(qs.ui ?? "").trim() || env.ui;
     const baseUrl = (String(qs.base_url ?? "").trim() || env.baseUrl).replace(
       /\/+$/,
-      ""
+      "",
     );
 
     const url =

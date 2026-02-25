@@ -528,6 +528,7 @@ export function PlannerPageContainer() {
                     result={planResult as PlanResult}
                     graphsByEvent={graphByEvent}
                     targetCatIds={targetCatIds}
+                    catNameById={catNameById}
                     showTitle={false}
                   />
                 </Section>

@@ -6,7 +6,6 @@ import type { Event, PoolType } from "../../shared/models";
 
 import { fetchTextWithRetry } from "./_lib/http";
 import { parseEventCatsFromHtml } from "./_lib/parseEventCats";
-import { normalizeText } from "./_lib/normalize";
 import { getBcServerEnv } from "./_lib/env";
 
 function json(statusCode: number, body: unknown, cacheSeconds = 0) {
@@ -26,26 +25,6 @@ function json(statusCode: number, body: unknown, cacheSeconds = 0) {
     },
     body: JSON.stringify(body),
   };
-}
-
-/** 允許從 querystring 帶入 pool_type，否則從 name 推斷，最後 fallback normal */
-function normalizePoolType(v: unknown): PoolType | null {
-  const s = String(v ?? "")
-    .trim()
-    .toLowerCase();
-  if (s === "normal" || s === "platinum" || s === "legend")
-    return s as PoolType;
-  return null;
-}
-
-function inferPoolTypeFromName(nameRaw: string): PoolType {
-  const name = normalizeText(nameRaw);
-  if (name.includes("傳說轉蛋")) return "legend";
-  if (name.includes("白金轉蛋")) return "platinum";
-  const lower = name.toLowerCase();
-  if (lower.includes("legend")) return "legend";
-  if (lower.includes("platinum")) return "platinum";
-  return "normal";
 }
 
 export const handler: Handler = async (evt) => {
@@ -88,8 +67,7 @@ export const handler: Handler = async (evt) => {
     const parsed = parseEventCatsFromHtml(html);
 
     const name = qs.name ? String(qs.name) : eventValue;
-    const pool_type =
-      normalizePoolType(qs.pool_type) ?? inferPoolTypeFromName(name);
+    const pool_type = (qs.pool_type || "normal") as PoolType;
 
     const ev: Event = {
       value: eventValue,

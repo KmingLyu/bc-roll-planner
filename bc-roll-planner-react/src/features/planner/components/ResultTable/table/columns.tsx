@@ -127,6 +127,7 @@ export function makeDefaultColumns(): DrawTableColumn[] {
             text={r.A}
             status={r.statusA}
             isTarget={!isEllipsis && r.isTargetA}
+            isDuplicate={!isEllipsis && r.isDuplicateA}
             hasNext={ctx.hasNextInBlock}
             isEllipsis={isEllipsis}
             hideLane={isGuaranteedRow && r.statusA !== "guaranteed"} // ✅ 保底列的另一條線隱藏
@@ -149,6 +150,7 @@ export function makeDefaultColumns(): DrawTableColumn[] {
             text={r.B}
             status={r.statusB}
             isTarget={!isEllipsis && r.isTargetB}
+            isDuplicate={!isEllipsis && r.isDuplicateB}
             hasNext={ctx.hasNextInBlock}
             isEllipsis={isEllipsis}
             hideLane={isGuaranteedRow && r.statusB !== "guaranteed"} // ✅ 保底列的另一條線隱藏

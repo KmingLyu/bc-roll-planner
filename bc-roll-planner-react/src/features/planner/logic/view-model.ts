@@ -10,7 +10,11 @@
  * - 只做「顯示層」的 mapping/formatting，不改動 planner 核心演算法輸出。
  * - 讓 UI 元件保持乾淨：UI 元件只要吃 DrawRow 就能畫表。
  */
-import type { PlanResult, PlanStep, DrawHit } from "@/features/planner/logic/core";
+import type {
+  PlanResult,
+  PlanStep,
+  DrawHit,
+} from "@/features/planner/logic/core";
 import type { TrackGraph } from "@/types/models";
 import { parsePosId } from "@/utils/cursor";
 import { APP_THEME_TOKENS } from "@/styles/theme/tokens";
@@ -37,6 +41,22 @@ export function formatTenRollHead(i1Based: number): string {
 }
 export function formatTargetCount(n: number): string {
   return `${UI_TEXT.targetPrefix}${n}`;
+}
+
+/**
+ * 將命中目標的 Map<catId, count> 格式化為 "貓名A、貓名Bx2" 格式
+ * count === 1 不加 x1，count >= 2 加 xN
+ */
+export function formatHitCatNames(
+  hitMap: Map<number, number>,
+  catNameById: Map<number, string>,
+): string {
+  return [...hitMap.entries()]
+    .map(([catId, count]) => {
+      const name = catNameById.get(catId) ?? "?";
+      return count >= 2 ? `${name}x${count}` : name;
+    })
+    .join("、");
 }
 
 export const ACTIONS = ["金券", "白金券", "傳說券", "罐頭", "10連抽"] as const;
@@ -94,9 +114,7 @@ export function hashString(s: string): number {
 }
 
 // 30 色（Hue 調色盤）
-export const EVENT_HUES_30 = [
-  ...APP_THEME_TOKENS.planner.eventHues,
-] as const;
+export const EVENT_HUES_30 = [...APP_THEME_TOKENS.planner.eventHues] as const;
 
 export function makeEventColorPicker(eventValuesInOrder: string[]) {
   // 照 list 順序分配 hue（同名 event 只分配一次）
@@ -207,6 +225,10 @@ export type DrawRow = {
   isTargetA: boolean;
   isTargetB: boolean;
 
+  // lane 專用 duplicate（同一隻貓在計畫中已出現過）
+  isDuplicateA: boolean;
+  isDuplicateB: boolean;
+
   note: string;
 
   pos: number | null;
@@ -227,11 +249,14 @@ export function buildDrawRows(params: {
   result: PlanResult;
   graphsByEvent: Record<string, TrackGraph>;
   targetIdSet: Set<number>;
+  catNameById: Map<number, string>;
 }): DrawRow[] {
-  const { result, graphsByEvent, targetIdSet } = params;
+  const { result, graphsByEvent, targetIdSet, catNameById } = params;
   const plan = (result.plan || []) as PlanStep[];
 
   const out: DrawRow[] = [];
+  const seenCatIds = new Set<number>();
+  const targetDrawCount = new Map<number, number>(); // 目標貓累計抽到次數
 
   for (let si = 0; si < plan.length; si++) {
     const st = plan[si];
@@ -246,19 +271,22 @@ export function buildDrawRows(params: {
     // ten：摘要 header
     // -------------------------
     if (isTen) {
-      // ✅ 依 lane 統計 target 命中
-      let hitA = 0;
-      let hitB = 0;
+      // ✅ 依 lane 統計 target 命中（用 Map 記錄每隻目標貓的命中次數）
+      const hitMapA = new Map<number, number>();
+      const hitMapB = new Map<number, number>();
 
       for (const d of draws) {
         if (d.cat_id == null || !targetIdSet.has(d.cat_id)) continue;
         const p = posTrackFromPosId(d.from_pos_id);
         if (p.ok) {
-          if (p.track === "A") hitA++;
-          else hitB++;
+          if (p.track === "A")
+            hitMapA.set(d.cat_id, (hitMapA.get(d.cat_id) || 0) + 1);
+          else hitMapB.set(d.cat_id, (hitMapB.get(d.cat_id) || 0) + 1);
         }
       }
 
+      const hitA = hitMapA.size;
+      const hitB = hitMapB.size;
       const totalHit = hitA + hitB;
       const sp = posTrackFromPosId(st.start_cursor_id);
 
@@ -270,8 +298,8 @@ export function buildDrawRows(params: {
         eventValue: st.event_value,
         eventName,
 
-        A: hitA > 0 ? formatTargetCount(hitA) : UI_TEXT.dash,
-        B: hitB > 0 ? formatTargetCount(hitB) : UI_TEXT.dash,
+        A: hitA > 0 ? formatHitCatNames(hitMapA, catNameById) : UI_TEXT.dash,
+        B: hitB > 0 ? formatHitCatNames(hitMapB, catNameById) : UI_TEXT.dash,
 
         statusA: "hit",
         statusB: "hit",
@@ -291,6 +319,9 @@ export function buildDrawRows(params: {
         isGuaranteedRow: false,
 
         isTarget: totalHit > 0,
+
+        isDuplicateA: false,
+        isDuplicateB: false,
       });
     }
 
@@ -345,23 +376,44 @@ export function buildDrawRows(params: {
 
       const isTarget = d.cat_id != null && targetIdSet.has(d.cat_id);
 
+      // 目標貓累計次數（跨步驟）
+      if (isTarget && d.cat_id != null) {
+        targetDrawCount.set(d.cat_id, (targetDrawCount.get(d.cat_id) || 0) + 1);
+      }
+      const targetCount =
+        isTarget && d.cat_id != null ? targetDrawCount.get(d.cat_id) || 1 : 0;
+
+      // 重複判斷（全域跨步驟）
+      const isDup = d.cat_id != null && seenCatIds.has(d.cat_id);
+      if (d.cat_id != null) seenCatIds.add(d.cat_id);
+
+      // 目標貓名稱加上累計次數後綴（x1 不顯示）
       let A = baseA;
       let B = baseB;
+      if (isTarget && targetCount >= 2) {
+        if (track === "A") A = `${baseA} x ${targetCount}`;
+        else B = `${baseB} x ${targetCount}`;
+      }
 
       let statusA: StatusKey = "normal";
       let statusB: StatusKey = "normal";
       let isTargetA = false;
       let isTargetB = false;
+      let isDuplicateA = false;
+      let isDuplicateB = false;
 
       if (track === "A") {
         statusA = isGuaranteed ? "guaranteed" : "hit";
         isTargetA = isTarget;
+        isDuplicateA = isDup;
       } else if (track === "B") {
         statusB = isGuaranteed ? "guaranteed" : "hit";
         isTargetB = isTarget;
+        isDuplicateB = isDup;
       } else {
         statusB = isGuaranteed ? "guaranteed" : "hit";
         isTargetB = isTarget;
+        isDuplicateB = isDup;
       }
 
       const countText =
@@ -422,6 +474,8 @@ export function buildDrawRows(params: {
         isTen,
         isGuaranteedRow: isGuaranteed,
         isTarget,
+        isDuplicateA,
+        isDuplicateB,
       });
     }
   }

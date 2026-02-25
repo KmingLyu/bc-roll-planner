@@ -5,7 +5,7 @@ import {
   TARGET_NODE_STYLE,
 } from "../../../logic/view-model";
 
-export function StepLane(props: {
+interface StepLaneProps {
   lane: "A" | "B";
   countText: string; // 用來組合成 1A / 1B（一般列用）
   text: string;
@@ -14,9 +14,14 @@ export function StepLane(props: {
   hasNext: boolean;
   isEllipsis?: boolean;
 
-  /** ✅ 新增：保底列的另一條線用這個隱藏整格（不顯示圓圈與貓） */
+  /** 保底列的另一條線用這個隱藏整格（不顯示圓圈與貓） */
   hideLane?: boolean;
-}) {
+
+  /** 重複貓咪：同一隻貓在計畫中已出現過 */
+  isDuplicate?: boolean;
+}
+
+export function StepLane(props: StepLaneProps) {
   const {
     lane,
     countText,
@@ -26,6 +31,7 @@ export function StepLane(props: {
     hasNext,
     isEllipsis,
     hideLane = false,
+    isDuplicate = false,
   } = props;
 
   const laneW = 34;

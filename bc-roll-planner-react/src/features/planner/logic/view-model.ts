@@ -10,7 +10,11 @@
  * - 只做「顯示層」的 mapping/formatting，不改動 planner 核心演算法輸出。
  * - 讓 UI 元件保持乾淨：UI 元件只要吃 DrawRow 就能畫表。
  */
-import type { PlanResult, PlanStep, DrawHit } from "@/features/planner/logic/core";
+import type {
+  PlanResult,
+  PlanStep,
+  DrawHit,
+} from "@/features/planner/logic/core";
 import type { TrackGraph } from "@/types/models";
 import { parsePosId } from "@/utils/cursor";
 import { APP_THEME_TOKENS } from "@/styles/theme/tokens";
@@ -94,9 +98,7 @@ export function hashString(s: string): number {
 }
 
 // 30 色（Hue 調色盤）
-export const EVENT_HUES_30 = [
-  ...APP_THEME_TOKENS.planner.eventHues,
-] as const;
+export const EVENT_HUES_30 = [...APP_THEME_TOKENS.planner.eventHues] as const;
 
 export function makeEventColorPicker(eventValuesInOrder: string[]) {
   // 照 list 順序分配 hue（同名 event 只分配一次）
@@ -207,6 +209,10 @@ export type DrawRow = {
   isTargetA: boolean;
   isTargetB: boolean;
 
+  // lane 專用 duplicate（同一隻貓在計畫中已出現過）
+  isDuplicateA: boolean;
+  isDuplicateB: boolean;
+
   note: string;
 
   pos: number | null;
@@ -232,6 +238,7 @@ export function buildDrawRows(params: {
   const plan = (result.plan || []) as PlanStep[];
 
   const out: DrawRow[] = [];
+  const seenCatIds = new Set<number>();
 
   for (let si = 0; si < plan.length; si++) {
     const st = plan[si];
@@ -246,19 +253,21 @@ export function buildDrawRows(params: {
     // ten：摘要 header
     // -------------------------
     if (isTen) {
-      // ✅ 依 lane 統計 target 命中
-      let hitA = 0;
-      let hitB = 0;
+      // ✅ 依 lane 統計 target 命中（用 Set 去重，同一隻貓抽到多次只算一隻）
+      const hitSetA = new Set<number>();
+      const hitSetB = new Set<number>();
 
       for (const d of draws) {
         if (d.cat_id == null || !targetIdSet.has(d.cat_id)) continue;
         const p = posTrackFromPosId(d.from_pos_id);
         if (p.ok) {
-          if (p.track === "A") hitA++;
-          else hitB++;
+          if (p.track === "A") hitSetA.add(d.cat_id);
+          else hitSetB.add(d.cat_id);
         }
       }
 
+      const hitA = hitSetA.size;
+      const hitB = hitSetB.size;
       const totalHit = hitA + hitB;
       const sp = posTrackFromPosId(st.start_cursor_id);
 
@@ -291,6 +300,9 @@ export function buildDrawRows(params: {
         isGuaranteedRow: false,
 
         isTarget: totalHit > 0,
+
+        isDuplicateA: false,
+        isDuplicateB: false,
       });
     }
 
@@ -345,6 +357,10 @@ export function buildDrawRows(params: {
 
       const isTarget = d.cat_id != null && targetIdSet.has(d.cat_id);
 
+      // 重複判斷（全域跨步驟）
+      const isDup = d.cat_id != null && seenCatIds.has(d.cat_id);
+      if (d.cat_id != null) seenCatIds.add(d.cat_id);
+
       let A = baseA;
       let B = baseB;
 
@@ -352,16 +368,21 @@ export function buildDrawRows(params: {
       let statusB: StatusKey = "normal";
       let isTargetA = false;
       let isTargetB = false;
+      let isDuplicateA = false;
+      let isDuplicateB = false;
 
       if (track === "A") {
         statusA = isGuaranteed ? "guaranteed" : "hit";
         isTargetA = isTarget;
+        isDuplicateA = isDup;
       } else if (track === "B") {
         statusB = isGuaranteed ? "guaranteed" : "hit";
         isTargetB = isTarget;
+        isDuplicateB = isDup;
       } else {
         statusB = isGuaranteed ? "guaranteed" : "hit";
         isTargetB = isTarget;
+        isDuplicateB = isDup;
       }
 
       const countText =
@@ -422,6 +443,8 @@ export function buildDrawRows(params: {
         isTen,
         isGuaranteedRow: isGuaranteed,
         isTarget,
+        isDuplicateA,
+        isDuplicateB,
       });
     }
   }

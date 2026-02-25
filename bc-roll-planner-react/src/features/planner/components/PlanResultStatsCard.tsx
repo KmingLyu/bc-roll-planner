@@ -74,9 +74,19 @@ export function PlanResultStatsCard(props: {
       byEvent.set(ev, (byEvent.get(ev) || 0) + drawsLen);
     }
 
-    const hitTargets = (result.targets_hit_ids || []).map((id) => ({
+    // 從 all_draws 統計每隻目標貓實際被抽到的次數
+    const hitTargetSet = new Set(result.targets_hit_ids || []);
+    const drawCountById = new Map<number, number>();
+    for (const d of result.all_draws || []) {
+      if (d.cat_id != null && hitTargetSet.has(d.cat_id)) {
+        drawCountById.set(d.cat_id, (drawCountById.get(d.cat_id) || 0) + 1);
+      }
+    }
+
+    const hitTargets = [...hitTargetSet].map((id) => ({
       id,
       name: catNameById.get(id) ?? "?",
+      count: drawCountById.get(id) || 1,
     }));
     const missTargets = (result.targets_missing_ids || []).map((id) => ({
       id,
@@ -93,14 +103,14 @@ export function PlanResultStatsCard(props: {
   const alertSeverity: "success" | "warning" | "error" = result.success
     ? "success"
     : noHit
-    ? "error"
-    : "warning";
+      ? "error"
+      : "warning";
 
   const alertText = result.success
     ? "規劃成功：命中全部目標"
     : noHit
-    ? "規劃失敗：未命中任何目標"
-    : "未完全命中：顯示目前最佳路徑";
+      ? "規劃失敗：未命中任何目標"
+      : "未完全命中：顯示目前最佳路徑";
 
   return (
     <Stack spacing={2}>
@@ -125,8 +135,8 @@ export function PlanResultStatsCard(props: {
                 result.success
                   ? "success.main"
                   : noHit
-                  ? "error.main"
-                  : "warning.main"
+                    ? "error.main"
+                    : "warning.main"
               }
             />
           </Grid>
@@ -164,7 +174,7 @@ export function PlanResultStatsCard(props: {
                   variant="outlined"
                   sx={{ borderRadius: 1.5, borderColor: "divider" }}
                 />
-              )
+              ),
           )}
           {Array.from(stats.byAction.values()).every((v) => v === 0) && (
             <Typography variant="caption" color="text.disabled">
@@ -219,7 +229,9 @@ export function PlanResultStatsCard(props: {
               color={noHit ? "text.secondary" : "success.main"}
               sx={{ lineHeight: 1.6, fontWeight: 500 }}
             >
-              {stats.hitTargets.map((t) => t.name).join("、")}
+              {stats.hitTargets
+                .map((t) => (t.count >= 2 ? `${t.name}x${t.count}` : t.name))
+                .join("、")}
             </Typography>
           ) : (
             <Typography variant="body2" color="text.disabled">

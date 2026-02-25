@@ -33,6 +33,7 @@ export function ResultTable(props: {
   result: PlanResult;
   graphsByEvent: Record<string, TrackGraph>;
   targetCatIds: number[];
+  catNameById: Map<number, string>;
 
   /**
    * ✅ 擴充點 1：可插拔欄位
@@ -60,6 +61,7 @@ export function ResultTable(props: {
     result,
     graphsByEvent,
     targetCatIds,
+    catNameById,
     columns,
     onRowContextMenu,
     title = "規劃結果",
@@ -75,8 +77,9 @@ export function ResultTable(props: {
       result,
       graphsByEvent,
       targetIdSet: targetSet,
+      catNameById,
     });
-  }, [result, graphsByEvent, targetSet]);
+  }, [result, graphsByEvent, targetSet, catNameById]);
 
   // UI states
   const [openTen, setOpenTen] = useState<Record<number, boolean>>({});

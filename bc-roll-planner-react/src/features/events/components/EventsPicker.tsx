@@ -5,6 +5,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import {
   Alert,
   Box,
+  Button,
   Checkbox,
   Chip,
   Divider,
@@ -147,6 +148,11 @@ export function EventsPicker(props: {
     return null;
   };
 
+  const clearAllEvents = () => {
+    onChange([]);
+    if (primaryValue) onPrimaryChange("");
+  };
+
   const toggleEvent = (eventValue: string) => {
     if (selectedSet.has(eventValue)) {
       onChange(value.filter((v) => v !== eventValue));
@@ -255,7 +261,6 @@ export function EventsPicker(props: {
           py: 1.1,
           backgroundColor: "background.paper",
           borderTop: "1px solid",
-          borderBottom: "1px solid",
           borderColor: "divider",
         }}
       >
@@ -320,6 +325,18 @@ export function EventsPicker(props: {
 
           <Drawer
             title="選擇卡池"
+            headerRight={
+              value.length ? (
+                <Button
+                  size="small"
+                  color="inherit"
+                  onClick={clearAllEvents}
+                  sx={{ fontWeight: 700 }}
+                >
+                  清空全部
+                </Button>
+              ) : undefined
+            }
             open={mobileOpen}
             onRequestClose={() => setMobileOpen(false)}
             onClose={() => setMobileOpen(false)}
@@ -375,7 +392,9 @@ export function EventsPicker(props: {
               onChange(next);
             }}
             input={<OutlinedInput label="選擇卡池（多選）" />}
-            renderValue={(selected) => renderSummary((selected as string[]) || [])}
+            renderValue={(selected) =>
+              renderSummary((selected as string[]) || [])
+            }
             MenuProps={{ PaperProps: { sx: { maxHeight: 520 } } }}
           >
             <ListSubheader disableSticky>
@@ -408,29 +427,39 @@ export function EventsPicker(props: {
       )}
 
       {!!value.length && (
-        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-          {selectedEvents.slice(0, 20).map((ev) => {
-            const kind = getKind(ev.value);
-            const suffix = kind === "past" ? "（Past）" : "";
-            return (
+        <Stack spacing={0.75}>
+          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+            <Button size="small" onClick={clearAllEvents} sx={{ fontWeight: 700 }}>
+              清空所有 event
+            </Button>
+          </Box>
+
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+            {selectedEvents.slice(0, 20).map((ev) => {
+              const kind = getKind(ev.value);
+              const suffix = kind === "past" ? "（Past）" : "";
+              return (
+                <Chip
+                  key={ev.value}
+                  size="small"
+                  label={`${formatEventName(ev)}${suffix}`}
+                  onDelete={() =>
+                    onChange(value.filter((v) => v !== ev.value))
+                  }
+                  variant="outlined"
+                  color="default"
+                />
+              );
+            })}
+            {value.length > 20 && (
               <Chip
-                key={ev.value}
                 size="small"
-                label={`${formatEventName(ev)}${suffix}`}
-                onDelete={() => onChange(value.filter((v) => v !== ev.value))}
+                label={`+${value.length - 20}`}
                 variant="outlined"
-                color="default"
               />
-            );
-          })}
-          {value.length > 20 && (
-            <Chip
-              size="small"
-              label={`+${value.length - 20}`}
-              variant="outlined"
-            />
-          )}
-        </Box>
+            )}
+          </Box>
+        </Stack>
       )}
     </Stack>
   );

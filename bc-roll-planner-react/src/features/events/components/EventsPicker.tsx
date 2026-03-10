@@ -1,5 +1,7 @@
-// src/features/events/ui/EventsPicker.tsx
+import { useState } from "react";
 import type { Event } from "@/types/models";
+import { Drawer } from "@/components";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import {
   Alert,
   Box,
@@ -7,6 +9,7 @@ import {
   Chip,
   Divider,
   FormControl,
+  InputAdornment,
   InputLabel,
   LinearProgress,
   ListItemText,
@@ -15,10 +18,92 @@ import {
   OutlinedInput,
   Select,
   Stack,
+  Typography,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
 type EvKind = "upcoming" | "past";
+
+function formatEventDate(ev: Event): string {
+  const start = ev.start_date?.trim();
+  const end = ev.end_date?.trim();
+
+  if (start && end) {
+    return start === end ? start : `${start} ~ ${end}`;
+  }
+  if (start) return start;
+  if (end) return end;
+  return "日期未提供";
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function formatEventName(ev: Event): string {
+  const name = ev.name.trim();
+  const start = ev.start_date?.trim();
+  const end = ev.end_date?.trim();
+
+  const patterns: RegExp[] = [];
+
+  if (start && end && start !== end) {
+    patterns.push(
+      new RegExp(`^${escapeRegExp(start)}\\s*~\\s*${escapeRegExp(end)}:?\\s*`),
+    );
+  }
+  if (start) {
+    patterns.push(new RegExp(`^${escapeRegExp(start)}:?\\s*`));
+  }
+  if (end && end !== start) {
+    patterns.push(new RegExp(`^${escapeRegExp(end)}:?\\s*`));
+  }
+
+  for (const pattern of patterns) {
+    const next = name.replace(pattern, "").trim();
+    if (next && next !== name) return next;
+  }
+
+  return name;
+}
+
+function MobileEventLabel(props: { event: Event }) {
+  const { event } = props;
+
+  return (
+    <Box sx={{ minWidth: 0, flex: 1 }}>
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        sx={{
+          lineHeight: 1.35,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        {formatEventDate(event)}
+      </Typography>
+      <Typography
+        variant="body2"
+        sx={{
+          mt: 0.25,
+          lineHeight: 1.35,
+          fontWeight: 600,
+          wordBreak: "break-word",
+          display: "-webkit-box",
+          overflow: "hidden",
+          WebkitBoxOrient: "vertical",
+          WebkitLineClamp: 2,
+        }}
+      >
+        {formatEventName(event)}
+      </Typography>
+    </Box>
+  );
+}
 
 export function EventsPicker(props: {
   loadState: LoadState;
@@ -46,6 +131,10 @@ export function EventsPicker(props: {
     onPrimaryChange,
   } = props;
 
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   const selectedSet = new Set(value);
 
   const findEvent = (v: string): Event | undefined =>
@@ -58,18 +147,27 @@ export function EventsPicker(props: {
     return null;
   };
 
+  const toggleEvent = (eventValue: string) => {
+    if (selectedSet.has(eventValue)) {
+      onChange(value.filter((v) => v !== eventValue));
+      if (primaryValue === eventValue) onPrimaryChange("");
+      return;
+    }
+
+    onChange([...value, eventValue]);
+  };
+
   const selectedEvents = value
     .map((v) => findEvent(v))
     .filter(Boolean) as Event[];
 
-  const renderValue = (selected: any) => {
-    const arr = (selected as string[]) || [];
-    if (!arr.length) return "（未選）";
-    if (arr.length === 1) {
-      const e = findEvent(arr[0]);
-      return e ? `${e.name}` : arr[0];
+  const renderSummary = (selected: string[]) => {
+    if (!selected.length) return "（未選）";
+    if (selected.length === 1) {
+      const e = findEvent(selected[0]);
+      return e ? formatEventName(e) : selected[0];
     }
-    return `已選 ${arr.length} 個 events`;
+    return `已選 ${selected.length} 個 events`;
   };
 
   const renderMenuItem = (ev: Event, kind: EvKind) => {
@@ -95,62 +193,219 @@ export function EventsPicker(props: {
     );
   };
 
+  const renderMobileItem = (ev: Event, kind: EvKind) => {
+    const checked = selectedSet.has(ev.value);
+
+    return (
+      <Box
+        key={ev.value}
+        role="button"
+        tabIndex={0}
+        onClick={() => toggleEvent(ev.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            toggleEvent(ev.value);
+          }
+        }}
+        sx={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 1.25,
+          px: 2,
+          py: 1.25,
+          borderTop: "1px solid",
+          borderColor: "divider",
+          cursor: "pointer",
+          backgroundColor: checked ? "action.selected" : "transparent",
+        }}
+      >
+        <Checkbox
+          checked={checked}
+          tabIndex={-1}
+          sx={{ mt: -0.35, ml: -0.5 }}
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+          onChange={() => toggleEvent(ev.value)}
+        />
+
+        <MobileEventLabel event={ev} />
+
+        <Chip
+          size="small"
+          variant="outlined"
+          label={kind === "upcoming" ? "Upcoming" : "Past"}
+          sx={{ mt: 0.25, flexShrink: 0 }}
+        />
+      </Box>
+    );
+  };
+
+  const renderMobileSection = (
+    title: string,
+    events: Event[],
+    kind: EvKind,
+    emptyText: string,
+  ) => (
+    <Box>
+      <Box
+        sx={{
+          px: 2,
+          py: 1.1,
+          backgroundColor: "background.paper",
+          borderTop: "1px solid",
+          borderBottom: "1px solid",
+          borderColor: "divider",
+        }}
+      >
+        <Typography variant="subtitle2" fontWeight={800}>
+          {title}（{events.length}）
+        </Typography>
+      </Box>
+
+      {events.length ? (
+        events.map((ev) => renderMobileItem(ev, kind))
+      ) : (
+        <Box
+          sx={{
+            px: 2,
+            py: 2,
+            borderTop: "1px solid",
+            borderColor: "divider",
+          }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            {emptyText}
+          </Typography>
+        </Box>
+      )}
+    </Box>
+  );
+
   return (
     <Stack spacing={1.25}>
-      <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
-        {/* <Typography variant="body2" color="text.secondary">
-          狀態：<b>{loadState}</b>
-          ，Upcoming：{upcomingEvents.length}
-          ，Past：{pastEvents.length}
-        </Typography> */}
-      </Stack>
-
       {loadState === "loading" && <LinearProgress />}
       {loadState === "error" && (
         <Alert severity="error">events 錯誤：{error}</Alert>
       )}
 
-      <FormControl fullWidth size="small">
-        <InputLabel id="event-multi-label">選擇卡池（多選）</InputLabel>
-        <Select
-          labelId="event-multi-label"
-          multiple
-          value={value}
-          onChange={(e) => {
-            const next = e.target.value as string[];
-            onChange(next);
-          }}
-          input={<OutlinedInput label="選擇卡池（多選）" />}
-          renderValue={renderValue}
-          MenuProps={{ PaperProps: { sx: { maxHeight: 520 } } }}
-        >
-          <ListSubheader disableSticky>
-            Upcoming（{upcomingEvents.length}）
-          </ListSubheader>
+      {isMobile ? (
+        <>
+          <FormControl fullWidth size="small">
+            <InputLabel shrink htmlFor="event-mobile-trigger">
+              選擇卡池（多選）
+            </InputLabel>
+            <OutlinedInput
+              id="event-mobile-trigger"
+              notched
+              readOnly
+              label="選擇卡池（多選）"
+              value={renderSummary(value)}
+              onClick={() => setMobileOpen(true)}
+              endAdornment={
+                <InputAdornment position="end">
+                  <ExpandMoreIcon color="action" />
+                </InputAdornment>
+              }
+              sx={{
+                cursor: "pointer",
+                "& input": {
+                  cursor: "pointer",
+                  textOverflow: "ellipsis",
+                },
+              }}
+            />
+          </FormControl>
 
-          {upcomingEvents.length ? (
-            upcomingEvents.map((ev) => renderMenuItem(ev, "upcoming"))
-          ) : (
-            <MenuItem disabled dense>
-              <ListItemText primary="（沒有 upcoming events）" />
-            </MenuItem>
-          )}
+          <Drawer
+            title="選擇卡池"
+            open={mobileOpen}
+            onRequestClose={() => setMobileOpen(false)}
+            onClose={() => setMobileOpen(false)}
+            closeAriaLabel="關閉卡池選單"
+            anchor="bottom"
+            width="100%"
+            paperSx={{
+              width: "100%",
+              maxHeight: "82vh",
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              p: 0,
+            }}
+            headerSx={{
+              px: 2,
+              pt: 1.2,
+              pb: 0.8,
+              position: "sticky",
+              top: 0,
+              zIndex: 1,
+              backgroundColor: "background.paper",
+              borderBottom: "1px solid",
+              borderColor: "divider",
+            }}
+            bodySx={{ pt: 0, pb: 1.25 }}
+          >
+            <Stack spacing={0}>
+              {renderMobileSection(
+                "Upcoming",
+                upcomingEvents,
+                "upcoming",
+                "（沒有 upcoming events）",
+              )}
+              <Divider />
+              {renderMobileSection(
+                "Past",
+                pastEvents,
+                "past",
+                "（沒有 past events）",
+              )}
+            </Stack>
+          </Drawer>
+        </>
+      ) : (
+        <FormControl fullWidth size="small">
+          <InputLabel id="event-multi-label">選擇卡池（多選）</InputLabel>
+          <Select
+            labelId="event-multi-label"
+            multiple
+            value={value}
+            onChange={(e) => {
+              const next = e.target.value as string[];
+              onChange(next);
+            }}
+            input={<OutlinedInput label="選擇卡池（多選）" />}
+            renderValue={(selected) => renderSummary((selected as string[]) || [])}
+            MenuProps={{ PaperProps: { sx: { maxHeight: 520 } } }}
+          >
+            <ListSubheader disableSticky>
+              Upcoming（{upcomingEvents.length}）
+            </ListSubheader>
 
-          <Divider sx={{ my: 0.5 }} />
+            {upcomingEvents.length ? (
+              upcomingEvents.map((ev) => renderMenuItem(ev, "upcoming"))
+            ) : (
+              <MenuItem disabled dense>
+                <ListItemText primary="（沒有 upcoming events）" />
+              </MenuItem>
+            )}
 
-          <ListSubheader disableSticky>
-            Past（{pastEvents.length}）
-          </ListSubheader>
+            <Divider sx={{ my: 0.5 }} />
 
-          {pastEvents.length ? (
-            pastEvents.map((ev) => renderMenuItem(ev, "past"))
-          ) : (
-            <MenuItem disabled dense>
-              <ListItemText primary="（沒有 past events）" />
-            </MenuItem>
-          )}
-        </Select>
-      </FormControl>
+            <ListSubheader disableSticky>
+              Past（{pastEvents.length}）
+            </ListSubheader>
+
+            {pastEvents.length ? (
+              pastEvents.map((ev) => renderMenuItem(ev, "past"))
+            ) : (
+              <MenuItem disabled dense>
+                <ListItemText primary="（沒有 past events）" />
+              </MenuItem>
+            )}
+          </Select>
+        </FormControl>
+      )}
 
       {!!value.length && (
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
@@ -161,7 +416,7 @@ export function EventsPicker(props: {
               <Chip
                 key={ev.value}
                 size="small"
-                label={`${ev.name}${suffix}`}
+                label={`${formatEventName(ev)}${suffix}`}
                 onDelete={() => onChange(value.filter((v) => v !== ev.value))}
                 variant="outlined"
                 color="default"
@@ -177,11 +432,6 @@ export function EventsPicker(props: {
           )}
         </Box>
       )}
-
-      {/* <Typography variant="body2" color="text.secondary">
-        Planner 會用「所有已選 events」一起規劃；Graph Debug / Simulator
-        則用「主要 event」顯示。
-      </Typography> */}
     </Stack>
   );
 }

@@ -1,20 +1,25 @@
-// src/features/planner/components/SeedForm.tsx
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Stack, TextField } from "@mui/material";
+import { Alert, Stack, TextField, Typography } from "@mui/material";
 import Grid from "@mui/material/Grid";
+
+export type SeedCountFormValue = {
+  seed: string;
+  countInput: string;
+  manualCount: number | null;
+  countError: string;
+};
 
 export function SeedCountForm(props: {
   seedApplied: string;
-  countApplied: number | null;
-  onChange: (v: { seed: string; count: number | null }) => void;
+  countInput: string;
+  autoCount: number;
+  onChange: (v: SeedCountFormValue) => void;
 }) {
-  const { seedApplied, countApplied, onChange } = props;
+  const { seedApplied, countInput, autoCount, onChange } = props;
 
   // Draft 用字串：可自然清空
   const [seedDraft, setSeedDraft] = useState<string>(seedApplied);
-  const [countDraft, setCountDraft] = useState<string>(
-    typeof countApplied === "number" ? String(countApplied) : "",
-  );
+  const [countDraft, setCountDraft] = useState<string>(countInput);
   const [err, setErr] = useState<string>("");
 
   // 若父層值被外部改動（例如 reset），同步回 draft
@@ -23,45 +28,59 @@ export function SeedCountForm(props: {
   }, [seedApplied]);
 
   useEffect(() => {
-    setCountDraft(typeof countApplied === "number" ? String(countApplied) : "");
-  }, [countApplied]);
+    setCountDraft(countInput);
+  }, [countInput]);
 
-  // 解析/驗證：不合法也會產出「父層應該變成的值」（seed 可能為空、count 變 null）
+  // 解析/驗證：count 可留空；不合法時仍同步回父層，讓外部能 disable run
   const parsed = useMemo(() => {
     const s = seedDraft.trim();
     const cRaw = countDraft.trim();
 
-    // 要推回父層的值（不合法時也要推，才能 disable）
-    const nextSeed = s;
-    let nextCount: number | null = null;
-
-    // 規則：只要 seed 或 count 任一為空 => 這裡不顯示錯誤
-    // （但仍回傳 count=null，讓上層 hasSeedCount 變 false）
-    if (!s || !cRaw) {
-      return { seed: nextSeed, count: null, err: "" };
+    if (!cRaw) {
+      return {
+        seed: s,
+        countInput: countDraft,
+        manualCount: null,
+        countError: "",
+      };
     }
 
-    // 兩者都不空，才檢查數值合法性
     const n = Number(cRaw);
-    if (!Number.isFinite(n) || n <= 0) {
-      return { seed: nextSeed, count: null, err: "count 必須是正整數" };
+    if (!Number.isFinite(n) || !Number.isInteger(n) || n <= 0) {
+      return {
+        seed: s,
+        countInput: countDraft,
+        manualCount: null,
+        countError: "count 必須是正整數",
+      };
     }
 
-    nextCount = Math.floor(n);
-    return { seed: nextSeed, count: nextCount, err: "" };
+    return {
+      seed: s,
+      countInput: countDraft,
+      manualCount: n,
+      countError: "",
+    };
   }, [seedDraft, countDraft]);
 
-  // 任何輸入變動都同步回父層（不合法就回傳 count=null / seed=""）
+  // 任何輸入變動都同步回父層
   useEffect(() => {
-    setErr(parsed.err);
+    setErr(parsed.countError);
 
     const sameSeed = parsed.seed === seedApplied;
-    const sameCount = parsed.count === countApplied;
-    if (sameSeed && sameCount) return;
+    const sameInput = parsed.countInput === countInput;
+    if (sameSeed && sameInput) return;
 
-    onChange({ seed: parsed.seed, count: parsed.count });
+    onChange(parsed);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [parsed.seed, parsed.count, parsed.err]);
+  }, [
+    parsed.seed,
+    parsed.countInput,
+    parsed.manualCount,
+    parsed.countError,
+    seedApplied,
+    countInput,
+  ]);
 
   return (
     <Stack spacing={1.25}>
@@ -79,16 +98,26 @@ export function SeedCountForm(props: {
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6 }}>
-          <TextField
-            fullWidth
-            label="count"
-            type="number"
-            value={countDraft}
-            onChange={(e) => setCountDraft(e.target.value)}
-            size="small"
-            // inputProps={{ min: 1 }}
-            placeholder="例如 120"
-          />
+          <Stack spacing={0.75}>
+            <TextField
+              fullWidth
+              label="count"
+              type="number"
+              value={countDraft}
+              onChange={(e) => setCountDraft(e.target.value)}
+              size="small"
+              inputProps={{ min: 1, step: 1 }}
+              placeholder="留空則自動依資源計算"
+            />
+
+            {!err && (
+              <Typography variant="caption" color="text.secondary">
+                {countDraft.trim()
+                  ? `目前將使用手動 count：${parsed.manualCount ?? "-"}`
+                  : `目前將使用自動搜尋上限：${autoCount}`}
+              </Typography>
+            )}
+          </Stack>
         </Grid>
       </Grid>
 

@@ -43,6 +43,7 @@ import { TargetCatsLayout } from "./components/TargetLayout";
 // Planner types
 import type { PlanResult } from "./logic/core";
 import type { PlannerResources, PlannerUiConfig, UiFlags } from "./types";
+import { parsePosId } from "@/utils/cursor";
 
 // env
 import { BC_ENV } from "@/config/bcEnv";
@@ -54,6 +55,47 @@ function safeErrText(e: unknown): string {
   if (e && typeof e === "object" && "message" in e)
     return String((e as any).message);
   return String(e);
+}
+
+function clampNonNegativeInt(n: number): number {
+  return Math.max(0, Math.floor(n || 0));
+}
+
+function getStartPosOffset(startPosId: string): number {
+  try {
+    return Math.max(0, parsePosId((startPosId || "1A").trim() || "1A").pos - 1);
+  } catch {
+    return 0;
+  }
+}
+
+function estimateAutoCount(params: {
+  selectedEventValues: string[];
+  eventsByValue: Map<string, Event>;
+  resources: PlannerResources;
+  startPosId: string;
+}): number {
+  const { selectedEventValues, eventsByValue, resources, startPosId } = params;
+
+  if (!selectedEventValues.length) return 0;
+
+  const poolTypes = new Set<string>();
+  for (const eventValue of selectedEventValues) {
+    poolTypes.add(eventsByValue.get(eventValue)?.pool_type ?? "normal");
+  }
+
+  const normalDepth = poolTypes.has("normal")
+    ? clampNonNegativeInt(resources.tickets) +
+      Math.floor(clampNonNegativeInt(resources.food) / 150)
+    : 0;
+  const platinumDepth = poolTypes.has("platinum")
+    ? clampNonNegativeInt(resources.platinum_tickets)
+    : 0;
+  const legendDepth = poolTypes.has("legend")
+    ? clampNonNegativeInt(resources.legend_tickets)
+    : 0;
+
+  return getStartPosOffset(startPosId) + normalDepth + platinumDepth + legendDepth;
 }
 
 export function PlannerPageContainer() {
@@ -98,7 +140,9 @@ export function PlannerPageContainer() {
   // Seed/Count
   // -------------------------
   const [seedApplied, setSeedApplied] = useState<string>("");
-  const [countApplied, setCountApplied] = useState<number | null>(null);
+  const [countInput, setCountInput] = useState<string>("");
+  const [manualCount, setManualCount] = useState<number | null>(null);
+  const [countError, setCountError] = useState<string>("");
 
   // -------------------------
   // Events
@@ -142,14 +186,7 @@ export function PlannerPageContainer() {
     return m;
   }, [events]);
 
-  const hasSeedCount = useMemo(() => {
-    const okSeed = !!seedApplied.trim();
-    const okCount =
-      typeof countApplied === "number" &&
-      Number.isFinite(countApplied) &&
-      countApplied > 0;
-    return okSeed && okCount;
-  }, [seedApplied, countApplied]);
+  const hasSeed = useMemo(() => !!seedApplied.trim(), [seedApplied]);
 
   // -------------------------
   // Target Cats
@@ -175,17 +212,11 @@ export function PlannerPageContainer() {
   const { graphState, graphErr, graphByEvent, fetchGraphs, clearGraphs } =
     useTrackGraphs({
       seed: seedApplied,
-      count: countApplied,
       selectedEventValues,
       eventsByValue,
       lang: BC_ENV.lang,
       ui: BC_ENV.ui,
     });
-
-  useEffect(() => {
-    clearGraphs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seedApplied, countApplied, selectedEventValues.join("|")]);
 
   const activeGraph: TrackGraph | null = useMemo(() => {
     if (!primaryEventValue) return null;
@@ -207,31 +238,70 @@ export function PlannerPageContainer() {
     max_expansions: 200000,
   });
 
+  const autoCount = useMemo(
+    () =>
+      estimateAutoCount({
+        selectedEventValues,
+        eventsByValue,
+        resources,
+        startPosId: plannerCfg.start_pos_id,
+      }),
+    [selectedEventValues, eventsByValue, resources, plannerCfg.start_pos_id]
+  );
+
   // -------------------------
   // Planner worker
   // -------------------------
   const { runPlanner, setLoading, planState, planErr, planResult, resetPlan } =
     usePlannerWorker();
 
+  useEffect(() => {
+    clearGraphs();
+    resetPlan();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    seedApplied,
+    countInput,
+    selectedEventValues.join("|"),
+    targetCatIds.join("|"),
+    resources.tickets,
+    resources.platinum_tickets,
+    resources.legend_tickets,
+    resources.food,
+    plannerCfg.start_pos_id,
+    plannerCfg.max_expansions,
+  ]);
+
   async function onClickPlanner() {
     if (!selectedEventValues.length) {
       return runPlanner({ kind: "errorOnly", error: "請先選擇至少一個 event" });
     }
-    if (!hasSeedCount) {
+    if (!hasSeed) {
       return runPlanner({
         kind: "errorOnly",
-        error: "請先在最上方套用 seed / count（count 必須為正整數）",
+        error: "請先在最上方輸入 seed",
       });
+    }
+    if (countError) {
+      return runPlanner({ kind: "errorOnly", error: countError });
     }
     if (!targetCatIds.length) {
       return runPlanner({ kind: "errorOnly", error: "請先選至少一隻目標貓" });
+    }
+
+    const nextResolvedCount = manualCount ?? autoCount;
+    if (!Number.isFinite(nextResolvedCount) || nextResolvedCount <= 0) {
+      return runPlanner({
+        kind: "errorOnly",
+        error: "目前沒有可用資源可規劃",
+      });
     }
 
     setLoading();
 
     let graphsByEvent: Record<string, TrackGraph>;
     try {
-      graphsByEvent = await fetchGraphs();
+      graphsByEvent = await fetchGraphs(nextResolvedCount);
     } catch (e) {
       return runPlanner({
         kind: "errorOnly",
@@ -280,6 +350,24 @@ export function PlannerPageContainer() {
 
   // 小螢幕：用 Drawer；大螢幕：右欄
   const shouldUseDrawer = isMdDown;
+  const runDisabled =
+    planState === "loading" ||
+    !selectedEventValues.length ||
+    !hasSeed ||
+    !!countError ||
+    targetCatIds.length === 0;
+
+  const runHint = !selectedEventValues.length
+    ? "請先選至少一個 event"
+    : !hasSeed
+      ? "請先輸入 seed"
+      : countError
+        ? "count 必須是正整數或留空改用自動搜尋上限"
+        : !targetCatIds.length
+          ? "請先選目標貓"
+          : !countInput.trim() && autoCount <= 0
+            ? "目前沒有可用資源可規劃"
+            : "";
 
   return (
     <>
@@ -422,10 +510,18 @@ export function PlannerPageContainer() {
                       </Typography>
                       <SeedCountForm
                         seedApplied={seedApplied}
-                        countApplied={countApplied}
-                        onChange={({ seed, count }) => {
+                        countInput={countInput}
+                        autoCount={autoCount}
+                        onChange={({
+                          seed,
+                          countInput,
+                          manualCount,
+                          countError,
+                        }) => {
                           setSeedApplied(seed);
-                          setCountApplied(count);
+                          setCountInput(countInput);
+                          setManualCount(manualCount);
+                          setCountError(countError);
                         }}
                       />
                     </Stack>
@@ -462,21 +558,8 @@ export function PlannerPageContainer() {
                       <RunBar
                         state={planState as LoadState}
                         onRun={onClickPlanner}
-                        disabled={
-                          planState === "loading" ||
-                          !selectedEventValues.length ||
-                          !hasSeedCount ||
-                          targetCatIds.length === 0
-                        }
-                        hint={
-                          !selectedEventValues.length
-                            ? "請先選至少一個 event"
-                            : !hasSeedCount
-                              ? "請先套用 seed / count"
-                              : !targetCatIds.length
-                                ? "請先選目標貓"
-                                : ""
-                        }
+                        disabled={runDisabled}
+                        hint={runHint}
                         error={planState === "error" ? planErr : ""}
                       />
                     </Box>

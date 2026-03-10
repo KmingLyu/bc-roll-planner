@@ -438,16 +438,44 @@ export function EventsPicker(props: {
             {selectedEvents.slice(0, 20).map((ev) => {
               const kind = getKind(ev.value);
               const suffix = kind === "past" ? "（Past）" : "";
+              const dateLabel = formatEventDate(ev);
+              const nameLabel = `${formatEventName(ev)}${suffix}`;
               return (
                 <Chip
                   key={ev.value}
                   size="small"
-                  label={`${formatEventName(ev)}${suffix}`}
+                  label={
+                    <Box sx={{ py: 0.25 }}>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: "block", lineHeight: 1.2 }}
+                      >
+                        {dateLabel}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{ display: "block", lineHeight: 1.25, fontWeight: 600 }}
+                      >
+                        {nameLabel}
+                      </Typography>
+                    </Box>
+                  }
                   onDelete={() =>
                     onChange(value.filter((v) => v !== ev.value))
                   }
                   variant="outlined"
                   color="default"
+                  title={`${dateLabel} ${nameLabel}`}
+                  sx={{
+                    height: "auto",
+                    alignItems: "flex-start",
+                    "& .MuiChip-label": {
+                      display: "block",
+                      whiteSpace: "normal",
+                      py: 0.5,
+                    },
+                  }}
                 />
               );
             })}

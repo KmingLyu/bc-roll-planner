@@ -13,7 +13,7 @@ export function SeedCountForm(props: {
   // Draft 用字串：可自然清空
   const [seedDraft, setSeedDraft] = useState<string>(seedApplied);
   const [countDraft, setCountDraft] = useState<string>(
-    typeof countApplied === "number" ? String(countApplied) : ""
+    typeof countApplied === "number" ? String(countApplied) : "",
   );
   const [err, setErr] = useState<string>("");
 
@@ -70,6 +70,7 @@ export function SeedCountForm(props: {
           <TextField
             fullWidth
             label="seed"
+            type="number"
             value={seedDraft}
             onChange={(e) => setSeedDraft(e.target.value)}
             size="small"
@@ -85,7 +86,7 @@ export function SeedCountForm(props: {
             value={countDraft}
             onChange={(e) => setCountDraft(e.target.value)}
             size="small"
-            inputProps={{ min: 1 }}
+            // inputProps={{ min: 1 }}
             placeholder="例如 120"
           />
         </Grid>

@@ -1,8 +1,8 @@
 import React from "react";
 import type { DrawRow } from "../../../logic/view-model";
 import type { DrawTableColumn, RowRenderCtx } from "../types";
-import { DrawTableRow } from "./DrawTableRow";
-import { TenCollapseRow } from "./TenCollapseRow";
+import { Row } from "./Row";
+import { CollapseRow } from "./CollapseRow";
 
 export function StepBlock(props: {
   stepIndex: number;
@@ -50,7 +50,7 @@ export function StepBlock(props: {
     };
 
     out.push(
-      <DrawTableRow
+      <Row
         key={tenSummary.key}
         row={tenSummary}
         columns={columns}
@@ -59,7 +59,7 @@ export function StepBlock(props: {
     );
 
     out.push(
-      <TenCollapseRow
+      <CollapseRow
         key={`collapse-${stepIndex}`}
         open={open}
         colSpan={columns.length}
@@ -80,7 +80,7 @@ export function StepBlock(props: {
         countCell: { kind: "spacer" },
       };
       out.push(
-        <DrawTableRow key={r.key} row={r} columns={columns} ctx={ctx} />,
+        <Row key={r.key} row={r} columns={columns} ctx={ctx} />
       );
     });
   }

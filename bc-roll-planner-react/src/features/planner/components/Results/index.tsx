@@ -21,13 +21,15 @@ import {
   type DrawRow,
 } from "../../logic/view-model";
 
-import { StickyHeaderBar } from "./ui/StickyHeaderBar";
-import { useResponsiveColW } from "./hooks/useResponsiveColW";
-import { groupByStep } from "./utils/groupByStep";
+import { HeaderBar } from "./ui/HeaderBar";
+import { useColWidths } from "./useColWidths";
+import { groupByStep } from "./groupByStep";
 
 import type { DrawTableColumn } from "./types";
 import { makeDefaultColumns } from "./table/columns";
 import { StepBlock } from "./table/StepBlock";
+
+export { type DrawTableColumn } from "./types";
 
 export function ResultTable(props: {
   result: PlanResult;
@@ -116,7 +118,7 @@ export function ResultTable(props: {
     [eventOrder],
   );
 
-  const colW = useResponsiveColW();
+  const colW = useColWidths();
 
   const bodyCellSx = useMemo(
     () => ({
@@ -153,7 +155,7 @@ export function ResultTable(props: {
       spacing={1}
       sx={{ width: "100%", minWidth: 0, backgroundColor: "transparent" }}
     >
-      <StickyHeaderBar
+      <HeaderBar
         title={showTitle ? title : undefined}
         rowsCount={filteredRows.length}
         stepsCount={steps.length}
@@ -222,12 +224,6 @@ export function ResultTable(props: {
           </TableBody>
         </Table>
       </TableContainer>
-
-      {/* 說明 */}
-      {/* <Typography variant="caption" color="text.secondary">
-        說明：A/B 欄位不是「這一步抽到哪邊」，而是「此位置在該 event 的 A/B 兩條
-        lane 的內容」； 抽到/目標/保底會標在「實際使用的 lane」上。
-      </Typography> */}
 
       {/* 你目前 showLegend 只影響 Header 顯示；未來你要加 TableHead 也很容易，
           因為 columns 已經定義好了（可直接用 columns map 出 header）。 */}

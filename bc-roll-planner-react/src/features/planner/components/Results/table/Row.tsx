@@ -9,7 +9,7 @@ function widthOfColumn(c: DrawTableColumn, colW: ColW): string | undefined {
   return undefined;
 }
 
-export function DrawTableRow(props: {
+export function Row(props: {
   row: DrawRow;
   columns: DrawTableColumn[];
   ctx: RowRenderCtx;

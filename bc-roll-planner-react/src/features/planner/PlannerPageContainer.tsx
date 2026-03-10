@@ -1,4 +1,4 @@
-// src/features/planner/components/PlannerPageContainer.tsx
+// src/features/planner/PlannerPageContainer.tsx
 import { useEffect, useMemo, useState } from "react";
 
 // MUI
@@ -28,21 +28,21 @@ import { ApiError } from "@/lib/api-client";
 import { EventsPicker, useEvents } from "@/features/events";
 import { TargetCatsSelectionContent, useEventCats } from "@/features/cats";
 import { useTrackGraphs } from "@/features/track-graph";
-import { usePlannerWorker } from "../hooks/usePlannerWorker";
+import { usePlannerWorker } from "./hooks/usePlannerWorker";
 
 // Components
 import { Section } from "@/components";
-import { PlanResultStatsCard } from "./PlanResultStatsCard";
-import { PlannerRunBar } from "./PlannerRunBar";
-import { ResourceForm } from "./ResourceForm";
-import { SeedCountForm } from "./SeedCountForm";
-import { ResultTable } from "./ResultTable";
-import { PlannerTargetCatsRegion } from "./PlannerTargetCatsRegion";
-import { DataSourceDisclaimerNote } from "./common";
+import { DisclaimerNote } from "./components/Note";
+import { ResourceForm } from "./components/ResourceForm";
+import { RunBar } from "./components/RunBar";
+import { SeedCountForm } from "./components/SeedCountForm";
+import { ResultStatsCard } from "./components/ResultStats";
+import { ResultTable } from "./components/Results";
+import { TargetCatsLayout } from "./components/TargetLayout";
 
 // Planner types
-import type { PlanResult } from "@/features/planner/logic/core";
-import type { PlannerResources, PlannerUiConfig, UiFlags } from "../types";
+import type { PlanResult } from "./logic/core";
+import type { PlannerResources, PlannerUiConfig, UiFlags } from "./types";
 
 // env
 import { BC_ENV } from "@/config/bcEnv";
@@ -376,7 +376,7 @@ export function PlannerPageContainer() {
           )}
         </Stack>
 
-        <DataSourceDisclaimerNote
+        <DisclaimerNote
           textColor="#CBD5E1" // 內文：淺灰
           linkColor="#93C5FD" // 連結：淺藍
           fontSize="0.76rem"
@@ -459,7 +459,7 @@ export function PlannerPageContainer() {
                     </Stack>
 
                     <Box sx={{ pt: 1, pb: 0.5 }}>
-                      <PlannerRunBar
+                      <RunBar
                         state={planState as LoadState}
                         onRun={onClickPlanner}
                         disabled={
@@ -501,7 +501,7 @@ export function PlannerPageContainer() {
                   }
                 >
                   {planState === "ok" && (
-                    <PlanResultStatsCard
+                    <ResultStatsCard
                       result={planResult as PlanResult}
                       graphsByEvent={graphByEvent}
                       catNameById={catNameById}
@@ -536,11 +536,13 @@ export function PlannerPageContainer() {
             </Stack>
 
             {ui.showTargetCats && (
-              <PlannerTargetCatsRegion
+              <TargetCatsLayout
                 isMobile={shouldUseDrawer}
                 drawerOpen={targetCatsDrawerOpen}
                 onCloseDrawer={() => setTargetCatsDrawerOpen(false)}
-                onHideDesktop={() => setUi((p) => ({ ...p, showTargetCats: false }))}
+                onHideDesktop={() =>
+                  setUi((p) => ({ ...p, showTargetCats: false }))
+                }
               >
                 <TargetCatsSelectionContent
                   loadState={catsState as LoadState}
@@ -554,7 +556,7 @@ export function PlannerPageContainer() {
                   minColWidth={130}
                   dense
                 />
-              </PlannerTargetCatsRegion>
+              </TargetCatsLayout>
             )}
           </Box>
 

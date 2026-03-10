@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { useMediaQuery, useTheme } from "@mui/material";
-import type { ColW } from "../types";
+import type { ColW } from "./types";
 
-export function useResponsiveColW(): ColW {
+export function useColWidths(): ColW {
   const theme = useTheme();
   const isXs = useMediaQuery(theme.breakpoints.down("sm"));
   const isSm = useMediaQuery(theme.breakpoints.between("sm", "md"));

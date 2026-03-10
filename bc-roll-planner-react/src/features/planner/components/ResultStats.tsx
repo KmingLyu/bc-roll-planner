@@ -1,10 +1,9 @@
 /**
- * src/features/planner/ui/PlanResultStatsCard.tsx
- *
  * 用途
  * - 顯示 planner 統計摘要（成功/未完成、命中數、終點位置、步驟數、draws 數等）。
  * - 依 ACTIONS 統計各資源使用次數；並以 event 為單位統計 draws 數量。
- * * 框架版本
+ *
+ * 框架版本
  * - MUI v7 (使用 Grid2)
  */
 import React, { useMemo } from "react";
@@ -45,7 +44,7 @@ function StatItem({
   );
 }
 
-export function PlanResultStatsCard(props: {
+export function ResultStatsCard(props: {
   result: PlanResult;
   graphsByEvent: Record<string, TrackGraph>;
   catNameById: Map<number, string>;

@@ -9,9 +9,9 @@ import {
 } from "@mui/material";
 import type { DrawRow } from "../../../logic/view-model";
 import type { DrawTableColumn, RowRenderCtx } from "../types";
-import { DrawTableRow } from "./DrawTableRow";
+import { Row } from "./Row";
 
-export function TenCollapseRow(props: {
+export function CollapseRow(props: {
   open: boolean;
   colSpan: number;
 
@@ -51,7 +51,7 @@ export function TenCollapseRow(props: {
                     countCell: { kind: "spacer" },
                   };
                   return (
-                    <DrawTableRow
+                    <Row
                       key={r.key}
                       row={r}
                       columns={columns}

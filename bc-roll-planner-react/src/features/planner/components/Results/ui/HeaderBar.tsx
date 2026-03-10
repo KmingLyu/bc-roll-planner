@@ -55,7 +55,7 @@ function LegendTag(props: { label: string; sx?: object }) {
   );
 }
 
-export function StickyHeaderBar(props: {
+export function HeaderBar(props: {
   title?: string;
   rowsCount?: number;
   stepsCount?: number;
@@ -92,18 +92,6 @@ export function StickyHeaderBar(props: {
       }}
     >
       <Stack spacing={0.75}>
-        {/* <Stack
-          direction="row"
-          spacing={1}
-          alignItems="baseline"
-          justifyContent={title ? "space-between" : "flex-end"}
-        >
-          {title ? <Typography fontWeight={800}>{title}</Typography> : null}
-          <Typography variant="caption" color="text.secondary" noWrap>
-            {stepsCount} steps / {rowsCount} rows
-          </Typography>
-        </Stack> */}
-
         <Box
           sx={{
             display: "flex",
@@ -115,11 +103,6 @@ export function StickyHeaderBar(props: {
             scrollbarWidth: "none",
           }}
         >
-          {/* <ToggleChip
-            label="圖例"
-            checked={showLegend}
-            onToggle={onToggleLegend}
-          /> */}
           <ToggleSwitch
             label="只看目標步驟"
             checked={showTargetsOnly}

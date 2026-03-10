@@ -1,4 +1,4 @@
-import type { DrawRow } from "../../../logic/view-model";
+import type { DrawRow } from "../../logic/view-model";
 
 export function groupByStep(rows: DrawRow[]): Array<[number, DrawRow[]]> {
   const byStep = new Map<number, DrawRow[]>();

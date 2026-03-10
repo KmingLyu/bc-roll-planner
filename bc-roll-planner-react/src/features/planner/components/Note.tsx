@@ -1,7 +1,7 @@
 import { Link, Typography } from "@mui/material";
 import { DATA_SOURCES } from "@/config/dataSources";
 
-type DataSourceDisclaimerNoteProps = {
+type DisclaimerNoteProps = {
   /** 文字顏色（可用 MUI token 或 CSS 色碼） */
   textColor?: string;
   /** 連結顏色（可用 MUI token 或 CSS 色碼） */
@@ -10,11 +10,11 @@ type DataSourceDisclaimerNoteProps = {
   fontSize?: number | string;
 };
 
-export function DataSourceDisclaimerNote({
+export function DisclaimerNote({
   textColor = "text.secondary",
   linkColor = "primary.main",
   fontSize,
-}: DataSourceDisclaimerNoteProps) {
+}: DisclaimerNoteProps) {
   return (
     <Typography
       variant="caption"

@@ -1,4 +1,3 @@
-// src/features/planner/ui/ResourceForm.tsx
 import { Stack, TextField } from "@mui/material";
 import Grid from "@mui/material/Grid";
 import NumberField from "@/components/inputs/NumberField";
@@ -18,8 +17,6 @@ export function ResourceForm(props: {
 
   return (
     <Stack spacing={1.25} sx={{ width: "100%" }}>
-      {/* <Typography fontWeight={800}>輸入資源</Typography> */}
-
       <Grid
         container
         spacing={1.25}

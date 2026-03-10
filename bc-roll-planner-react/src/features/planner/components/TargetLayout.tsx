@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Drawer as PanelDrawer, Sidebar } from "@/components";
 
-export function PlannerTargetCatsRegion(props: {
+export function TargetCatsLayout(props: {
   isMobile: boolean;
   title?: string;
   drawerOpen: boolean;

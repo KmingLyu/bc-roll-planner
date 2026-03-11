@@ -6,10 +6,9 @@ import { ApiError } from "@/lib/api-client";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
 
-function isValidSeedCount(seed: string, count: number | null): boolean {
+function isValidSeedCount(seed: string, count: number): boolean {
   const s = seed.trim();
   if (!s) return false;
-  if (typeof count !== "number") return false;
   if (!Number.isFinite(count)) return false;
   if (count <= 0) return false;
   return true;
@@ -17,13 +16,12 @@ function isValidSeedCount(seed: string, count: number | null): boolean {
 
 export function useTrackGraphs(params: {
   seed: string;
-  count: number | null; // 可為 null
   selectedEventValues: string[];
   eventsByValue: Map<string, Event>;
   lang: string;
   ui: string;
 }) {
-  const { seed, count, selectedEventValues, eventsByValue, lang, ui } = params;
+  const { seed, selectedEventValues, eventsByValue, lang, ui } = params;
 
   const [graphState, setGraphState] = useState<LoadState>("idle");
   const [graphErr, setGraphErr] = useState<string>("");
@@ -44,7 +42,7 @@ export function useTrackGraphs(params: {
   }
 
   // 回傳 next graphs
-  async function fetchGraphs(): Promise<Record<string, TrackGraph>> {
+  async function fetchGraphs(count: number): Promise<Record<string, TrackGraph>> {
     // 沒選 event：回到 idle，回傳空
     if (selectedEventValues.length === 0) {
       setGraphState("idle");
@@ -65,7 +63,7 @@ export function useTrackGraphs(params: {
     }
 
     const s = seed.trim();
-    const c = count as number;
+    const c = count;
 
     const seq = ++seqRef.current;
     setGraphState("loading");
@@ -82,6 +80,7 @@ export function useTrackGraphs(params: {
             lang,
             ui,
             name: meta?.name ?? ev,
+            raw_name: meta?.raw_name ?? meta?.name ?? ev,
             start_date: meta?.start_date ?? null,
             end_date: meta?.end_date ?? null,
             pool_type: meta?.pool_type ?? "normal",

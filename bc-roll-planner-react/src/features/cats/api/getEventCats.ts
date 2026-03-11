@@ -18,6 +18,7 @@ export async function fetchEventCats(params: {
   base_url?: string;
 
   name?: string;
+  raw_name?: string;
   start_date?: string | null;
   end_date?: string | null;
   pool_type?: PoolType;
@@ -29,6 +30,7 @@ export async function fetchEventCats(params: {
     base_url: params.base_url,
 
     name: params.name,
+    raw_name: params.raw_name,
     start_date: params.start_date ?? undefined,
     end_date: params.end_date ?? undefined,
     pool_type: params.pool_type,

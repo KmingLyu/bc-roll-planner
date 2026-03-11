@@ -214,6 +214,9 @@ export type DrawRow = {
   actionText: ActionLabel;
   eventValue: string;
   eventName: string;
+  eventRawName: string;
+  eventStartDate: string | null;
+  eventEndDate: string | null;
 
   A: string;
   B: string;
@@ -262,7 +265,11 @@ export function buildDrawRows(params: {
     const st = plan[si];
     const action = actionLabelFromStep(st);
     const g = graphsByEvent[st.event_value];
-    const eventName = g?.event?.name || st.event_value;
+    const eventMeta = g?.event;
+    const eventName = eventMeta?.name || st.event_value;
+    const eventRawName = eventMeta?.raw_name || eventName;
+    const eventStartDate = eventMeta?.start_date ?? null;
+    const eventEndDate = eventMeta?.end_date ?? null;
 
     const isTen = st.method === "ten";
     const draws = (st.draws || []) as DrawHit[];
@@ -297,6 +304,9 @@ export function buildDrawRows(params: {
         actionText: action,
         eventValue: st.event_value,
         eventName,
+        eventRawName,
+        eventStartDate,
+        eventEndDate,
 
         A: hitA > 0 ? formatHitCatNames(hitMapA, catNameById) : UI_TEXT.dash,
         B: hitB > 0 ? formatHitCatNames(hitMapB, catNameById) : UI_TEXT.dash,
@@ -436,6 +446,9 @@ export function buildDrawRows(params: {
         actionText: action,
         eventValue: st.event_value,
         eventName,
+        eventRawName,
+        eventStartDate,
+        eventEndDate,
         A,
         B,
         statusA,

@@ -23,58 +23,17 @@ import {
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
+import { getEventDisplayLines } from "@/utils/event-display";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
 type EvKind = "upcoming" | "past";
 
-function formatEventDate(ev: Event): string {
-  const start = ev.start_date?.trim();
-  const end = ev.end_date?.trim();
-
-  if (start && end) {
-    return start === end ? start : `${start} ~ ${end}`;
-  }
-  if (start) return start;
-  if (end) return end;
-  return "日期未提供";
-}
-
-function escapeRegExp(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function formatEventName(ev: Event): string {
-  const name = ev.name.trim();
-  const start = ev.start_date?.trim();
-  const end = ev.end_date?.trim();
-
-  const patterns: RegExp[] = [];
-
-  if (start && end && start !== end) {
-    patterns.push(
-      new RegExp(`^${escapeRegExp(start)}\\s*~\\s*${escapeRegExp(end)}:?\\s*`),
-    );
-  }
-  if (start) {
-    patterns.push(new RegExp(`^${escapeRegExp(start)}:?\\s*`));
-  }
-  if (end && end !== start) {
-    patterns.push(new RegExp(`^${escapeRegExp(end)}:?\\s*`));
-  }
-
-  for (const pattern of patterns) {
-    const next = name.replace(pattern, "").trim();
-    if (next && next !== name) return next;
-  }
-
-  return name;
-}
-
 function MobileEventLabel(props: { event: Event }) {
   const { event } = props;
+  const { dateText, nameText, titleText } = getEventDisplayLines(event);
 
   return (
-    <Box sx={{ minWidth: 0, flex: 1 }}>
+    <Box sx={{ minWidth: 0, flex: 1 }} title={titleText}>
       <Typography
         variant="body2"
         color="text.secondary"
@@ -85,7 +44,7 @@ function MobileEventLabel(props: { event: Event }) {
           textOverflow: "ellipsis",
         }}
       >
-        {formatEventDate(event)}
+        {dateText}
       </Typography>
       <Typography
         variant="body2"
@@ -100,7 +59,7 @@ function MobileEventLabel(props: { event: Event }) {
           WebkitLineClamp: 2,
         }}
       >
-        {formatEventName(event)}
+        {nameText}
       </Typography>
     </Box>
   );
@@ -171,23 +130,44 @@ export function EventsPicker(props: {
     if (!selected.length) return "（未選）";
     if (selected.length === 1) {
       const e = findEvent(selected[0]);
-      return e ? formatEventName(e) : selected[0];
+      return e ? e.name : selected[0];
     }
     return `已選 ${selected.length} 個 events`;
   };
 
   const renderMenuItem = (ev: Event, kind: EvKind) => {
     const checked = selectedSet.has(ev.value);
+    const { dateText, nameText, titleText } = getEventDisplayLines(ev);
 
     return (
       <MenuItem key={ev.value} value={ev.value} dense>
         <Checkbox size="small" checked={checked} />
         <ListItemText
-          primary={ev.name}
+          primary={dateText}
+          secondary={nameText}
           slotProps={{
-            primary: { noWrap: true, title: ev.name },
+            primary: {
+              noWrap: true,
+              title: titleText,
+              color: "text.secondary",
+              variant: "body2",
+            },
+            secondary: {
+              title: titleText,
+              color: "text.primary",
+              variant: "body2",
+              sx: {
+                mt: 0.25,
+                fontWeight: 600,
+                lineHeight: 1.35,
+                display: "-webkit-box",
+                overflow: "hidden",
+                WebkitBoxOrient: "vertical",
+                WebkitLineClamp: 2,
+              },
+            },
           }}
-          sx={{ mr: 1 }}
+          sx={{ mr: 1, my: 0.25 }}
         />
         <Chip
           size="small"
@@ -438,8 +418,8 @@ export function EventsPicker(props: {
             {selectedEvents.slice(0, 20).map((ev) => {
               const kind = getKind(ev.value);
               const suffix = kind === "past" ? "（Past）" : "";
-              const dateLabel = formatEventDate(ev);
-              const nameLabel = `${formatEventName(ev)}${suffix}`;
+              const { dateText, nameText, titleText } = getEventDisplayLines(ev);
+              const displayName = `${nameText}${suffix}`;
               return (
                 <Chip
                   key={ev.value}
@@ -451,13 +431,13 @@ export function EventsPicker(props: {
                         color="text.secondary"
                         sx={{ display: "block", lineHeight: 1.2 }}
                       >
-                        {dateLabel}
+                        {dateText}
                       </Typography>
                       <Typography
                         variant="caption"
                         sx={{ display: "block", lineHeight: 1.25, fontWeight: 600 }}
                       >
-                        {nameLabel}
+                        {displayName}
                       </Typography>
                     </Box>
                   }
@@ -466,7 +446,7 @@ export function EventsPicker(props: {
                   }
                   variant="outlined"
                   color="default"
-                  title={`${dateLabel} ${nameLabel}`}
+                  title={titleText}
                   sx={{
                     height: "auto",
                     alignItems: "flex-start",

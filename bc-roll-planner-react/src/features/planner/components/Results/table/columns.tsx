@@ -102,10 +102,13 @@ export function makeDefaultColumns(): DrawTableColumn[] {
       id: "event",
       widthKey: "event",
       render: (r, ctx) => {
-        const evKey = r.eventName || r.eventValue;
         return (
           <EventBadge
-            evKey={evKey}
+            eventName={r.eventName}
+            eventRawName={r.eventRawName}
+            eventStartDate={r.eventStartDate}
+            eventEndDate={r.eventEndDate}
+            eventValue={r.eventValue}
             colorOf={ctx.eventColorOf}
             tintOf={ctx.eventTintOf}
           />

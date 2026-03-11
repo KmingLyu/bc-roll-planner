@@ -105,7 +105,7 @@ export function ResultTable(props: {
     const seen = new Set<string>();
     const out: string[] = [];
     for (const r of filteredRows) {
-      const k = String(r.eventName || r.eventValue || "");
+      const k = String(r.eventValue || "");
       if (!k || seen.has(k)) continue;
       seen.add(k);
       out.push(k);

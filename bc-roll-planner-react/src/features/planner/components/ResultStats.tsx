@@ -10,6 +10,7 @@ import React, { useMemo } from "react";
 import type { PlanResult } from "@/features/planner/logic/core";
 import type { TrackGraph } from "@/types/models";
 import { Alert, Box, Chip, Stack, Typography } from "@mui/material";
+import { getEventDisplayLines } from "@/utils/event-display";
 // 【MUI v7 關鍵修正】從 Grid2 引入，這是新版標準 Grid
 import Grid from "@mui/material/Grid";
 import { actionLabelFromStep, ACTIONS } from "../logic/view-model";
@@ -195,15 +196,66 @@ export function ResultStatsCard(props: {
           {Array.from(stats.byEvent.entries())
             .sort((a, b) => b[1] - a[1])
             .map(([ev, cnt]) => {
-              const name = graphsByEvent[ev]?.event?.name || ev;
+              const { dateText, nameText, titleText } = getEventDisplayLines(
+                graphsByEvent[ev]?.event ?? {
+                  name: ev,
+                  raw_name: ev,
+                  start_date: null,
+                  end_date: null,
+                },
+              );
               return (
                 <Chip
                   key={ev}
-                  label={`${name}：${cnt}`}
+                  label={
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{
+                          display: "block",
+                          lineHeight: 1.2,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {dateText}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        fontWeight={700}
+                        sx={{
+                          mt: 0.25,
+                          lineHeight: 1.3,
+                          wordBreak: "break-word",
+                          display: "-webkit-box",
+                          overflow: "hidden",
+                          WebkitBoxOrient: "vertical",
+                          WebkitLineClamp: 2,
+                        }}
+                      >
+                        {nameText}：{cnt}
+                      </Typography>
+                    </Box>
+                  }
                   size="small"
                   color="default"
-                  sx={{ borderRadius: 1.5, bgcolor: "action.hover" }}
-                  title={name}
+                  sx={{
+                    height: "auto",
+                    alignItems: "flex-start",
+                    borderRadius: 1.5,
+                    bgcolor: "action.hover",
+                    py: 0.5,
+                    "& .MuiChip-label": {
+                      display: "block",
+                      px: 1,
+                      py: 0.25,
+                      maxWidth: 240,
+                      whiteSpace: "normal",
+                    },
+                  }}
+                  title={titleText}
                 />
               );
             })}

@@ -22,6 +22,7 @@ export type PoolType = "normal" | "platinum" | "legend";
 export type Event = {
   value: string;
   name: string;
+  raw_name: string;
   start_date?: string | null;
   end_date?: string | null;
 

@@ -54,6 +54,7 @@ export function useEventCats(params: {
               lang,
               ui,
               name: meta?.name ?? ev,
+              raw_name: meta?.raw_name ?? meta?.name ?? ev,
               start_date: meta?.start_date ?? null,
               end_date: meta?.end_date ?? null,
               pool_type: meta?.pool_type ?? "normal",

@@ -85,11 +85,13 @@ export const handler: Handler = async (event) => {
     const raw_cells = parseTrackCellsFromTableHtml(tableHtml);
 
     const name = qs.name ? String(qs.name) : eventValue;
+    const raw_name = qs.raw_name ? String(qs.raw_name) : name;
     const pool_type = (qs.pool_type || "normal") as PoolType;
 
     const ev: Event = {
       value: eventValue,
       name,
+      raw_name,
       start_date: qs.start_date ? String(qs.start_date) : null,
       end_date: qs.end_date ? String(qs.end_date) : null,
       pool_type,

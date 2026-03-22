@@ -14,6 +14,8 @@ import { getEventDisplayLines } from "@/utils/event-display";
 // 【MUI v7 關鍵修正】從 Grid2 引入，這是新版標準 Grid
 import Grid from "@mui/material/Grid";
 import { actionLabelFromStep, ACTIONS } from "../logic/view-model";
+import type { ActionLabel } from "../logic/view-model";
+import { ResourceImg } from "./ResourceImg";
 
 /**
  * 輔助元件：顯示單個統計數字
@@ -169,10 +171,20 @@ export function ResultStatsCard(props: {
               v > 0 && (
                 <Chip
                   key={k}
-                  label={`${k} × ${v}`}
+                  label={
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                      <ResourceImg label={k as ActionLabel} height={16} showCount={false} />
+                      <span>× {v}</span>
+                    </Box>
+                  }
                   size="small"
                   variant="outlined"
-                  sx={{ borderRadius: 1.5, borderColor: "divider" }}
+                  sx={{
+                    borderRadius: 1.5,
+                    borderColor: "divider",
+                    height: "auto",
+                    "& .MuiChip-label": { px: 1, py: 0.5 },
+                  }}
                 />
               ),
           )}

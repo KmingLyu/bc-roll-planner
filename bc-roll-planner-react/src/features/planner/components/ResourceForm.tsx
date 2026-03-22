@@ -1,10 +1,19 @@
 import { Stack, TextField } from "@mui/material";
+import InputAdornment from "@mui/material/InputAdornment";
 import Grid from "@mui/material/Grid";
 import NumberField from "@/components/inputs/NumberField";
 import type {
   PlannerResources,
   PlannerUiConfig,
 } from "@/features/planner/types";
+
+function ResourceAdornment({ src }: { src: string }) {
+  return (
+    <InputAdornment position="start">
+      <img src={src} alt="" height={40} style={{ display: "block" }} />
+    </InputAdornment>
+  );
+}
 
 export function ResourceForm(props: {
   value: PlannerResources;
@@ -25,13 +34,14 @@ export function ResourceForm(props: {
         <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <NumberField
             label="金券"
+            startAdornment={<ResourceAdornment src="/稀有券.png" />}
             min={0}
             size="small"
             value={value.tickets}
             onValueChange={(v) =>
               onChange({
                 ...value,
-                tickets: Math.max(0, v ?? 0), // 清空時 v 會是 null，就當 0；同時保底不小於 0
+                tickets: Math.max(0, v ?? 0),
               })
             }
           />
@@ -40,13 +50,14 @@ export function ResourceForm(props: {
         <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <NumberField
             label="白金券"
+            startAdornment={<ResourceAdornment src="/白金券.png" />}
             min={0}
             size="small"
             value={value.platinum_tickets}
             onValueChange={(v) =>
               onChange({
                 ...value,
-                platinum_tickets: Math.max(0, v ?? 0), // 清空時 v 會是 null，就當 0；同時保底不小於 0
+                platinum_tickets: Math.max(0, v ?? 0),
               })
             }
           />
@@ -55,13 +66,14 @@ export function ResourceForm(props: {
         <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <NumberField
             label="傳說券"
+            startAdornment={<ResourceAdornment src="/傳說券.png" />}
             min={0}
             size="small"
             value={value.legend_tickets}
             onValueChange={(v) =>
               onChange({
                 ...value,
-                legend_tickets: Math.max(0, v ?? 0), // 清空時 v 會是 null，就當 0；同時保底不小於 0
+                legend_tickets: Math.max(0, v ?? 0),
               })
             }
           />
@@ -70,13 +82,14 @@ export function ResourceForm(props: {
         <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <NumberField
             label="罐頭"
+            startAdornment={<ResourceAdornment src="/貓罐頭.png" />}
             min={0}
             size="small"
             value={value.food}
             onValueChange={(v) =>
               onChange({
                 ...value,
-                food: Math.max(0, v ?? 0), // 清空時 v 會是 null，就當 0；同時保底不小於 0
+                food: Math.max(0, v ?? 0),
               })
             }
           />

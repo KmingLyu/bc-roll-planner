@@ -17,11 +17,13 @@ export default function NumberField({
   label,
   error,
   size = "medium",
+  startAdornment,
   ...other
 }: BaseNumberField.Root.Props & {
   label?: React.ReactNode;
   size?: "small" | "medium";
   error?: boolean;
+  startAdornment?: React.ReactNode;
 }) {
   let id = React.useId();
   if (idProp) {
@@ -59,6 +61,7 @@ export default function NumberField({
             onKeyUp={props.onKeyUp}
             onKeyDown={props.onKeyDown}
             onFocus={props.onFocus}
+            startAdornment={startAdornment}
             slotProps={{
               input: props,
             }}

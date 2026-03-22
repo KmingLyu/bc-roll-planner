@@ -10,9 +10,9 @@ export function useColWidths(): ColW {
   return useMemo(() => {
     // 你目前三段一樣；保留結構方便之後調
     if (isXs)
-      return { count: 8, step: 10, action: 10, event: 40, A: 16, B: 16 };
+      return { count: 8, step: 10, action: 8, event: 42, A: 16, B: 16 };
     if (isSm)
-      return { count: 8, step: 10, action: 10, event: 40, A: 16, B: 16 };
-    return { count: 8, step: 10, action: 10, event: 40, A: 16, B: 16 };
+      return { count: 8, step: 10, action: 8, event: 42, A: 16, B: 16 };
+    return { count: 8, step: 10, action: 8, event: 42, A: 16, B: 16 };
   }, [isXs, isSm]);
 }

@@ -1,7 +1,13 @@
 import { Box, Typography } from "@mui/material";
+import type { ActionLabel } from "../../../logic/view-model";
+import { ResourceImg } from "../../ResourceImg";
 
-export function Pill(props: { text: string; tone?: "normal" | "strong" }) {
-  const { text, tone = "normal" } = props;
+export function Pill(props: {
+  text: string;
+  tone?: "normal" | "strong";
+  actionLabel?: ActionLabel;
+}) {
+  const { text, tone = "normal", actionLabel } = props;
   return (
     <Box
       sx={{
@@ -18,14 +24,18 @@ export function Pill(props: { text: string; tone?: "normal" | "strong" }) {
       title={text}
       aria-label={text}
     >
-      <Typography
-        variant="caption"
-        fontWeight={900}
-        noWrap
-        sx={{ minWidth: 0 }}
-      >
-        {text}
-      </Typography>
+      {actionLabel ? (
+        <ResourceImg label={actionLabel} height={18} />
+      ) : (
+        <Typography
+          variant="caption"
+          fontWeight={900}
+          noWrap
+          sx={{ minWidth: 0 }}
+        >
+          {text}
+        </Typography>
+      )}
     </Box>
   );
 }

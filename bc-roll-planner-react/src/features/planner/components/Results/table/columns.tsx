@@ -1,9 +1,10 @@
 import type { DrawTableColumn } from "../types";
-import { Pill } from "../ui/Pill";
 import { EventBadge } from "../ui/EventBadge";
+import type { ActionLabel } from "../../../logic/view-model";
+import { ResourceImg } from "../../ResourceImg";
 import { StepLane } from "../ui/StepLane";
 
-import { Box, IconButton, Stack, Typography } from "@mui/material";
+import { Box, IconButton } from "@mui/material";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 
@@ -80,7 +81,6 @@ export function makeDefaultColumns(): DrawTableColumn[] {
               <Box sx={{ width: 34, flex: "0 0 34px" }} />
             )}
 
-            {/* ✅ Pill 容器可 shrink + 可截斷 */}
             <Box
               sx={{
                 minWidth: 0,
@@ -88,10 +88,7 @@ export function makeDefaultColumns(): DrawTableColumn[] {
                 overflow: "hidden",
               }}
             >
-              <Pill
-                text={r.actionText}
-                tone={r.isTen && r.isHeader ? "strong" : "normal"}
-              />
+              <ResourceImg label={r.actionText as ActionLabel} height={40} />
             </Box>
           </Box>
         );

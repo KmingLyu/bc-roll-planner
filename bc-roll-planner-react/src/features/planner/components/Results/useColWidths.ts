@@ -8,11 +8,8 @@ export function useColWidths(): ColW {
   const isSm = useMediaQuery(theme.breakpoints.between("sm", "md"));
 
   return useMemo(() => {
-    // 你目前三段一樣；保留結構方便之後調
-    if (isXs)
-      return { count: 8, step: 10, action: 8, event: 42, A: 16, B: 16 };
-    if (isSm)
-      return { count: 8, step: 10, action: 8, event: 42, A: 16, B: 16 };
-    return { count: 8, step: 10, action: 8, event: 42, A: 16, B: 16 };
+    if (isXs) return { action: 24, A: 38, B: 38 };
+    if (isSm) return { action: 20, A: 40, B: 40 };
+    return { action: 18, A: 41, B: 41 };
   }, [isXs, isSm]);
 }

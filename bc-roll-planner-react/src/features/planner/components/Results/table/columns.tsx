@@ -1,5 +1,4 @@
 import type { DrawTableColumn } from "../types";
-import { EventBadge } from "../ui/EventBadge";
 import type { ActionLabel } from "../../../logic/view-model";
 import { ResourceImg } from "../../ResourceImg";
 import { StepLane } from "../ui/StepLane";
@@ -8,47 +7,43 @@ import { Box, IconButton } from "@mui/material";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 
-export function makeDefaultColumns(): DrawTableColumn[] {
-  const columns: DrawTableColumn[] = [
-    // {
-    //   id: "count",
-    //   widthKey: "count",
-    //   render: (r, ctx) => {
-    //     return (
-    //       <Stack direction="row" spacing={1} alignItems="center">
-    //         {ctx.countCell.kind === "toggle" ? (
-    //           <IconButton
-    //             size="small"
-    //             onClick={ctx.countCell.onToggle}
-    //             aria-label={ctx.countCell.ariaLabel || "toggle"}
-    //           >
-    //             {ctx.countCell.open ? (
-    //               <KeyboardArrowUpIcon />
-    //             ) : (
-    //               <KeyboardArrowDownIcon />
-    //             )}
-    //           </IconButton>
-    //         ) : (
-    //           <Box sx={{ width: 34 }} />
-    //         )}
+function makeLaneColumn(
+  lane: "A" | "B",
+  opts?: { widthKey?: "A" | "B"; widthPct?: number },
+): DrawTableColumn {
+  return {
+    id: lane,
+    widthKey: opts?.widthKey,
+    widthPct: opts?.widthPct,
+    render: (r, ctx) => {
+      const isEllipsis = r.countText === "⋯";
+      const isGuaranteedRow =
+        r.statusA === "guaranteed" || r.statusB === "guaranteed";
 
-    //         <Typography variant="body2" fontWeight={900}>
-    //           {r.countText}
-    //         </Typography>
-    //       </Stack>
-    //     );
-    //   },
-    // },
-    // {
-    //   id: "step",
-    //   widthKey: "step",
-    //   render: (r) => (
-    //     <Pill
-    //       text={r.stepText}
-    //       tone={r.stepText !== "-" ? "strong" : "normal"}
-    //     />
-    //   ),
-    // },
+      return (
+        <StepLane
+          lane={lane}
+          countText={r.countText}
+          text={lane === "A" ? r.A : r.B}
+          status={lane === "A" ? r.statusA : r.statusB}
+          isTarget={!isEllipsis && (lane === "A" ? r.isTargetA : r.isTargetB)}
+          isDuplicate={
+            !isEllipsis && (lane === "A" ? r.isDuplicateA : r.isDuplicateB)
+          }
+          hasNext={ctx.hasNextInBlock}
+          isEllipsis={isEllipsis}
+          hideLane={
+            isGuaranteedRow &&
+            (lane === "A" ? r.statusA : r.statusB) !== "guaranteed"
+          }
+        />
+      );
+    },
+  };
+}
+
+export function makeMainColumns(): DrawTableColumn[] {
+  const columns: DrawTableColumn[] = [
     {
       id: "action",
       widthKey: "action",
@@ -94,73 +89,22 @@ export function makeDefaultColumns(): DrawTableColumn[] {
         );
       },
     },
-
-    {
-      id: "event",
-      widthKey: "event",
-      render: (r, ctx) => {
-        return (
-          <EventBadge
-            eventName={r.eventName}
-            eventRawName={r.eventRawName}
-            eventStartDate={r.eventStartDate}
-            eventEndDate={r.eventEndDate}
-            eventValue={r.eventValue}
-            colorOf={ctx.eventColorOf}
-            tintOf={ctx.eventTintOf}
-          />
-        );
-      },
-    },
-    {
-      id: "A",
-      widthKey: "A",
-      render: (r, ctx) => {
-        const isEllipsis = r.countText === "⋯";
-        const isGuaranteedRow =
-          r.statusA === "guaranteed" || r.statusB === "guaranteed";
-
-        return (
-          <StepLane
-            lane="A"
-            countText={r.countText}
-            text={r.A}
-            status={r.statusA}
-            isTarget={!isEllipsis && r.isTargetA}
-            isDuplicate={!isEllipsis && r.isDuplicateA}
-            hasNext={ctx.hasNextInBlock}
-            isEllipsis={isEllipsis}
-            hideLane={isGuaranteedRow && r.statusA !== "guaranteed"} // ✅ 保底列的另一條線隱藏
-          />
-        );
-      },
-    },
-    {
-      id: "B",
-      widthKey: "B",
-      render: (r, ctx) => {
-        const isEllipsis = r.countText === "⋯";
-        const isGuaranteedRow =
-          r.statusA === "guaranteed" || r.statusB === "guaranteed";
-
-        return (
-          <StepLane
-            lane="B"
-            countText={r.countText}
-            text={r.B}
-            status={r.statusB}
-            isTarget={!isEllipsis && r.isTargetB}
-            isDuplicate={!isEllipsis && r.isDuplicateB}
-            hasNext={ctx.hasNextInBlock}
-            isEllipsis={isEllipsis}
-            hideLane={isGuaranteedRow && r.statusB !== "guaranteed"} // ✅ 保底列的另一條線隱藏
-          />
-        );
-      },
-    },
+    makeLaneColumn("A", { widthKey: "A" }),
+    makeLaneColumn("B", { widthKey: "B" }),
   ];
 
   return columns;
+}
+
+export function makeDetailColumns(): DrawTableColumn[] {
+  return [
+    makeLaneColumn("A", { widthPct: 50 }),
+    makeLaneColumn("B", { widthPct: 50 }),
+  ];
+}
+
+export function makeDefaultColumns(): DrawTableColumn[] {
+  return makeMainColumns();
 }
 
 /**

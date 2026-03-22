@@ -10,7 +10,6 @@ import {
   TableCell,
   TableContainer,
   TableRow,
-  Typography,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
@@ -25,8 +24,8 @@ import { HeaderBar } from "./ui/HeaderBar";
 import { useColWidths } from "./useColWidths";
 import { groupByStep } from "./groupByStep";
 
-import type { DrawTableColumn } from "./types";
-import { makeDefaultColumns } from "./table/columns";
+import type { DrawTableColumn, EventRunMeta } from "./types";
+import { makeDefaultColumns, makeDetailColumns } from "./table/columns";
 import { StepBlock } from "./table/StepBlock";
 
 export { type DrawTableColumn } from "./types";
@@ -39,7 +38,7 @@ export function ResultTable(props: {
 
   /**
    * ✅ 擴充點 1：可插拔欄位
-   * - 不傳就用預設 6 欄
+   * - 不傳就用預設主表欄位
    */
   columns?: DrawTableColumn[];
 
@@ -133,7 +132,9 @@ export function ResultTable(props: {
 
   const steps = useMemo(() => groupByStep(filteredRows), [filteredRows]);
 
-  // ✅ columns：預設 6 欄，但可以外部覆蓋/新增
+  const detailColumns = useMemo(() => makeDetailColumns(), []);
+
+  // ✅ columns：預設主表 3 欄，但可以外部覆蓋/新增
   const effectiveColumns = useMemo(() => {
     return columns && columns.length ? columns : makeDefaultColumns();
   }, [columns]);
@@ -149,6 +150,39 @@ export function ResultTable(props: {
     }),
     [colW, bodyCellSx, eventPicker, onRowContextMenu],
   );
+
+  const stepBlocks = useMemo(() => {
+    return steps.map(([stepIndex, rows]) => {
+      const eventAnchor = rows[0];
+      return {
+        stepIndex,
+        rows,
+        eventValue: String(eventAnchor?.eventValue || ""),
+        eventName: eventAnchor?.eventName || "-",
+        eventRawName: eventAnchor?.eventRawName || eventAnchor?.eventName || "-",
+        eventStartDate: eventAnchor?.eventStartDate ?? null,
+        eventEndDate: eventAnchor?.eventEndDate ?? null,
+      };
+    });
+  }, [steps]);
+
+  const eventRuns = useMemo<EventRunMeta[]>(() => {
+    return stepBlocks.map((block, idx, arr) => {
+      const prevEvent = idx > 0 ? arr[idx - 1]?.eventValue : null;
+      const nextEvent = idx < arr.length - 1 ? arr[idx + 1]?.eventValue : null;
+      return {
+        eventValue: block.eventValue,
+        eventName: block.eventName,
+        eventRawName: block.eventRawName,
+        eventStartDate: block.eventStartDate,
+        eventEndDate: block.eventEndDate,
+        color: eventPicker.colorOf(block.eventValue),
+        tint: eventPicker.tintOf(block.eventValue),
+        isStart: prevEvent !== block.eventValue,
+        isEnd: nextEvent !== block.eventValue,
+      };
+    });
+  }, [eventPicker, stepBlocks]);
 
   return (
     <Stack
@@ -183,7 +217,7 @@ export function ResultTable(props: {
         <Table
           size="medium"
           sx={{
-            minWidth: isSmDown ? 860 : 980,
+            minWidth: isSmDown ? 560 : 640,
             tableLayout: "fixed",
             borderCollapse: "separate",
           }}
@@ -199,7 +233,7 @@ export function ResultTable(props: {
                 </TableCell>
               </TableRow>
             ) : (
-              steps.map(([stepIndex, rows]) => {
+              stepBlocks.map(({ stepIndex, rows }, idx) => {
                 const isOpen = !!openTen[stepIndex];
                 return (
                   <React.Fragment key={`step-${stepIndex}`}>
@@ -215,6 +249,8 @@ export function ResultTable(props: {
                       }
                       showTargetDrawsOnly={showTargetDrawsOnly}
                       columns={effectiveColumns}
+                      detailColumns={detailColumns}
+                      eventRun={eventRuns[idx]}
                       baseCtx={baseCtx}
                     />
                   </React.Fragment>

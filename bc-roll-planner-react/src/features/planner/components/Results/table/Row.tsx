@@ -35,8 +35,18 @@ export function Row(props: {
           sx={{
             ...ctx.bodyCellSx,
             width: widthOfColumn(c, ctx.colW),
-            whiteSpace: c.id === "count" ? "nowrap" : undefined,
             textAlign: c.align,
+            ...(ctx.eventGroupChrome
+              ? {
+                  ...(c.id === columns[0]?.id
+                    ? {
+                        borderLeft: "2px solid",
+                        borderLeftColor: ctx.eventGroupChrome.color,
+                        paddingLeft: "10px",
+                      }
+                    : null),
+                }
+              : null),
           }}
         >
           {c.render(row, ctx)}

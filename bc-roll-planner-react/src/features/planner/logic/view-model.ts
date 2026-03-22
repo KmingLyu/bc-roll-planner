@@ -67,19 +67,23 @@ export const STATUS_STYLE: Record<
   StatusKey,
   { bg: string; node: string; border?: string }
 > = {
-  // 抽到：黃底
+  // 抽到：不透明黃底
   hit: {
-    bg: APP_THEME_TOKENS.planner.status.hitBg,
-    node: APP_THEME_TOKENS.planner.status.hitNode,
+    bg: "#fef5c4",
+    node: "#fde04b",
   },
 
-  // 保底：藍色
+  // 保底：不透明紫底
   guaranteed: {
-    bg: APP_THEME_TOKENS.planner.status.guaranteedBg,
-    node: APP_THEME_TOKENS.planner.status.guaranteedNode,
+    bg: "#f9e1fc",
+    node: "#de75f1",
   },
 
-  normal: { bg: "action.hover", node: "background.default" },
+  normal: {
+    bg: APP_THEME_TOKENS.chip.background,
+    node: APP_THEME_TOKENS.palette.backgroundDefault,
+    border: APP_THEME_TOKENS.chip.border,
+  },
 };
 
 /**
@@ -89,8 +93,8 @@ export const STATUS_STYLE: Record<
  */
 export const TARGET_BORDER_STYLE = {
   border: `2.5px solid ${APP_THEME_TOKENS.planner.target.border}`,
-  boxShadow: APP_THEME_TOKENS.planner.target.ring,
-  background: `linear-gradient(0deg, ${APP_THEME_TOKENS.planner.target.background}, ${APP_THEME_TOKENS.planner.target.background})`,
+  boxShadow: "none",
+  background: "#e7f8f2",
 };
 
 /**
@@ -99,10 +103,10 @@ export const TARGET_BORDER_STYLE = {
  * - 用 boxShadow 做「外圈」與「發光」，辨識度大幅提升
  */
 export const TARGET_NODE_STYLE = {
-  bg: APP_THEME_TOKENS.planner.target.nodeBg,
+  bg: "#10b981",
   borderColor: APP_THEME_TOKENS.planner.target.border,
-  ringShadow: APP_THEME_TOKENS.planner.target.ring,
-  textColor: APP_THEME_TOKENS.planner.target.nodeText,
+  ringShadow: "none",
+  textColor: "rgba(0, 0, 0, 0.85)",
 };
 
 export function hashString(s: string): number {

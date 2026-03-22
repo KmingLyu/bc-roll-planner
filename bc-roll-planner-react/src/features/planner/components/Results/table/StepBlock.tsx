@@ -1,8 +1,9 @@
 import React from "react";
 import type { DrawRow } from "../../../logic/view-model";
-import type { DrawTableColumn, RowRenderCtx } from "../types";
+import type { DrawTableColumn, EventRunMeta, RowRenderCtx } from "../types";
 import { Row } from "./Row";
 import { CollapseRow } from "./CollapseRow";
+import { EventGroupHeaderRow } from "./EventGroupHeaderRow";
 
 export function StepBlock(props: {
   stepIndex: number;
@@ -14,7 +15,9 @@ export function StepBlock(props: {
   showTargetDrawsOnly: boolean;
 
   columns: DrawTableColumn[];
-  baseCtx: Omit<RowRenderCtx, "hasNextInBlock" | "countCell">;
+  detailColumns: DrawTableColumn[];
+  eventRun: EventRunMeta;
+  baseCtx: Omit<RowRenderCtx, "hasNextInBlock" | "countCell" | "eventGroupChrome">;
 }) {
   const {
     stepIndex,
@@ -23,6 +26,8 @@ export function StepBlock(props: {
     onToggleOpen,
     showTargetDrawsOnly,
     columns,
+    detailColumns,
+    eventRun,
     baseCtx,
   } = props;
 
@@ -37,6 +42,16 @@ export function StepBlock(props: {
 
   const out: React.ReactNode[] = [];
 
+  if (eventRun.isStart) {
+    out.push(
+      <EventGroupHeaderRow
+        key={`event-${stepIndex}`}
+        colSpan={columns.length}
+        eventRun={eventRun}
+      />,
+    );
+  }
+
   if (isTen && tenSummary) {
     const headerCtx: RowRenderCtx = {
       ...baseCtx,
@@ -46,6 +61,11 @@ export function StepBlock(props: {
         open,
         onToggle: onToggleOpen,
         ariaLabel: `toggle step ${stepIndex}`,
+      },
+      eventGroupChrome: {
+        color: eventRun.color,
+        tint: eventRun.tint,
+        isEnd: eventRun.isEnd && !open,
       },
     };
 
@@ -66,7 +86,12 @@ export function StepBlock(props: {
         shownTenDraws={shownTenDraws}
         tenDrawsTotal={tenDraws.length}
         showTargetDrawsOnly={showTargetDrawsOnly}
-        columns={columns}
+        detailColumns={detailColumns}
+        eventGroupChrome={{
+          color: eventRun.color,
+          tint: eventRun.tint,
+          isEnd: eventRun.isEnd,
+        }}
         baseCtx={baseCtx}
       />,
     );
@@ -78,6 +103,11 @@ export function StepBlock(props: {
         ...baseCtx,
         hasNextInBlock: idx < singles.length - 1,
         countCell: { kind: "spacer" },
+        eventGroupChrome: {
+          color: eventRun.color,
+          tint: eventRun.tint,
+          isEnd: eventRun.isEnd && idx === singles.length - 1,
+        },
       };
       out.push(
         <Row key={r.key} row={r} columns={columns} ctx={ctx} />

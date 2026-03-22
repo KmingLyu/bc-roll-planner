@@ -1,4 +1,5 @@
 import { Box, Typography } from "@mui/material";
+import { APP_THEME_TOKENS } from "@/styles/theme/tokens";
 import {
   STATUS_STYLE,
   TARGET_BORDER_STYLE,
@@ -31,7 +32,6 @@ export function StepLane(props: StepLaneProps) {
     hasNext,
     isEllipsis,
     hideLane = false,
-    isDuplicate = false,
   } = props;
 
   const laneW = 34;
@@ -55,15 +55,18 @@ export function StepLane(props: StepLaneProps) {
             px: 1,
             py: 0.65,
             borderRadius: 999,
-            bgcolor: "action.hover",
+            bgcolor: APP_THEME_TOKENS.chip.background,
             border: "1px solid",
-            borderColor: "divider",
+            borderColor: APP_THEME_TOKENS.chip.border,
             minWidth: 0,
             flex: "1 1 auto",
-            opacity: 0.45,
           }}
         >
-          <Typography variant="body2" noWrap sx={{ minWidth: 0 }}>
+          <Typography
+            variant="body2"
+            noWrap
+            sx={{ minWidth: 0, color: "text.secondary" }}
+          >
             —
           </Typography>
         </Box>
@@ -137,8 +140,12 @@ export function StepLane(props: StepLaneProps) {
                 ? TARGET_NODE_STYLE.bg
                 : STATUS_STYLE[status].node,
             border: "2px solid",
-            borderColor: isTarget ? TARGET_NODE_STYLE.borderColor : "divider",
-            boxShadow: isTarget ? TARGET_NODE_STYLE.ringShadow : "none",
+            borderColor: isTarget
+              ? TARGET_NODE_STYLE.borderColor
+              : "divider",
+            boxShadow: isTarget
+              ? TARGET_NODE_STYLE.ringShadow
+              : "none",
             display: "grid",
             placeItems: "center",
             zIndex: 1,
@@ -150,7 +157,9 @@ export function StepLane(props: StepLaneProps) {
               fontWeight={900}
               sx={{
                 lineHeight: 1,
-                color: isTarget ? TARGET_NODE_STYLE.textColor : "text.primary",
+                color: isTarget
+                  ? TARGET_NODE_STYLE.textColor
+                  : "text.primary",
                 fontSize,
                 maxWidth: nodeSize - 8,
                 overflow: "hidden",
@@ -171,10 +180,12 @@ export function StepLane(props: StepLaneProps) {
           px: 1,
           py: 0.65,
           borderRadius: 999,
-          bgcolor:
-            status === "normal" ? "action.hover" : STATUS_STYLE[status].bg,
+          bgcolor: STATUS_STYLE[status].bg,
           border: "1px solid",
-          borderColor: status === "normal" ? "divider" : "transparent",
+          borderColor:
+            status === "normal"
+              ? (STATUS_STYLE.normal.border ?? "divider")
+              : "divider",
           minWidth: 0,
           flex: "1 1 auto",
           ...(isTarget ? TARGET_BORDER_STYLE : null),

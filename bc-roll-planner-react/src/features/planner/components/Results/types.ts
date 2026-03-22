@@ -1,16 +1,32 @@
 import type React from "react";
+import type { SxProps, Theme } from "@mui/material/styles";
 import type { DrawRow } from "../../logic/view-model";
 
 export type ColW = {
-  count: number;
-  step: number;
   action: number;
-  event: number;
   A: number;
   B: number;
 };
 
-export type BodyCellSx = Record<string, any>;
+export type BodyCellSx = SxProps<Theme>;
+
+export type EventRunMeta = {
+  eventValue: string;
+  eventName: string;
+  eventRawName: string;
+  eventStartDate: string | null;
+  eventEndDate: string | null;
+  color: string;
+  tint: string;
+  isStart: boolean;
+  isEnd: boolean;
+};
+
+export type EventGroupChrome = {
+  color: string;
+  tint: string;
+  isEnd: boolean;
+};
 
 export type CountCellMode =
   | { kind: "toggle"; open: boolean; onToggle: () => void; ariaLabel?: string }
@@ -25,6 +41,7 @@ export type RowRenderCtx = {
 
   hasNextInBlock: boolean;
   countCell: CountCellMode;
+  eventGroupChrome?: EventGroupChrome | null;
 
   onRowContextMenu?: (row: DrawRow, e: React.MouseEvent) => void;
 };

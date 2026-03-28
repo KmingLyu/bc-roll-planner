@@ -10,6 +10,7 @@ import {
 import { ArrowLeft, PencilLine } from "lucide-react";
 import type { Event, TrackGraph } from "@/types/models";
 import { ApiError } from "@/lib/api-client";
+import { cn } from "@/lib/utils";
 import { EventsPicker, useEvents } from "@/features/events";
 import {
   TargetCatsSelectionContent,
@@ -515,8 +516,8 @@ function usePlannerScreen() {
 function PlannerHeader() {
   return (
     <header className="space-y-2 border-b border-border/45 pb-3">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
           貓咪大戰爭抽卡規劃
         </h1>
       </div>
@@ -696,7 +697,7 @@ function PlannerInputEditor({ layout }: { layout: "immersive" | "compact" }) {
 
 function PlannerInputStage() {
   return (
-    <div className="max-w-[1080px]">
+    <div className="mx-auto w-full max-w-[1220px]">
       <PlannerInputEditor layout="immersive" />
     </div>
   );
@@ -918,21 +919,27 @@ function PlannerResultsStage() {
 function PlannerScreen() {
   const { session, appliedSession } = usePlannerScreen();
   const topRef = useRef<HTMLDivElement | null>(null);
+  const isResultsStage = session.stage === "results" && !!appliedSession;
 
   useEffect(() => {
-    if (session.stage !== "results" || !appliedSession) return;
+    if (!isResultsStage) return;
 
     topRef.current?.scrollIntoView({
       block: "start",
       behavior: "smooth",
     });
-  }, [session.stage, appliedSession]);
+  }, [isResultsStage]);
 
   return (
-    <div className="space-y-4">
+    <div
+      className={cn(
+        "mx-auto w-full space-y-4",
+        isResultsStage ? "max-w-[1480px]" : "max-w-[1220px]",
+      )}
+    >
       <div ref={topRef} />
       <PlannerHeader />
-      {session.stage === "results" && appliedSession ? (
+      {isResultsStage ? (
         <PlannerResultsStage />
       ) : (
         <PlannerInputStage />

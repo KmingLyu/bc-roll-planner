@@ -1,6 +1,5 @@
 import { startTransition, useDeferredValue, useMemo, useState } from "react";
-import { ChevronDown } from "lucide-react";
-import { Alert } from "@/components/ui/alert";
+import { ChevronDown, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,8 +77,8 @@ export function TargetCatsPicker(props: {
 
   return (
     <div className="space-y-3">
-      <div className="grid gap-2 sm:grid-cols-[auto_minmax(0,320px)] sm:items-center sm:justify-between">
-        <div className="flex items-center gap-1.5">
+      <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_320px] sm:items-center">
+        <div className="flex min-w-0 items-center gap-1.5">
           <Badge className={countBadgeClass(selectedIds.length)} variant="muted">
             已選 {selectedIds.length}
           </Badge>
@@ -92,19 +91,25 @@ export function TargetCatsPicker(props: {
             清空
           </Button>
         </div>
-        <Input
-          name="target-cat-search"
-          autoComplete="off"
-          value={query}
-          onChange={(event) =>
-            startTransition(() => setQuery(event.target.value))
-          }
-          placeholder="搜尋目標貓咪"
-        />
+        <div className="relative w-full sm:w-[320px] sm:justify-self-end">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            name="target-cat-search"
+            autoComplete="off"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="搜尋目標貓咪"
+            className="workspace-search pl-11"
+          />
+        </div>
       </div>
 
-      {loadState === "loading" ? <Alert variant="info">正在載入 event 貓池…</Alert> : null}
-      {loadState === "error" ? <Alert variant="error">{error}</Alert> : null}
+      {loadState === "loading" ? (
+        <div className="text-sm text-muted-foreground">正在載入 event 貓池…</div>
+      ) : null}
+      {loadState === "error" ? (
+        <div className="text-sm text-destructive">{error}</div>
+      ) : null}
 
       <div className="space-y-1">
         {filteredGroups.length ? (
@@ -168,9 +173,11 @@ export function TargetCatsPicker(props: {
             </section>
           ))
         ) : (
-          <Alert variant="warning">
-            {groups.length ? "沒有符合搜尋條件的貓咪。" : "目前沒有可選的目標貓咪。"}
-          </Alert>
+          groups.length ? (
+            <div className="py-2 text-sm text-muted-foreground">
+              沒有符合搜尋條件的貓咪。
+            </div>
+          ) : null
         )}
       </div>
     </div>

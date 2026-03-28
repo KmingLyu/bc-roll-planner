@@ -118,6 +118,10 @@
     @apply flex items-center justify-between gap-3 border-b border-border/50 bg-muted/25 px-4 py-2.5;
   }
 
+  .workspace-search {
+    @apply h-10 rounded-[4px] border border-border/60 bg-muted/35 px-3 pl-9 text-sm shadow-none focus-visible:border-primary focus-visible:bg-background;
+  }
+
   .workspace-divider {
     @apply border-t border-border/45;
   }

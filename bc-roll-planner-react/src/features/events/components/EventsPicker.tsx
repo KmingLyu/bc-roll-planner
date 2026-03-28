@@ -4,7 +4,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Search } from "lucide-react";
 import type { Event } from "@/types/models";
 import { getEventDisplayLines } from "@/utils/event-display";
 import { Badge } from "@/components/ui/badge";
@@ -237,7 +237,7 @@ export function EventsPicker(props: {
         </div>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_280px] sm:items-start">
+      <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_320px] sm:items-start">
         <div className="min-w-0">
           {selectedEvents.length ? (
             <div className="flex flex-wrap gap-1.5">
@@ -255,13 +255,17 @@ export function EventsPicker(props: {
           )}
         </div>
 
-        <Input
-          name="event-search"
-          autoComplete="off"
-          value={query}
-          onChange={(event) => startTransition(() => setQuery(event.target.value))}
-          placeholder="搜尋卡池名稱或日期"
-        />
+        <div className="relative w-full sm:w-[320px] sm:justify-self-end">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            name="event-search"
+            autoComplete="off"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="搜尋卡池名稱或日期"
+            className="workspace-search pl-11"
+          />
+        </div>
       </div>
 
       {panelOpen ? (

@@ -35,6 +35,7 @@ export function buildGodfatCatImageUrl(
 
   const lang = normalizeLocale(options?.lang);
   const assetId = Math.max(0, Math.floor(catId) - 1);
+  const assetKey = String(assetId).padStart(3, "0");
 
-  return `${BCGODFAT_BASE_URL}/extract/${lang}/uni${assetId}_f00.png`;
+  return `${BCGODFAT_BASE_URL}/extract/${lang}/uni${assetKey}_f00.png`;
 }

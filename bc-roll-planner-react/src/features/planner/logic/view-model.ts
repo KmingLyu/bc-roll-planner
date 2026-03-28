@@ -182,9 +182,17 @@ export function safeGetNormalCatName(
   g: TrackGraph | null | undefined,
   posId: string,
 ): string {
-  const node = g?.nodes?.[posId as any];
+  const node = g?.nodes?.[posId];
   const cat = node?.edges?.normal?.cat;
   return cat?.name || UI_TEXT.dash;
+}
+
+export function safeGetNormalCat(
+  g: TrackGraph | null | undefined,
+  posId: string,
+) {
+  const node = g?.nodes?.[posId];
+  return node?.edges?.normal?.cat ?? null;
 }
 
 /**
@@ -199,7 +207,7 @@ export function posTrackFromPosId(posId: string): {
   const raw = String(posId || "");
   try {
     const c = parsePosId(raw);
-    return { ok: true, pos: c.pos, track: c.track as any, id: c.id };
+    return { ok: true, pos: c.pos, track: c.track, id: c.id };
   } catch {
     const m = raw.match(/(\d+)\s*([AB])/i);
     if (m) {
@@ -226,6 +234,8 @@ export type DrawRow = {
 
   A: string;
   B: string;
+  catIdA: number | null;
+  catIdB: number | null;
 
   statusA: StatusKey;
   statusB: StatusKey;
@@ -316,6 +326,8 @@ export function buildDrawRows(params: {
 
         A: hitA > 0 ? formatHitCatNames(hitMapA, catNameById) : UI_TEXT.dash,
         B: hitB > 0 ? formatHitCatNames(hitMapB, catNameById) : UI_TEXT.dash,
+        catIdA: hitMapA.size === 1 ? [...hitMapA.keys()][0] : null,
+        catIdB: hitMapB.size === 1 ? [...hitMapB.keys()][0] : null,
 
         statusA: "hit",
         statusB: "hit",
@@ -324,7 +336,7 @@ export function buildDrawRows(params: {
 
         note: `${st.start_cursor_id} → ${st.end_cursor_id}`,
         pos: sp.ok ? sp.pos : null,
-        track: sp.ok ? (sp.track as any) : null,
+        track: sp.ok ? sp.track : null,
         used: "normal",
         catId: null,
 
@@ -350,7 +362,7 @@ export function buildDrawRows(params: {
       const isGuaranteed = d.used === "guaranteed";
 
       const pos = from.ok ? from.pos : null;
-      const track = from.ok ? (from.track as any) : null;
+      const track = from.ok ? from.track : null;
 
       // const baseA = isGuaranteed
       //   ? track === "A"
@@ -372,22 +384,27 @@ export function buildDrawRows(params: {
       //   ? safeGetNormalCatName(g, `${pos}B`)
       //   : UI_TEXT.dash;
       const normalA =
-        pos != null ? safeGetNormalCatName(g, `${pos}A`) : UI_TEXT.dash;
+        pos != null ? safeGetNormalCat(g, `${pos}A`) : null;
       const normalB =
-        pos != null ? safeGetNormalCatName(g, `${pos}B`) : UI_TEXT.dash;
+        pos != null ? safeGetNormalCat(g, `${pos}B`) : null;
 
       // 預設先用 normal 軌道當底（用來顯示另一條 lane 的對照）
-      let baseA = normalA;
-      let baseB = normalB;
+      let baseA = normalA?.name || UI_TEXT.dash;
+      let baseB = normalB?.name || UI_TEXT.dash;
+      let catIdA = normalA?.id ?? null;
+      let catIdB = normalB?.id ?? null;
 
       // 不管 used 是 normal / switch_track / guaranteed：抽到的那條 lane 一律顯示結果貓
       if (track === "A") {
-        baseA = (d.cat_name || "").trim() ? d.cat_name : normalA;
+        baseA = (d.cat_name || "").trim() ? d.cat_name : baseA;
+        catIdA = d.cat_id ?? catIdA;
       } else if (track === "B") {
-        baseB = (d.cat_name || "").trim() ? d.cat_name : normalB;
+        baseB = (d.cat_name || "").trim() ? d.cat_name : baseB;
+        catIdB = d.cat_id ?? catIdB;
       } else {
         // 解析不到 track 的保守處理：維持你原本習慣（當作 B）
-        baseB = (d.cat_name || "").trim() ? d.cat_name : normalB;
+        baseB = (d.cat_name || "").trim() ? d.cat_name : baseB;
+        catIdB = d.cat_id ?? catIdB;
       }
 
       const isTarget = d.cat_id != null && targetIdSet.has(d.cat_id);
@@ -457,6 +474,8 @@ export function buildDrawRows(params: {
         eventEndDate,
         A,
         B,
+        catIdA,
+        catIdB,
         statusA,
         statusB,
         isTargetA,

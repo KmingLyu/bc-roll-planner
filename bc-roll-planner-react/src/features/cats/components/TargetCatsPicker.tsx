@@ -1,9 +1,11 @@
 import { startTransition, useDeferredValue, useMemo, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { TierGroup } from "@/features/cats/types";
+import { cn } from "@/lib/utils";
 import { CatSelectableItem } from "./CatSelectableItem";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
@@ -49,6 +51,7 @@ export function TargetCatsPicker(props: {
   } = props;
 
   const [query, setQuery] = useState("");
+  const [openGroups, setOpenGroups] = useState<Partial<Record<TierGroup["tier"], boolean>>>({});
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const deferredQuery = useDeferredValue(query);
   const normalizedQuery = deferredQuery.trim().toLowerCase();
@@ -74,8 +77,8 @@ export function TargetCatsPicker(props: {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Badge className={countBadgeClass(selectedIds.length)} variant="muted">
             已選 {selectedIds.length}
@@ -83,7 +86,6 @@ export function TargetCatsPicker(props: {
           <Button
             variant="ghost"
             size="sm"
-            className="rounded-full"
             onClick={onClear}
             disabled={!selectedIds.length}
           >
@@ -105,44 +107,66 @@ export function TargetCatsPicker(props: {
       {loadState === "loading" ? <Alert variant="info">正在載入 event 貓池…</Alert> : null}
       {loadState === "error" ? <Alert variant="error">{error}</Alert> : null}
 
-      <div className="space-y-2">
+      <div className="space-y-1">
         {filteredGroups.length ? (
           filteredGroups.map((group) => (
-            <details
+            <section
               key={group.tier}
-              className="border-t border-border/60 pt-4 first:border-t-0 first:pt-0"
+              className="border-t border-border/45 pt-3 first:border-t-0 first:pt-0"
             >
-              <summary className="cursor-pointer list-none py-2">
-                <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() =>
+                  startTransition(() =>
+                    setOpenGroups((current) => ({
+                      ...current,
+                      [group.tier]: !(
+                        current[group.tier] ?? (normalizedQuery ? group.cats.length > 0 : false)
+                      ),
+                    })),
+                  )
+                }
+                className="flex w-full items-center justify-between gap-3 py-1 text-left"
+              >
+                <div className="flex items-center gap-2">
                   <div className="text-sm font-semibold text-foreground">
                     {tierLabel(group.tier)}
                   </div>
                   <Badge variant="muted">{group.cats.length}</Badge>
                 </div>
-              </summary>
-              <div className="pt-3">
-                <div
-                  className="grid gap-3"
-                  style={{
-                    gridTemplateColumns: `repeat(auto-fit, minmax(${minColWidth}px, 1fr))`,
-                  }}
-                >
-                  {group.cats.map((cat) => (
-                    <CatSelectableItem
-                      key={cat.id}
-                      catId={cat.id}
-                      name={cat.name}
-                      checked={selectedSet.has(cat.id)}
-                      onToggle={(checked) => toggle(cat.id, checked)}
-                      imageUrl={getCatImageUrl?.(cat.id)}
-                      href={getCatHref?.(cat.id)}
-                      dense={dense}
-                      secondary={renderCatSecondary?.(cat.id)}
-                    />
-                  ))}
+                <ChevronDown
+                  className={cn(
+                    "size-4 text-muted-foreground transition-transform",
+                    (openGroups[group.tier] ?? (normalizedQuery ? group.cats.length > 0 : false)) &&
+                      "rotate-180",
+                  )}
+                />
+              </button>
+              {openGroups[group.tier] ?? (normalizedQuery ? group.cats.length > 0 : false) ? (
+                <div className="pt-2">
+                  <div
+                    className="grid gap-2"
+                    style={{
+                      gridTemplateColumns: `repeat(auto-fit, minmax(${minColWidth}px, 1fr))`,
+                    }}
+                  >
+                    {group.cats.map((cat) => (
+                      <CatSelectableItem
+                        key={cat.id}
+                        catId={cat.id}
+                        name={cat.name}
+                        checked={selectedSet.has(cat.id)}
+                        onToggle={(checked) => toggle(cat.id, checked)}
+                        imageUrl={getCatImageUrl?.(cat.id)}
+                        href={getCatHref?.(cat.id)}
+                        dense={dense}
+                        secondary={renderCatSecondary?.(cat.id)}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </details>
+              ) : null}
+            </section>
           ))
         ) : (
           <Alert variant="warning">

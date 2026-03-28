@@ -24,7 +24,7 @@ export default function NumberField({
   }
   return (
     <BaseNumberField.Root {...other} className={cn("w-full", className)}>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1.5">
         {label ? (
           <label htmlFor={id} className="text-sm font-medium text-foreground">
             {label}
@@ -32,20 +32,20 @@ export default function NumberField({
         ) : null}
         <div
           className={cn(
-            "field-shell gap-2",
+            "field-shell gap-1.5",
             error && "border-destructive ring-4 ring-destructive/10",
           )}
         >
           {startAdornment ? <span className="shrink-0">{startAdornment}</span> : null}
-          <BaseNumberField.Decrement className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+          <BaseNumberField.Decrement className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
             <Minus className="size-4" />
           </BaseNumberField.Decrement>
           <BaseNumberField.Input
             id={id}
-            className="h-10 min-w-0 flex-1 border-0 bg-transparent text-sm outline-none"
+            className="h-9 min-w-0 flex-1 border-0 bg-transparent text-sm outline-none"
             {...inputProps}
           />
-          <BaseNumberField.Increment className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+          <BaseNumberField.Increment className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
             <Plus className="size-4" />
           </BaseNumberField.Increment>
         </div>

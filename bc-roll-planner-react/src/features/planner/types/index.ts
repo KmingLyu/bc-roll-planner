@@ -11,6 +11,7 @@ export type PlannerUiConfig = {
 };
 
 export type PlannerStage = "input" | "results";
+export type PlannerSidebarMode = "summary" | "edit";
 
 export type PlannerDraftInputs = {
   seed: string;
@@ -29,7 +30,7 @@ export type PlannerAppliedInputs = PlannerDraftInputs & {
 
 export type PlannerSessionState = {
   stage: PlannerStage;
-  inputRailOpen: boolean;
+  sidebarMode: PlannerSidebarMode;
   mobileEditorOpen: boolean;
   manualCountExpanded: boolean;
 };

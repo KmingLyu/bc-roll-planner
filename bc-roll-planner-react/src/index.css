@@ -104,19 +104,19 @@
   }
 
   .panel-surface {
-    @apply rounded-[28px] border border-border/40 bg-card/96 shadow-none backdrop-blur-sm;
+    @apply border border-border/35 bg-card/96 shadow-none backdrop-blur-sm;
   }
 
   .section-surface {
-    @apply rounded-3xl bg-card/85 shadow-none;
+    @apply bg-card/85 shadow-none;
   }
 
   .field-shell {
-    @apply flex items-center gap-3 rounded-2xl border border-input/75 bg-white px-4 py-3 text-sm transition-colors focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10;
+    @apply flex items-center gap-3 rounded-md border border-input/70 bg-white px-3 py-2 text-sm transition-colors focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10;
   }
 
   .data-grid {
-    @apply overflow-hidden rounded-[26px] border border-border/40 bg-card;
+    @apply overflow-hidden bg-card;
   }
 
   .subtle-scrollbar {

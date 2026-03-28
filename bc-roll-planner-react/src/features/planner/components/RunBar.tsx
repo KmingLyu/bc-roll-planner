@@ -20,9 +20,9 @@ export function RunBar(props: {
   const label = hasResult ? "重新執行" : "開始執行";
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-3">
-        <Button onClick={onRun} disabled={disabled} className="min-w-32">
+    <div className="space-y-2.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button onClick={onRun} disabled={disabled} className="min-w-28">
           {state === "loading" ? (
             <LoaderCircle className="size-4 animate-spin" />
           ) : hasResult ? (

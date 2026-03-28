@@ -1,8 +1,11 @@
 import { Fragment, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { PlanResult } from "@/features/planner/logic/core";
-import { buildDrawRows, type DrawRow } from "@/features/planner/logic/view-model";
+import {
+  buildDrawRows,
+  makeEventColorPicker,
+  type DrawRow,
+} from "@/features/planner/logic/view-model";
 import type { TrackGraph } from "@/types/models";
 import { getEventDisplayLines } from "@/utils/event-display";
 import { cn } from "@/lib/utils";
@@ -73,88 +76,106 @@ function ResultTrackCell(props: {
 
 function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
   const groups = useMemo(() => groupRowsByEvent(rows), [rows]);
+  const colorPicker = useMemo(
+    () => makeEventColorPicker(groups.map((group) => group.eventValue)),
+    [groups],
+  );
 
   return (
-    <div className="hidden lg:block">
-      <div className="overflow-hidden rounded-[24px] border border-border/45 bg-background/85">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="border-b border-border/45 bg-muted/25">
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                Action
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                A
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                B
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {groups.map((group) => {
-              const label = eventLabel(group.rows[0]);
-              return (
-                <Fragment key={group.eventValue}>
-                  <tr className="border-b border-border/40 bg-muted/15">
-                    <td colSpan={3} className="px-4 py-4">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <Badge variant="outline">{label.dateText}</Badge>
-                        <div className="text-sm font-semibold text-foreground">
-                          {label.nameText}
+    <div className="hidden lg:block overflow-x-auto border-t border-border/40">
+      <table className="w-full border-collapse">
+        <thead>
+          <tr className="border-b border-border/45 bg-muted/15">
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              Action
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              A
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              B
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {groups.map((group) => {
+            const label = eventLabel(group.rows[0]);
+            const accentColor = colorPicker.colorOf(group.eventValue);
+            const accentTint = colorPicker.tintOf(group.eventValue);
+            return (
+              <Fragment key={group.eventValue}>
+                <tr
+                  className="border-b border-border/35"
+                  style={{ backgroundColor: accentTint }}
+                >
+                  <td colSpan={3} className="px-4 py-3.5" style={{ boxShadow: `inset 3px 0 0 ${accentColor}` }}>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Badge variant="outline">{label.dateText}</Badge>
+                      <div className="text-sm font-semibold text-foreground">
+                        {label.nameText}
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                {group.rows.map((row) => (
+                  <tr
+                    key={row.key}
+                    className="border-b border-border/35 align-top last:border-b-0"
+                  >
+                    <td className="px-4 py-3.5" style={{ boxShadow: `inset 2px 0 0 ${accentColor}` }}>
+                      <div className="space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {row.stepText !== "-" ? (
+                            <Badge variant={row.isTarget ? "warning" : "muted"}>
+                              {row.stepText}
+                            </Badge>
+                          ) : null}
+                          {row.countText !== "-" ? (
+                            <Badge variant="outline">#{row.countText}</Badge>
+                          ) : null}
+                          <span className="text-sm font-semibold text-foreground">
+                            {row.actionText}
+                          </span>
                         </div>
                       </div>
                     </td>
+                    <td className="px-4 py-3.5">
+                      <ResultTrackCell row={row} track="A" />
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <ResultTrackCell row={row} track="B" />
+                    </td>
                   </tr>
-                  {group.rows.map((row) => (
-                    <tr
-                      key={row.key}
-                      className="border-b border-border/40 align-top last:border-b-0"
-                    >
-                      <td className="px-4 py-4">
-                        <div className="space-y-1.5">
-                          <div className="flex flex-wrap items-center gap-2">
-                            {row.stepText !== "-" ? (
-                              <Badge variant={row.isTarget ? "warning" : "muted"}>
-                                {row.stepText}
-                              </Badge>
-                            ) : null}
-                            {row.countText !== "-" ? (
-                              <Badge variant="outline">#{row.countText}</Badge>
-                            ) : null}
-                            <span className="text-sm font-semibold text-foreground">
-                              {row.actionText}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <ResultTrackCell row={row} track="A" />
-                      </td>
-                      <td className="px-4 py-4">
-                        <ResultTrackCell row={row} track="B" />
-                      </td>
-                    </tr>
-                  ))}
-                </Fragment>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                ))}
+              </Fragment>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
 
 function ResultsMobileCards({ rows }: { rows: DrawRow[] }) {
+  const colorPicker = useMemo(
+    () => makeEventColorPicker(rows.map((row) => row.eventValue)),
+    [rows],
+  );
+
   return (
     <div className="space-y-3 lg:hidden">
       {rows.map((row) => {
         const label = eventLabel(row);
+        const accentColor = colorPicker.colorOf(row.eventValue);
+        const accentTint = colorPicker.tintOf(row.eventValue);
         return (
           <div
             key={row.key}
-            className="rounded-[24px] border border-border/45 bg-background/90 p-4"
+            className="border border-border/35 p-4"
+            style={{
+              backgroundColor: accentTint,
+              boxShadow: `inset 3px 0 0 ${accentColor}`,
+            }}
           >
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline">{label.dateText}</Badge>
@@ -203,16 +224,12 @@ export function ResultTable(props: {
   );
 
   return (
-    <Card className="rounded-[32px] border-border/45 shadow-none">
+    <div className="space-y-4">
       {showTitle ? (
-        <CardHeader>
-          <CardTitle className="text-lg">規劃結果</CardTitle>
-        </CardHeader>
+        <div className="text-lg font-semibold text-foreground">規劃結果</div>
       ) : null}
-      <CardContent className="space-y-4">
-        <ResultsDesktopTable rows={rows} />
-        <ResultsMobileCards rows={rows} />
-      </CardContent>
-    </Card>
+      <ResultsDesktopTable rows={rows} />
+      <ResultsMobileCards rows={rows} />
+    </div>
   );
 }

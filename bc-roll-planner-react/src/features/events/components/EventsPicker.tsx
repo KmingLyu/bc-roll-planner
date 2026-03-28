@@ -35,7 +35,7 @@ function EventOption({
       type="button"
       onClick={onToggle}
       className={cn(
-        "flex w-full items-start justify-between gap-3 rounded-2xl px-3 py-3 text-left transition-colors",
+        "flex w-full items-start justify-between gap-3 px-2.5 py-2 text-left transition-colors",
         checked ? "bg-primary/5" : "hover:bg-muted/35",
       )}
       title={titleText}
@@ -70,7 +70,7 @@ function EventOption({
         ) : null}
         <div
           className={cn(
-            "inline-flex size-5 items-center justify-center rounded-full border text-[11px] font-bold",
+            "inline-flex size-[18px] items-center justify-center rounded-md border text-[10px] font-bold",
             checked
               ? "border-primary bg-primary text-primary-foreground"
               : "border-border text-transparent",
@@ -97,7 +97,7 @@ function EventGroupSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="border-t border-border/55 pt-4 first:border-t-0 first:pt-0">
+    <section className="border-t border-border/45 pt-3 first:border-t-0 first:pt-0">
       <button
         type="button"
         onClick={onToggle}
@@ -111,7 +111,7 @@ function EventGroupSection({
           className={cn("size-4 text-muted-foreground transition-transform", open && "rotate-180")}
         />
       </button>
-      {open ? <div className="subtle-scrollbar mt-3 max-h-[24rem] space-y-1 overflow-y-auto pr-1">{children}</div> : null}
+      {open ? <div className="subtle-scrollbar mt-2 max-h-[22rem] space-y-1 overflow-y-auto pr-1">{children}</div> : null}
     </section>
   );
 }
@@ -139,8 +139,8 @@ export function EventsPicker(props: {
 
   const [query, setQuery] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
-  const [upcomingOpen, setUpcomingOpen] = useState(false);
-  const [pastOpen, setPastOpen] = useState(false);
+  const [upcomingOpen, setUpcomingOpen] = useState<boolean | undefined>(undefined);
+  const [pastOpen, setPastOpen] = useState<boolean | undefined>(undefined);
   const deferredQuery = useDeferredValue(query);
   const normalizedQuery = deferredQuery.trim().toLowerCase();
   const selectedSet = useMemo(() => new Set(value), [value]);
@@ -179,6 +179,14 @@ export function EventsPicker(props: {
   const selectedEvents = value
     .map((eventValue) => findEvent(eventValue))
     .filter(Boolean) as Event[];
+  const autoUpcomingOpen =
+    (!!normalizedQuery && filteredUpcoming.length > 0) ||
+    filteredUpcoming.some((event) => selectedSet.has(event.value));
+  const autoPastOpen =
+    (!!normalizedQuery && filteredPast.length > 0) ||
+    filteredPast.some((event) => selectedSet.has(event.value));
+  const effectiveUpcomingOpen = upcomingOpen ?? autoUpcomingOpen;
+  const effectivePastOpen = pastOpen ?? autoPastOpen;
 
   const toggleEvent = (eventValue: string) => {
     if (selectedSet.has(eventValue)) {
@@ -198,15 +206,14 @@ export function EventsPicker(props: {
   };
 
   return (
-    <section className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-sm font-semibold text-foreground">Event</div>
         <div className="flex items-center gap-2">
           {value.length ? (
             <Button
               variant="ghost"
               size="sm"
-              className="rounded-full"
               onClick={() => {
                 onChange([]);
                 onPrimaryChange("");
@@ -218,7 +225,6 @@ export function EventsPicker(props: {
           <Button
             variant={panelOpen ? "outline" : "ghost"}
             size="sm"
-            className="rounded-full"
             onClick={() =>
               startTransition(() => setPanelOpen((current) => !current))
             }
@@ -255,16 +261,18 @@ export function EventsPicker(props: {
       />
 
       {panelOpen ? (
-        <div className="space-y-4 border-t border-border/55 pt-4">
+        <div className="space-y-3 border-t border-border/45 pt-3">
           {loadState === "loading" ? <Alert variant="info">正在載入 events…</Alert> : null}
           {loadState === "error" ? <Alert variant="error">{error}</Alert> : null}
 
           <EventGroupSection
             label="Upcoming"
             count={filteredUpcoming.length}
-            open={upcomingOpen}
+            open={effectiveUpcomingOpen}
             onToggle={() =>
-              startTransition(() => setUpcomingOpen((current) => !current))
+              startTransition(() =>
+                setUpcomingOpen((current) => !(current ?? autoUpcomingOpen)),
+              )
             }
           >
             {filteredUpcoming.length ? (
@@ -279,7 +287,7 @@ export function EventsPicker(props: {
                 />
               ))
             ) : (
-              <div className="rounded-2xl bg-muted/35 px-4 py-6 text-sm text-muted-foreground">
+              <div className="bg-muted/30 px-3 py-4 text-sm text-muted-foreground">
                 沒有符合搜尋條件的 upcoming events
               </div>
             )}
@@ -288,9 +296,11 @@ export function EventsPicker(props: {
           <EventGroupSection
             label="Past"
             count={filteredPast.length}
-            open={pastOpen}
+            open={effectivePastOpen}
             onToggle={() =>
-              startTransition(() => setPastOpen((current) => !current))
+              startTransition(() =>
+                setPastOpen((current) => !(current ?? autoPastOpen)),
+              )
             }
           >
             {filteredPast.length ? (
@@ -305,7 +315,7 @@ export function EventsPicker(props: {
                 />
               ))
             ) : (
-              <div className="rounded-2xl bg-muted/35 px-4 py-6 text-sm text-muted-foreground">
+              <div className="bg-muted/30 px-3 py-4 text-sm text-muted-foreground">
                 沒有符合搜尋條件的 past events
               </div>
             )}

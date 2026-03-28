@@ -111,7 +111,7 @@ export function ResultStatsSidebar(props: {
   const stats = useResultStatsModel({ result, graphsByEvent, catNameById });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-wrap gap-2">
         <Badge variant={result.success ? "success" : "warning"}>
           {result.success ? "已命中全部目標" : "尚未完全命中"}
@@ -125,7 +125,7 @@ export function ResultStatsSidebar(props: {
         <StatItem label="獲得貓咪" value={result.all_draws?.length ?? 0} />
       </div>
 
-      <section className="space-y-3 border-t border-border/50 pt-4">
+      <section className="space-y-3 border-t border-border/45 pt-4">
         <div className="text-sm font-semibold text-foreground">資源消耗</div>
         <div className="flex flex-wrap gap-2">
           {Array.from(stats.byAction.entries())
@@ -133,7 +133,7 @@ export function ResultStatsSidebar(props: {
             .map(([action, count]) => (
               <div
                 key={action}
-                className="inline-flex items-center gap-2 rounded-full bg-muted/40 px-3 py-2 text-sm"
+                className="inline-flex items-center gap-2 rounded-md bg-muted/40 px-2.5 py-1.5 text-sm"
               >
                 <ResourceImg label={action} height={18} showCount={false} />
                 <span>× {count}</span>
@@ -145,7 +145,7 @@ export function ResultStatsSidebar(props: {
         </div>
       </section>
 
-      <section className="space-y-3 border-t border-border/50 pt-4">
+      <section className="space-y-3 border-t border-border/45 pt-4">
         <div className="text-sm font-semibold text-foreground">命中目標</div>
         <div className="flex flex-wrap gap-2">
           {stats.hitTargets.length ? (
@@ -166,7 +166,7 @@ export function ResultStatsSidebar(props: {
         </div>
       </section>
 
-      <section className="space-y-3 border-t border-border/50 pt-4">
+      <section className="space-y-3 border-t border-border/45 pt-4">
         <div className="text-sm font-semibold text-foreground">event 分布</div>
         {stats.byEvent.length ? (
           <div className="space-y-3">

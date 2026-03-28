@@ -15,6 +15,12 @@ function tierLabel(tier: TierGroup["tier"]) {
   return "Legendary";
 }
 
+function countBadgeClass(selectedCount: number) {
+  return selectedCount
+    ? "bg-primary/8 text-primary"
+    : "bg-muted text-muted-foreground";
+}
+
 export function TargetCatsPicker(props: {
   loadState: LoadState;
   error: string;
@@ -69,15 +75,9 @@ export function TargetCatsPicker(props: {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="text-sm font-semibold text-foreground">目標貓咪</div>
-          <div className="text-sm text-muted-foreground">
-            這裡是目前所有已選 event 的貓咪聯集。
-          </div>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Badge variant={selectedIds.length ? "default" : "muted"}>
+          <Badge className={countBadgeClass(selectedIds.length)} variant="muted">
             已選 {selectedIds.length}
           </Badge>
           <Button
@@ -105,23 +105,22 @@ export function TargetCatsPicker(props: {
       {loadState === "loading" ? <Alert variant="info">正在載入 event 貓池…</Alert> : null}
       {loadState === "error" ? <Alert variant="error">{error}</Alert> : null}
 
-      <div className="space-y-4">
+      <div className="space-y-2">
         {filteredGroups.length ? (
           filteredGroups.map((group) => (
             <details
               key={group.tier}
-              className="section-surface overflow-hidden"
-              open={group.tier === "legendary" || group.tier === "uber"}
+              className="border-t border-border/60 pt-4 first:border-t-0 first:pt-0"
             >
-              <summary className="cursor-pointer list-none px-5 py-4">
+              <summary className="cursor-pointer list-none py-2">
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm font-semibold text-foreground">
                     {tierLabel(group.tier)}
                   </div>
-                  <Badge variant="outline">{group.cats.length}</Badge>
+                  <Badge variant="muted">{group.cats.length}</Badge>
                 </div>
               </summary>
-              <div className="border-t border-border/70 px-5 py-5">
+              <div className="pt-3">
                 <div
                   className="grid gap-3"
                   style={{

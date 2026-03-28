@@ -1,13 +1,5 @@
-import { ChevronDown } from "lucide-react";
 import NumberField from "@/components/inputs/NumberField";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import type {
-  PlannerResources,
-  PlannerUiConfig,
-} from "@/features/planner/types";
-import { cn } from "@/lib/utils";
+import type { PlannerResources } from "@/features/planner/types";
 
 function ResourceAdornment({ src, alt }: { src: string; alt: string }) {
   return (
@@ -36,14 +28,9 @@ const RESOURCE_FIELDS: ResourceField[] = [
 
 export function ResourceForm(props: {
   value: PlannerResources;
-  cfg: PlannerUiConfig;
-  advancedOpen: boolean;
   onChange: (next: PlannerResources) => void;
-  onCfgChange: (next: PlannerUiConfig) => void;
-  onToggleAdvanced: () => void;
 }) {
-  const { value, cfg, advancedOpen, onChange, onCfgChange, onToggleAdvanced } =
-    props;
+  const { value, onChange } = props;
 
   return (
     <section className="space-y-4">
@@ -69,67 +56,6 @@ export function ResourceForm(props: {
             }
           />
         ))}
-      </div>
-
-      <div className="rounded-3xl border border-border/70 bg-muted/30 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="text-sm font-semibold text-foreground">進階設定</div>
-            <div className="text-sm text-muted-foreground">
-              只有在你要覆寫起始位置或搜尋上限時才需要修改。
-            </div>
-          </div>
-          <Button
-            variant={advancedOpen ? "outline" : "ghost"}
-            size="sm"
-            className="rounded-full"
-            onClick={onToggleAdvanced}
-          >
-            {advancedOpen ? "收合" : "展開"}
-            <ChevronDown
-              className={cn(
-                "size-4 transition-transform",
-                advancedOpen && "rotate-180",
-              )}
-            />
-          </Button>
-        </div>
-
-        {advancedOpen ? (
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="planner-start-pos">start_pos_id</Label>
-              <Input
-                id="planner-start-pos"
-                name="start_pos_id"
-                autoComplete="off"
-                value={cfg.start_pos_id}
-                onChange={(event) =>
-                  onCfgChange({ ...cfg, start_pos_id: event.target.value })
-                }
-                placeholder="例如 1A"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="planner-max-expansions">max_expansions</Label>
-              <Input
-                id="planner-max-expansions"
-                name="max_expansions"
-                autoComplete="off"
-                inputMode="numeric"
-                value={String(cfg.max_expansions)}
-                onChange={(event) =>
-                  onCfgChange({
-                    ...cfg,
-                    max_expansions: Number(event.target.value || 0),
-                  })
-                }
-                placeholder="例如 200000"
-              />
-            </div>
-          </div>
-        ) : null}
       </div>
     </section>
   );

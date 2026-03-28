@@ -32,5 +32,4 @@ export type PlannerSessionState = {
   inputRailOpen: boolean;
   mobileEditorOpen: boolean;
   manualCountExpanded: boolean;
-  advancedSettingsOpen: boolean;
 };

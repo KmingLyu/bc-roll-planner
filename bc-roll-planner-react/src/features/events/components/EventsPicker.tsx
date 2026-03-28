@@ -1,4 +1,10 @@
-import { startTransition, useDeferredValue, useMemo, useState } from "react";
+import {
+  startTransition,
+  useDeferredValue,
+  useMemo,
+  useState,
+} from "react";
+import { ChevronDown } from "lucide-react";
 import type { Event } from "@/types/models";
 import { getEventDisplayLines } from "@/utils/event-display";
 import { Badge } from "@/components/ui/badge";
@@ -8,18 +14,15 @@ import { Alert } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
-type EvKind = "upcoming" | "past";
 
 function EventOption({
   event,
-  kind,
   checked,
   isPrimary,
   onToggle,
   onPrimary,
 }: {
   event: Event;
-  kind: EvKind;
   checked: boolean;
   isPrimary: boolean;
   onToggle: () => void;
@@ -32,24 +35,42 @@ function EventOption({
       type="button"
       onClick={onToggle}
       className={cn(
-        "flex w-full flex-col gap-3 rounded-3xl border px-4 py-4 text-left transition-[transform,background-color,border-color,box-shadow]",
-        checked
-          ? "border-primary/40 bg-primary/5 shadow-sm"
-          : "border-border bg-background hover:border-primary/30 hover:bg-accent/30",
+        "flex w-full items-start justify-between gap-3 rounded-2xl px-3 py-3 text-left transition-colors",
+        checked ? "bg-primary/5" : "hover:bg-muted/35",
       )}
       title={titleText}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            {kind === "upcoming" ? "Upcoming" : "Past"}
-          </div>
-          <div className="mt-1 text-sm font-semibold text-foreground">{nameText}</div>
-          <div className="mt-1 text-xs text-muted-foreground">{dateText}</div>
+      <div className="min-w-0 space-y-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="text-sm font-medium text-foreground">{nameText}</div>
+          {isPrimary ? <Badge variant="default">主要</Badge> : null}
         </div>
+        <div className="text-xs text-muted-foreground">{dateText}</div>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        {checked && !isPrimary ? (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(eventObject) => {
+              eventObject.stopPropagation();
+              onPrimary();
+            }}
+            onKeyDown={(eventObject) => {
+              if (eventObject.key === "Enter" || eventObject.key === " ") {
+                eventObject.preventDefault();
+                eventObject.stopPropagation();
+                onPrimary();
+              }
+            }}
+            className="text-xs font-medium text-muted-foreground hover:text-foreground"
+          >
+            設為主要
+          </span>
+        ) : null}
         <div
           className={cn(
-            "mt-1 inline-flex size-5 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold",
+            "inline-flex size-5 items-center justify-center rounded-full border text-[11px] font-bold",
             checked
               ? "border-primary bg-primary text-primary-foreground"
               : "border-border text-transparent",
@@ -58,28 +79,40 @@ function EventOption({
           ✓
         </div>
       </div>
-
-      {checked ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={isPrimary ? "default" : "muted"}>
-            {isPrimary ? "主要 event" : "已選取"}
-          </Badge>
-          {!isPrimary ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 rounded-full px-3"
-              onClick={(eventObject) => {
-                eventObject.stopPropagation();
-                onPrimary();
-              }}
-            >
-              設為主要
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
     </button>
+  );
+}
+
+function EventGroupSection({
+  label,
+  count,
+  open,
+  onToggle,
+  children,
+}: {
+  label: string;
+  count: number;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="border-t border-border/55 pt-4 first:border-t-0 first:pt-0">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between gap-3 py-1 text-left"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-foreground">{label}</span>
+          <Badge variant="muted">{count}</Badge>
+        </div>
+        <ChevronDown
+          className={cn("size-4 text-muted-foreground transition-transform", open && "rotate-180")}
+        />
+      </button>
+      {open ? <div className="subtle-scrollbar mt-3 max-h-[24rem] space-y-1 overflow-y-auto pr-1">{children}</div> : null}
+    </section>
   );
 }
 
@@ -105,6 +138,9 @@ export function EventsPicker(props: {
   } = props;
 
   const [query, setQuery] = useState("");
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [upcomingOpen, setUpcomingOpen] = useState(false);
+  const [pastOpen, setPastOpen] = useState(false);
   const deferredQuery = useDeferredValue(query);
   const normalizedQuery = deferredQuery.trim().toLowerCase();
   const selectedSet = useMemo(() => new Set(value), [value]);
@@ -162,15 +198,10 @@ export function EventsPicker(props: {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="text-sm font-semibold text-foreground">卡池選擇</div>
-            <div className="text-sm text-muted-foreground">
-              可多選。規劃時會一起抓取對應 TrackGraph。
-            </div>
-          </div>
+    <section className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-sm font-semibold text-foreground">Event</div>
+        <div className="flex items-center gap-2">
           {value.length ? (
             <Button
               variant="ghost"
@@ -184,52 +215,63 @@ export function EventsPicker(props: {
               清空
             </Button>
           ) : null}
+          <Button
+            variant={panelOpen ? "outline" : "ghost"}
+            size="sm"
+            className="rounded-full"
+            onClick={() =>
+              startTransition(() => setPanelOpen((current) => !current))
+            }
+          >
+            {panelOpen ? "收合" : "展開"}
+            <ChevronDown
+              className={cn("size-4 transition-transform", panelOpen && "rotate-180")}
+            />
+          </Button>
         </div>
-
-        <Input
-          name="event-search"
-          autoComplete="off"
-          value={query}
-          onChange={(event) =>
-            startTransition(() => setQuery(event.target.value))
-          }
-          placeholder="搜尋卡池名稱或日期"
-        />
-
-        {selectedEvents.length ? (
-          <div className="flex flex-wrap gap-2">
-            {selectedEvents.map((event) => (
-              <Badge
-                key={event.value}
-                variant={primaryValue === event.value ? "default" : "outline"}
-              >
-                {event.name}
-              </Badge>
-            ))}
-          </div>
-        ) : (
-          <Alert variant="info">尚未選擇任何 event。</Alert>
-        )}
       </div>
 
-      {loadState === "loading" ? <Alert variant="info">正在載入 events…</Alert> : null}
-      {loadState === "error" ? <Alert variant="error">{error}</Alert> : null}
+      {selectedEvents.length ? (
+        <div className="flex flex-wrap gap-2">
+          {selectedEvents.map((event) => (
+            <Badge
+              key={event.value}
+              variant={primaryValue === event.value ? "default" : "outline"}
+            >
+              {event.name}
+            </Badge>
+          ))}
+        </div>
+      ) : (
+        <div className="text-sm text-muted-foreground">尚未選擇 event</div>
+      )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="section-surface p-4">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div className="text-sm font-semibold text-foreground">
-              Upcoming Events
-            </div>
-            <Badge variant="muted">{filteredUpcoming.length}</Badge>
-          </div>
-          <div className="subtle-scrollbar max-h-[26rem] space-y-3 overflow-y-auto pr-1">
+      <Input
+        name="event-search"
+        autoComplete="off"
+        value={query}
+        onChange={(event) => startTransition(() => setQuery(event.target.value))}
+        placeholder="搜尋卡池名稱或日期"
+      />
+
+      {panelOpen ? (
+        <div className="space-y-4 border-t border-border/55 pt-4">
+          {loadState === "loading" ? <Alert variant="info">正在載入 events…</Alert> : null}
+          {loadState === "error" ? <Alert variant="error">{error}</Alert> : null}
+
+          <EventGroupSection
+            label="Upcoming"
+            count={filteredUpcoming.length}
+            open={upcomingOpen}
+            onToggle={() =>
+              startTransition(() => setUpcomingOpen((current) => !current))
+            }
+          >
             {filteredUpcoming.length ? (
               filteredUpcoming.map((event) => (
                 <EventOption
                   key={event.value}
                   event={event}
-                  kind="upcoming"
                   checked={selectedSet.has(event.value)}
                   isPrimary={primaryValue === event.value}
                   onToggle={() => toggleEvent(event.value)}
@@ -237,25 +279,25 @@ export function EventsPicker(props: {
                 />
               ))
             ) : (
-              <div className="rounded-3xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+              <div className="rounded-2xl bg-muted/35 px-4 py-6 text-sm text-muted-foreground">
                 沒有符合搜尋條件的 upcoming events
               </div>
             )}
-          </div>
-        </section>
+          </EventGroupSection>
 
-        <section className="section-surface p-4">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div className="text-sm font-semibold text-foreground">Past Events</div>
-            <Badge variant="muted">{filteredPast.length}</Badge>
-          </div>
-          <div className="subtle-scrollbar max-h-[26rem] space-y-3 overflow-y-auto pr-1">
+          <EventGroupSection
+            label="Past"
+            count={filteredPast.length}
+            open={pastOpen}
+            onToggle={() =>
+              startTransition(() => setPastOpen((current) => !current))
+            }
+          >
             {filteredPast.length ? (
               filteredPast.map((event) => (
                 <EventOption
                   key={event.value}
                   event={event}
-                  kind="past"
                   checked={selectedSet.has(event.value)}
                   isPrimary={primaryValue === event.value}
                   onToggle={() => toggleEvent(event.value)}
@@ -263,13 +305,13 @@ export function EventsPicker(props: {
                 />
               ))
             ) : (
-              <div className="rounded-3xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+              <div className="rounded-2xl bg-muted/35 px-4 py-6 text-sm text-muted-foreground">
                 沒有符合搜尋條件的 past events
               </div>
             )}
-          </div>
-        </section>
-      </div>
-    </div>
+          </EventGroupSection>
+        </div>
+      ) : null}
+    </section>
   );
 }

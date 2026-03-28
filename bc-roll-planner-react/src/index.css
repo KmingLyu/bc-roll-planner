@@ -75,8 +75,8 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     background-image:
-      radial-gradient(circle at top, hsl(211 100% 97%), transparent 40%),
-      linear-gradient(180deg, hsl(210 33% 99%), hsl(210 33% 97%));
+      radial-gradient(circle at top, hsl(211 100% 97%), transparent 34%),
+      linear-gradient(180deg, hsl(210 33% 99%), hsl(210 33% 98%));
     min-height: 100vh;
   }
 
@@ -104,19 +104,19 @@
   }
 
   .panel-surface {
-    @apply rounded-[28px] border border-border/70 bg-card/95 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.55)] backdrop-blur-sm;
+    @apply rounded-[28px] border border-border/40 bg-card/96 shadow-none backdrop-blur-sm;
   }
 
   .section-surface {
-    @apply rounded-3xl border border-border/70 bg-card/90 shadow-[0_16px_32px_-24px_rgba(15,23,42,0.45)];
+    @apply rounded-3xl bg-card/85 shadow-none;
   }
 
   .field-shell {
-    @apply flex items-center gap-3 rounded-2xl border border-input bg-white px-4 py-3 text-sm shadow-sm transition-colors focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10;
+    @apply flex items-center gap-3 rounded-2xl border border-input/75 bg-white px-4 py-3 text-sm transition-colors focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10;
   }
 
   .data-grid {
-    @apply overflow-hidden rounded-[26px] border border-border/70 bg-card shadow-[0_18px_40px_-30px_rgba(15,23,42,0.5)];
+    @apply overflow-hidden rounded-[26px] border border-border/40 bg-card;
   }
 
   .subtle-scrollbar {

@@ -1,4 +1,5 @@
-import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
+import { ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function CatSelectableItem(props: {
@@ -21,67 +22,75 @@ export function CatSelectableItem(props: {
     dense = true,
     secondary,
   } = props;
-
-  const content = (
-    <button
-      type="button"
-      onClick={() => onToggle(!checked)}
-      className={cn(
-        "flex w-full items-start gap-3 rounded-3xl border px-3 py-3 text-left transition-[transform,background-color,border-color,box-shadow]",
-        dense ? "min-h-[76px]" : "min-h-[88px]",
-        checked
-          ? "border-success/40 bg-success/5 shadow-sm"
-          : "border-border bg-background hover:border-primary/30 hover:bg-accent/30",
-      )}
-    >
-      <div
-        className={cn(
-          "inline-flex size-5 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold",
-          checked
-            ? "border-success bg-success text-success-foreground"
-            : "border-border text-transparent",
-        )}
-      >
-        ✓
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold text-foreground">{name}</div>
-            {secondary ? (
-              <div className="mt-1 text-xs text-muted-foreground">{secondary}</div>
-            ) : null}
-          </div>
-          {imageUrl ? (
-            <img
-              src={imageUrl}
-              alt=""
-              width={40}
-              height={40}
-              loading="lazy"
-              className="size-10 rounded-2xl border border-border object-cover"
-            />
-          ) : (
-            <Badge variant="muted">#{catId}</Badge>
-          )}
-        </div>
-      </div>
-    </button>
-  );
-
-  if (!href) return content;
+  const [imageFailed, setImageFailed] = useState(false);
+  const showImage = !!imageUrl && !imageFailed;
 
   return (
-    <div className="space-y-2">
-      {content}
-      <a
-        href={href}
-        target="_blank"
-        rel="noreferrer"
-        className="inline-flex pl-3 text-xs font-medium text-primary underline decoration-primary/30 underline-offset-4"
+    <div
+      className={cn(
+        "group flex items-start gap-2 rounded-2xl px-2 py-2 transition-colors",
+        checked ? "bg-primary/5" : "hover:bg-muted/35",
+      )}
+    >
+      <button
+        type="button"
+        onClick={() => onToggle(!checked)}
+        className={cn(
+          "flex min-w-0 flex-1 items-start gap-3 rounded-2xl px-2 py-2 text-left transition-colors",
+          dense ? "min-h-[68px]" : "min-h-[84px]",
+        )}
       >
-        查看資料
-      </a>
+        <div
+          className={cn(
+            "mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold transition-colors",
+            checked
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border/80 bg-background text-transparent group-hover:border-primary/40",
+          )}
+        >
+          ✓
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1">
+              <div className="truncate text-sm font-semibold text-foreground">
+                {name}
+              </div>
+              {secondary ? (
+                <div className="text-xs text-muted-foreground">{secondary}</div>
+              ) : (
+                <div className="text-xs text-muted-foreground">#{catId}</div>
+              )}
+            </div>
+            {showImage ? (
+              <img
+                src={imageUrl}
+                alt=""
+                width={40}
+                height={40}
+                loading="lazy"
+                onError={() => setImageFailed(true)}
+                className="size-10 rounded-xl object-cover ring-1 ring-border/35"
+              />
+            ) : (
+              <div className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                #{catId}
+              </div>
+            )}
+          </div>
+        </div>
+      </button>
+      {href ? (
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={`查看 ${name} 資料`}
+          className="mt-2 inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
+        >
+          <ArrowUpRight className="size-4" />
+        </a>
+      ) : null}
     </div>
   );
 }

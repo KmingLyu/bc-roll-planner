@@ -33,31 +33,15 @@ export function RunBar(props: {
           {label}
         </Button>
 
-        <Badge
-          variant={
-            state === "loading"
-              ? "warning"
-              : state === "ok"
-                ? "success"
-                : state === "error"
-                  ? "destructive"
-                  : "muted"
-          }
-        >
-          狀態：{state}
-        </Badge>
-
         {stale ? <Badge variant="warning">條件已變更</Badge> : null}
       </div>
 
       {hint ? <p className="text-sm text-muted-foreground">{hint}</p> : null}
       {state === "loading" ? (
-        <Alert variant="info">規劃中，正在抓取 TrackGraph 並交給 worker 計算。</Alert>
+        <Alert variant="info">規劃中…</Alert>
       ) : null}
       {state === "error" && error ? (
-        <Alert variant="error" title="執行失敗">
-          {error}
-        </Alert>
+        <Alert variant="error">{error}</Alert>
       ) : null}
     </div>
   );

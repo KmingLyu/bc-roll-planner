@@ -14,7 +14,7 @@ export function CardHeader({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("flex flex-col gap-2 border-b border-border/70 px-6 py-5", className)}
+      className={cn("flex flex-col gap-2 border-b border-border/40 px-6 py-5", className)}
       {...props}
     />
   );
@@ -54,7 +54,7 @@ export function CardFooter({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("flex flex-wrap items-center gap-3 border-t border-border/70 px-6 py-4", className)}
+      className={cn("flex flex-wrap items-center gap-3 border-t border-border/40 px-6 py-4", className)}
       {...props}
     />
   );

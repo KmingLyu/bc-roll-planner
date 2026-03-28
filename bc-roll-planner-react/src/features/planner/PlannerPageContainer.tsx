@@ -12,13 +12,18 @@ import {
   ChevronLeft,
   ChevronRight,
   PencilLine,
-  Sparkles,
-  Target,
 } from "lucide-react";
 import type { Event, TrackGraph } from "@/types/models";
 import { ApiError } from "@/lib/api-client";
 import { EventsPicker, useEvents } from "@/features/events";
-import { TargetCatsSelectionContent, useEventCats } from "@/features/cats";
+import {
+  TargetCatsSelectionContent,
+  useEventCats,
+} from "@/features/cats";
+import {
+  buildGodfatCatHref,
+  buildGodfatCatImageUrl,
+} from "@/features/cats/presentation/godfat";
 import { useTrackGraphs } from "@/features/track-graph";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -26,16 +31,13 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { DisclaimerNote } from "./components/Note";
 import { ResourceForm } from "./components/ResourceForm";
 import { RunBar } from "./components/RunBar";
 import { SeedCountForm } from "./components/SeedCountForm";
-import { ResultStatsCard } from "./components/ResultStats";
+import { ResultStatsSidebar } from "./components/ResultStats";
 import { ResultTable } from "./components/Results";
 import { usePlannerWorker } from "./hooks/usePlannerWorker";
 import type { PlanResult } from "./logic/core";
@@ -44,7 +46,6 @@ import type {
   PlannerDraftInputs,
   PlannerResources,
   PlannerSessionState,
-  PlannerUiConfig,
 } from "./types";
 import { parsePosId } from "@/utils/cursor";
 import { BC_ENV } from "@/config/bcEnv";
@@ -82,13 +83,11 @@ type PlannerScreenContextValue = {
   setSeed: (value: string) => void;
   setCountInput: (value: string) => void;
   setResources: (next: PlannerResources) => void;
-  setCfg: (next: PlannerUiConfig) => void;
   setSelectedEventValues: (next: string[]) => void;
   setPrimaryEventValue: (value: string) => void;
   setTargetCatIds: (next: number[]) => void;
   clearTargetCatIds: () => void;
   toggleManualCount: () => void;
-  toggleAdvancedSettings: () => void;
   toggleInputRail: () => void;
   openMobileEditor: () => void;
   closeMobileEditor: () => void;
@@ -202,7 +201,6 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
     inputRailOpen: false,
     mobileEditorOpen: false,
     manualCountExpanded: false,
-    advancedSettingsOpen: false,
   });
   const [appliedSession, setAppliedSession] =
     useState<AppliedPlannerSession | null>(null);
@@ -449,7 +447,6 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
         setDraft((current) => ({ ...current, countInput: value })),
       setResources: (next) =>
         setDraft((current) => ({ ...current, resources: next })),
-      setCfg: (next) => setDraft((current) => ({ ...current, cfg: next })),
       setSelectedEventValues: (next) =>
         setDraft((current) => ({ ...current, selectedEventValues: next })),
       setPrimaryEventValue: (value) =>
@@ -463,13 +460,6 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
           setSession((current) => ({
             ...current,
             manualCountExpanded: !current.manualCountExpanded,
-          })),
-        ),
-      toggleAdvancedSettings: () =>
-        startTransition(() =>
-          setSession((current) => ({
-            ...current,
-            advancedSettingsOpen: !current.advancedSettingsOpen,
           })),
         ),
       toggleInputRail: () =>
@@ -516,32 +506,14 @@ function usePlannerScreen() {
 
 function PlannerHeader() {
   return (
-    <Card className="overflow-hidden rounded-[36px] border-border/80 bg-card/95 shadow-[0_30px_80px_-48px_rgba(15,23,42,0.42)]">
-      <CardHeader className="gap-4 bg-[linear-gradient(135deg,rgba(241,245,249,0.98),rgba(255,255,255,0.94))]">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-3">
-            <Badge variant="outline" className="gap-1.5">
-              <Sparkles className="size-3.5" />
-              UI Redesign
-            </Badge>
-            <div className="space-y-2">
-              <CardTitle className="text-3xl sm:text-4xl">
-                貓咪大戰爭抽卡規劃
-              </CardTitle>
-              <CardDescription className="max-w-2xl text-base">
-                先整理你的 seed、資源與目標貓，再按一次執行。結果會用桌機與手機都好讀的方式呈現。
-              </CardDescription>
-            </div>
-          </div>
-          <div className="rounded-[28px] border border-border/70 bg-background/80 px-4 py-3 text-sm text-muted-foreground">
-            保留原本演算法與資料來源，只重構整體 UI 與互動流程。
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <DisclaimerNote />
-      </CardContent>
-    </Card>
+    <header className="space-y-3 border-b border-border/50 pb-5">
+      <div>
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+          貓咪大戰爭抽卡規劃
+        </h1>
+      </div>
+      <DisclaimerNote />
+    </header>
   );
 }
 
@@ -556,7 +528,7 @@ function PlannerInputSummary({ compact = false }: { compact?: boolean }) {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className={compact ? "space-y-3" : "space-y-4"}>
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="outline">Seed {draft.seed.trim() || "-"}</Badge>
         <Badge variant={manualCount != null ? "default" : "muted"}>
@@ -564,21 +536,6 @@ function PlannerInputSummary({ compact = false }: { compact?: boolean }) {
         </Badge>
         <Badge variant="muted">events {draft.selectedEventValues.length}</Badge>
         <Badge variant="muted">目標 {draft.targetCatIds.length}</Badge>
-      </div>
-
-      <div
-        className={
-          compact
-            ? "grid gap-3 text-sm text-muted-foreground"
-            : "grid gap-3 sm:grid-cols-2 text-sm text-muted-foreground"
-        }
-      >
-        <div className="rounded-3xl border border-border/70 bg-muted/30 px-4 py-3">
-          起始位置：<span className="font-medium text-foreground">{draft.cfg.start_pos_id}</span>
-        </div>
-        <div className="rounded-3xl border border-border/70 bg-muted/30 px-4 py-3">
-          搜尋上限：<span className="font-medium text-foreground">{draft.cfg.max_expansions}</span>
-        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -592,7 +549,7 @@ function PlannerInputSummary({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function PlannerTargetPanel() {
+function PlannerTargetPanel({ compact = false }: { compact?: boolean }) {
   const {
     catsState,
     catsErr,
@@ -603,29 +560,28 @@ function PlannerTargetPanel() {
   } = usePlannerScreen();
 
   return (
-    <Card className="rounded-[32px] border-border/80 shadow-none">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Target className="size-4" />
-          目標貓咪
-        </CardTitle>
-        <CardDescription>
-          這裡會自動顯示目前已選 event 的可用貓咪聯集。
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <TargetCatsSelectionContent
-          loadState={catsState}
-          error={catsErr}
-          groups={tierGroups}
-          selectedIds={draft.targetCatIds}
-          onChange={setTargetCatIds}
-          onClear={clearTargetCatIds}
-          minColWidth={190}
-          dense
-        />
-      </CardContent>
-    </Card>
+    <section className="space-y-4">
+      <h3 className="text-base font-semibold text-foreground">目標貓</h3>
+      <TargetCatsSelectionContent
+        loadState={catsState}
+        error={catsErr}
+        groups={tierGroups}
+        selectedIds={draft.targetCatIds}
+        onChange={setTargetCatIds}
+        onClear={clearTargetCatIds}
+        getCatHref={(catId) =>
+          buildGodfatCatHref(catId, {
+            lang: BC_ENV.lang,
+            ui: BC_ENV.ui,
+          })
+        }
+        getCatImageUrl={(catId) =>
+          buildGodfatCatImageUrl(catId, { lang: BC_ENV.lang })
+        }
+        minColWidth={compact ? 170 : 190}
+        dense
+      />
+    </section>
   );
 }
 
@@ -639,11 +595,9 @@ function PlannerInputEditor({ layout }: { layout: "immersive" | "compact" }) {
     setSeed,
     setCountInput,
     setResources,
-    setCfg,
     setSelectedEventValues,
     setPrimaryEventValue,
     toggleManualCount,
-    toggleAdvancedSettings,
     eventsState,
     eventsErr,
     upcomingEvents,
@@ -657,124 +611,104 @@ function PlannerInputEditor({ layout }: { layout: "immersive" | "compact" }) {
     runPlannerFlow,
   } = usePlannerScreen();
 
-  return (
-    <div className="space-y-6">
-      <div
-        className={
-          layout === "immersive"
-            ? "grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]"
-            : "space-y-6"
-        }
-      >
-        <div className="space-y-6">
-          <Card className="rounded-[32px] border-border/80 shadow-none">
-            <CardHeader>
-              <CardTitle className="text-lg">輸入條件</CardTitle>
-              <CardDescription>
-                先確認 seed、count 與可用資源，再挑選這次要一起規劃的卡池。
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <SeedCountForm
-                seed={draft.seed}
-                countInput={draft.countInput}
-                countError={countError}
-                autoCount={autoCount}
-                manualCount={manualCount}
-                manualCountExpanded={session.manualCountExpanded}
-                onSeedChange={setSeed}
-                onCountInputChange={setCountInput}
-                onToggleManualCount={toggleManualCount}
-              />
+  const content = (
+    <>
+      <div className="space-y-8">
+        <SeedCountForm
+          seed={draft.seed}
+          countInput={draft.countInput}
+          countError={countError}
+          autoCount={autoCount}
+          manualCount={manualCount}
+          manualCountExpanded={session.manualCountExpanded}
+          onSeedChange={setSeed}
+          onCountInputChange={setCountInput}
+          onToggleManualCount={toggleManualCount}
+        />
 
-              <ResourceForm
-                value={draft.resources}
-                cfg={draft.cfg}
-                advancedOpen={session.advancedSettingsOpen}
-                onChange={setResources}
-                onCfgChange={setCfg}
-                onToggleAdvanced={toggleAdvancedSettings}
-              />
-
-              <EventsPicker
-                loadState={eventsState}
-                error={eventsErr}
-                upcomingEvents={upcomingEvents}
-                pastEvents={pastEvents}
-                value={draft.selectedEventValues}
-                onChange={setSelectedEventValues}
-                primaryValue={draft.primaryEventValue}
-                onPrimaryChange={setPrimaryEventValue}
-              />
-            </CardContent>
-          </Card>
+        <div className="border-t border-border/50 pt-6">
+          <ResourceForm
+            value={draft.resources}
+            onChange={setResources}
+          />
         </div>
 
-        <PlannerTargetPanel />
-      </div>
-
-      {appliedSession && resultsStale ? (
-        <Alert variant="warning" title="條件已變更">
-          目前畫面上的結果仍然保留，但你需要重新執行才能套用最新條件。
-        </Alert>
-      ) : null}
-
-      <Card className="rounded-[32px] border-border/80 shadow-none">
-        <CardHeader>
-          <CardTitle className="text-lg">
-            {appliedSession ? "重新計算" : "開始執行"}
-          </CardTitle>
-          <CardDescription>
-            只有按下執行後才會抓取 TrackGraph 並開始計算。
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <RunBar
-            state={planState}
-            onRun={() => {
-              void runPlannerFlow();
-            }}
-            disabled={runDisabled}
-            hint={runHint}
-            error={planErr}
-            stale={resultsStale}
-            hasResult={!!appliedSession}
+        <div className="border-t border-border/50 pt-6">
+          <EventsPicker
+            loadState={eventsState}
+            error={eventsErr}
+            upcomingEvents={upcomingEvents}
+            pastEvents={pastEvents}
+            value={draft.selectedEventValues}
+            onChange={setSelectedEventValues}
+            primaryValue={draft.primaryEventValue}
+            onPrimaryChange={setPrimaryEventValue}
           />
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+
+        <div className="border-t border-border/50 pt-6">
+          <PlannerTargetPanel compact={layout === "compact"} />
+        </div>
+
+        <div className="border-t border-border/50 pt-6">
+          <div className="space-y-3">
+            {appliedSession && resultsStale ? (
+              <Alert variant="warning">條件已變更</Alert>
+            ) : null}
+
+            <RunBar
+              state={planState}
+              onRun={() => {
+                void runPlannerFlow();
+              }}
+              disabled={runDisabled}
+              hint={runHint}
+              error={planErr}
+              stale={resultsStale}
+              hasResult={!!appliedSession}
+            />
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
+  if (layout === "compact") {
+    return <div className="space-y-8">{content}</div>;
+  }
+
+  return (
+    <Card className="rounded-[32px] border-border/40 shadow-none">
+      <CardContent className="space-y-8 px-6 py-6 sm:px-7 sm:py-7">
+        {content}
+      </CardContent>
+    </Card>
   );
 }
 
 function PlannerInputStage() {
-  const { appliedSession } = usePlannerScreen();
-
   return (
-    <div className="space-y-6">
-      {appliedSession ? (
-        <Alert variant="info" title="你正在重新調整條件">
-          需要時可以回到上次計算結果，或直接用目前的新條件重新執行。
-        </Alert>
-      ) : null}
-      <PlannerInputEditor layout="immersive" />
-    </div>
+    <PlannerInputEditor layout="immersive" />
   );
 }
 
-function PlannerInputRail() {
-  const { session, resultsStale, toggleInputRail, goToInputStage } =
-    usePlannerScreen();
+function PlannerResultsSidebar() {
+  const {
+    session,
+    appliedSession,
+    catNameById,
+    resultsStale,
+    toggleInputRail,
+    goToInputStage,
+  } = usePlannerScreen();
+
+  if (!appliedSession) return null;
 
   return (
-    <Card className="rounded-[32px] border-border/80 shadow-none">
-      <CardHeader>
+    <Card className="sticky top-6 rounded-[28px] border-border/40 shadow-none">
+      <CardContent className="subtle-scrollbar max-h-[calc(100vh-3rem)] space-y-6 overflow-y-auto pt-6">
         <div className="flex items-start justify-between gap-3">
-          <div className="space-y-2">
-            <CardTitle className="text-lg">目前條件</CardTitle>
-            <CardDescription>
-              左側會保留條件摘要，必要時再展開重新輸入。
-            </CardDescription>
-          </div>
+          <div className="text-lg font-semibold text-foreground">目前條件</div>
           <Button
             variant="ghost"
             size="icon"
@@ -789,9 +723,16 @@ function PlannerInputRail() {
             )}
           </Button>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-5">
+
         <PlannerInputSummary compact />
+
+        <div className="border-t border-border/50 pt-5">
+          <ResultStatsSidebar
+            result={appliedSession.result}
+            graphsByEvent={appliedSession.graphsByEvent}
+            catNameById={catNameById}
+          />
+        </div>
 
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" className="rounded-full" onClick={toggleInputRail}>
@@ -800,7 +741,7 @@ function PlannerInputRail() {
           </Button>
           <Button variant="ghost" size="sm" className="rounded-full" onClick={goToInputStage}>
             <ArrowLeft className="size-4" />
-            回到輸入模式
+            回到輸入
           </Button>
         </div>
 
@@ -808,34 +749,29 @@ function PlannerInputRail() {
           <Alert variant="warning">條件已變更，記得重新執行。</Alert>
         ) : null}
 
-        {session.inputRailOpen ? <PlannerInputEditor layout="compact" /> : null}
+        {session.inputRailOpen ? (
+          <div className="border-t border-border/50 pt-5">
+            <PlannerInputEditor layout="compact" />
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );
 }
 
 function PlannerResultsView() {
-  const { appliedSession, catNameById, resultsStale } = usePlannerScreen();
+  const { appliedSession, catNameById } = usePlannerScreen();
 
   if (!appliedSession) return null;
 
   return (
-    <div className="space-y-6">
-      {resultsStale ? (
-        <Alert variant="warning" title="結果尚未同步">
-          你已經改過條件了，目前顯示的是上一次成功執行的結果。
-        </Alert>
-      ) : null}
-      <ResultStatsCard
-        result={appliedSession.result}
-        graphsByEvent={appliedSession.graphsByEvent}
-        catNameById={catNameById}
-      />
+    <div>
       <ResultTable
         result={appliedSession.result}
         graphsByEvent={appliedSession.graphsByEvent}
         targetCatIds={appliedSession.inputs.targetCatIds}
         catNameById={catNameById}
+        showTitle={false}
       />
     </div>
   );
@@ -845,6 +781,7 @@ function PlannerResultsStage() {
   const {
     session,
     appliedSession,
+    catNameById,
     resultsStale,
     openMobileEditor,
     closeMobileEditor,
@@ -858,22 +795,17 @@ function PlannerResultsStage() {
   return (
     <div className="space-y-6">
       <div className="lg:hidden">
-        <Card className="rounded-[32px] border-border/80 shadow-none">
+        <Card className="rounded-[28px] border-border/40 shadow-none">
           <CardContent className="space-y-4 pt-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="space-y-1">
-                <div className="text-sm font-semibold text-foreground">已套用條件</div>
-                <div className="text-sm text-muted-foreground">
-                  先看結果，需要時再打開條件編輯器。
-                </div>
-              </div>
+              <div className="text-sm font-semibold text-foreground">已套用條件</div>
               {resultsStale ? <Badge variant="warning">條件已變更</Badge> : null}
             </div>
             <PlannerInputSummary compact />
             <div className="flex flex-wrap gap-2">
               <Button className="rounded-full" onClick={openMobileEditor}>
                 <PencilLine className="size-4" />
-                編輯條件
+                條件與統計
               </Button>
               <Button
                 variant="ghost"
@@ -899,16 +831,26 @@ function PlannerResultsStage() {
         >
           <SheetContent
             side="bottom"
-            title="重新編輯條件"
-            description="這裡的修改不會自動重算，仍然要按下重新執行。"
+            title="條件與統計"
+            description=""
           >
-            <PlannerInputEditor layout="compact" />
+            <div className="space-y-6">
+              <ResultStatsSidebar
+                result={appliedSession.result}
+                graphsByEvent={appliedSession.graphsByEvent}
+                catNameById={catNameById}
+                compact
+              />
+              <div className="border-t border-border/50 pt-6">
+                <PlannerInputEditor layout="compact" />
+              </div>
+            </div>
           </SheetContent>
         </Sheet>
       </div>
 
-      <div className="hidden gap-6 lg:grid lg:grid-cols-[minmax(300px,360px)_minmax(0,1fr)] xl:grid-cols-[minmax(340px,420px)_minmax(0,1fr)]">
-        <PlannerInputRail />
+      <div className="hidden gap-6 lg:grid lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)] xl:grid-cols-[minmax(300px,360px)_minmax(0,1fr)]">
+        <PlannerResultsSidebar />
         <PlannerResultsView />
       </div>
 

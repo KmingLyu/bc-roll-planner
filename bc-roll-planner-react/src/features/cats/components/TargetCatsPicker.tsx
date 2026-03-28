@@ -1,21 +1,8 @@
-// src/features/cats/ui/TargetCatsPicker.tsx
-import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
-  Alert,
-  Avatar,
-  Box,
-  Button,
-  // Checkbox,
-  // FormControlLabel,
-  LinearProgress,
-  Link,
-  Stack,
-  Typography,
-} from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import { startTransition, useDeferredValue, useMemo, useState } from "react";
+import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { TierGroup } from "@/features/cats/types";
 import { CatSelectableItem } from "./CatSelectableItem";
 
@@ -32,16 +19,11 @@ export function TargetCatsPicker(props: {
   loadState: LoadState;
   error: string;
   groups: TierGroup[];
-
   selectedIds: number[];
   onChange: (next: number[]) => void;
   onClear: () => void;
-
-  // 多欄 layout 控制（可調）
-  minColWidth?: number; // 每個 item 最小寬度，越大欄越少
-  dense?: boolean; // 更緊湊
-
-  // 顯示圖片/連結
+  minColWidth?: number;
+  dense?: boolean;
   getCatHref?: (catId: number) => string | undefined;
   getCatImageUrl?: (catId: number) => string | undefined;
   renderCatSecondary?: (catId: number) => React.ReactNode;
@@ -60,100 +42,115 @@ export function TargetCatsPicker(props: {
     renderCatSecondary,
   } = props;
 
-  const selectedSet = new Set(selectedIds);
+  const [query, setQuery] = useState("");
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const deferredQuery = useDeferredValue(query);
+  const normalizedQuery = deferredQuery.trim().toLowerCase();
 
-  function toggle(id: number, on: boolean) {
-    if (on)
+  const filteredGroups = useMemo(() => {
+    if (!normalizedQuery) return groups;
+    return groups
+      .map((group) => ({
+        ...group,
+        cats: group.cats.filter((cat) =>
+          cat.name.toLowerCase().includes(normalizedQuery),
+        ),
+      }))
+      .filter((group) => group.cats.length);
+  }, [groups, normalizedQuery]);
+
+  function toggle(id: number, checked: boolean) {
+    if (checked) {
       onChange(selectedIds.includes(id) ? selectedIds : [...selectedIds, id]);
-    else onChange(selectedIds.filter((x) => x !== id));
+      return;
+    }
+    onChange(selectedIds.filter((value) => value !== id));
   }
 
   return (
-    <Stack spacing={1.5}>
-      <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
-        <Typography variant="body2" color="text.secondary">
-          狀態：<b>{loadState}</b>
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          已選：<b>{selectedIds.length}</b>
-        </Typography>
-        <Button
-          variant="outlined"
-          size="small"
-          onClick={onClear}
-          disabled={!selectedIds.length}
-        >
-          清空已選
-        </Button>
-      </Stack>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="text-sm font-semibold text-foreground">目標貓咪</div>
+          <div className="text-sm text-muted-foreground">
+            這裡是目前所有已選 event 的貓咪聯集。
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant={selectedIds.length ? "default" : "muted"}>
+            已選 {selectedIds.length}
+          </Badge>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="rounded-full"
+            onClick={onClear}
+            disabled={!selectedIds.length}
+          >
+            清空
+          </Button>
+        </div>
+      </div>
 
-      {loadState === "loading" && <LinearProgress />}
-      {loadState === "error" && (
-        <Alert severity="error">eventCats 錯誤：{error}</Alert>
-      )}
+      <Input
+        name="target-cat-search"
+        autoComplete="off"
+        value={query}
+        onChange={(event) =>
+          startTransition(() => setQuery(event.target.value))
+        }
+        placeholder="搜尋目標貓咪"
+      />
 
-      {loadState === "ok" && (
-        <Box>
-          {/* <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            目前為「選到的所有 events 的貓咪聯集」。未來多選 events
-            時，不用改這個元件。
-          </Typography> */}
+      {loadState === "loading" ? <Alert variant="info">正在載入 event 貓池…</Alert> : null}
+      {loadState === "error" ? <Alert variant="error">{error}</Alert> : null}
 
-          <Stack spacing={1}>
-            {groups.map((g) => (
-              <Accordion
-                key={g.tier}
-                defaultExpanded={g.tier === "legendary" || g.tier === "uber"}
-              >
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography fontWeight={800} variant="subtitle2">
-                    {tierLabel(g.tier)}（{g.cats.length}）
-                  </Typography>
-                </AccordionSummary>
-
-                <AccordionDetails sx={{ pt: 0 }}>
-                  <Box
-                    sx={{
-                      display: "grid",
-                      gridTemplateColumns: `repeat(auto-fit, minmax(${minColWidth}px, 1fr))`,
-                      gap: dense ? 0.5 : 1,
-                      alignItems: "start",
-                    }}
-                  >
-                    {g.cats.map((c) => {
-                      const checked = selectedSet.has(c.id);
-
-                      return (
-                        <CatSelectableItem
-                          key={c.id}
-                          catId={c.id}
-                          name={c.name}
-                          checked={checked}
-                          onToggle={(next) => toggle(c.id, next)}
-                          imageUrl={getCatImageUrl?.(c.id)}
-                          href={getCatHref?.(c.id)}
-                          dense={dense}
-                          secondary={
-                            renderCatSecondary
-                              ? renderCatSecondary(c.id)
-                              : undefined
-                          }
-                        />
-                      );
-                    })}
-                  </Box>
-                </AccordionDetails>
-              </Accordion>
-            ))}
-
-            {!groups.length && (
-              <Alert severity="warning">
-                解析不到貓咪列表（eventCats 回傳可能為空）
-              </Alert>
-            )}
-          </Stack>
-        </Box>
-      )}
-    </Stack>
+      <div className="space-y-4">
+        {filteredGroups.length ? (
+          filteredGroups.map((group) => (
+            <details
+              key={group.tier}
+              className="section-surface overflow-hidden"
+              open={group.tier === "legendary" || group.tier === "uber"}
+            >
+              <summary className="cursor-pointer list-none px-5 py-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-semibold text-foreground">
+                    {tierLabel(group.tier)}
+                  </div>
+                  <Badge variant="outline">{group.cats.length}</Badge>
+                </div>
+              </summary>
+              <div className="border-t border-border/70 px-5 py-5">
+                <div
+                  className="grid gap-3"
+                  style={{
+                    gridTemplateColumns: `repeat(auto-fit, minmax(${minColWidth}px, 1fr))`,
+                  }}
+                >
+                  {group.cats.map((cat) => (
+                    <CatSelectableItem
+                      key={cat.id}
+                      catId={cat.id}
+                      name={cat.name}
+                      checked={selectedSet.has(cat.id)}
+                      onToggle={(checked) => toggle(cat.id, checked)}
+                      imageUrl={getCatImageUrl?.(cat.id)}
+                      href={getCatHref?.(cat.id)}
+                      dense={dense}
+                      secondary={renderCatSecondary?.(cat.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            </details>
+          ))
+        ) : (
+          <Alert variant="warning">
+            {groups.length ? "沒有符合搜尋條件的貓咪。" : "目前沒有可選的目標貓咪。"}
+          </Alert>
+        )}
+      </div>
+    </div>
   );
 }

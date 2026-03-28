@@ -1,127 +1,103 @@
-import { useEffect, useMemo, useState } from "react";
-import { Alert, Stack, TextField, Typography } from "@mui/material";
-import Grid from "@mui/material/Grid";
-
-export type SeedCountFormValue = {
-  seed: string;
-  countInput: string;
-  manualCount: number | null;
-  countError: string;
-};
+import { Sparkles } from "lucide-react";
+import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export function SeedCountForm(props: {
-  seedApplied: string;
+  seed: string;
   countInput: string;
+  countError: string;
   autoCount: number;
-  onChange: (v: SeedCountFormValue) => void;
+  manualCount: number | null;
+  manualCountExpanded: boolean;
+  onSeedChange: (value: string) => void;
+  onCountInputChange: (value: string) => void;
+  onToggleManualCount: () => void;
 }) {
-  const { seedApplied, countInput, autoCount, onChange } = props;
-
-  // Draft 用字串：可自然清空
-  const [seedDraft, setSeedDraft] = useState<string>(seedApplied);
-  const [countDraft, setCountDraft] = useState<string>(countInput);
-  const [err, setErr] = useState<string>("");
-
-  // 若父層值被外部改動（例如 reset），同步回 draft
-  useEffect(() => {
-    setSeedDraft(seedApplied);
-  }, [seedApplied]);
-
-  useEffect(() => {
-    setCountDraft(countInput);
-  }, [countInput]);
-
-  // 解析/驗證：count 可留空；不合法時仍同步回父層，讓外部能 disable run
-  const parsed = useMemo(() => {
-    const s = seedDraft.trim();
-    const cRaw = countDraft.trim();
-
-    if (!cRaw) {
-      return {
-        seed: s,
-        countInput: countDraft,
-        manualCount: null,
-        countError: "",
-      };
-    }
-
-    const n = Number(cRaw);
-    if (!Number.isFinite(n) || !Number.isInteger(n) || n <= 0) {
-      return {
-        seed: s,
-        countInput: countDraft,
-        manualCount: null,
-        countError: "count 必須是正整數",
-      };
-    }
-
-    return {
-      seed: s,
-      countInput: countDraft,
-      manualCount: n,
-      countError: "",
-    };
-  }, [seedDraft, countDraft]);
-
-  // 任何輸入變動都同步回父層
-  useEffect(() => {
-    setErr(parsed.countError);
-
-    const sameSeed = parsed.seed === seedApplied;
-    const sameInput = parsed.countInput === countInput;
-    if (sameSeed && sameInput) return;
-
-    onChange(parsed);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    parsed.seed,
-    parsed.countInput,
-    parsed.manualCount,
-    parsed.countError,
-    seedApplied,
+  const {
+    seed,
     countInput,
-  ]);
+    countError,
+    autoCount,
+    manualCount,
+    manualCountExpanded,
+    onSeedChange,
+    onCountInputChange,
+    onToggleManualCount,
+  } = props;
 
   return (
-    <Stack spacing={1.25}>
-      <Grid container spacing={1.25} sx={{ width: "100%" }}>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <TextField
-            fullWidth
-            label="seed"
-            type="number"
-            value={seedDraft}
-            onChange={(e) => setSeedDraft(e.target.value)}
-            size="small"
+    <section className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
+        <div className="space-y-2">
+          <Label htmlFor="planner-seed">Seed</Label>
+          <Input
+            id="planner-seed"
+            name="seed"
+            autoComplete="off"
+            inputMode="numeric"
+            value={seed}
+            onChange={(event) => onSeedChange(event.target.value)}
             placeholder="例如 1234"
           />
-        </Grid>
+          <p className="text-sm text-muted-foreground">
+            請輸入目前抽卡 seed。留空時無法開始計算。
+          </p>
+        </div>
 
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <Stack spacing={0.75}>
-            <TextField
-              fullWidth
-              label="count"
-              type="number"
-              value={countDraft}
-              onChange={(e) => setCountDraft(e.target.value)}
-              size="small"
-              inputProps={{ min: 1, step: 1 }}
-              placeholder="留空則自動依資源計算"
-            />
+        <div className="space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="planner-count">Count</Label>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="muted" className="gap-1.5">
+                  <Sparkles className="size-3.5" />
+                  自動 count
+                </Badge>
+                <span className="text-sm font-medium text-foreground">
+                  {autoCount}
+                </span>
+              </div>
+            </div>
 
-            {!err && (
-              <Typography variant="caption" color="text.secondary">
-                {countDraft.trim()
-                  ? `目前將使用手動 count：${parsed.manualCount ?? "-"}`
-                  : `目前將使用自動搜尋上限：${autoCount}`}
-              </Typography>
-            )}
-          </Stack>
-        </Grid>
-      </Grid>
+            <Button
+              variant={manualCountExpanded ? "outline" : "ghost"}
+              size="sm"
+              className="rounded-full"
+              onClick={onToggleManualCount}
+            >
+              {manualCountExpanded ? "改回自動" : "手動覆寫"}
+            </Button>
+          </div>
 
-      {err && <Alert severity="error">{err}</Alert>}
-    </Stack>
+          <p className="text-sm text-muted-foreground">
+            預設會依可用資源與起始位置自動估算搜尋上限。
+          </p>
+
+          {manualCountExpanded ? (
+            <div className="space-y-2 rounded-3xl border border-border/70 bg-muted/40 p-4">
+              <Input
+                id="planner-count"
+                name="count"
+                autoComplete="off"
+                inputMode="numeric"
+                value={countInput}
+                onChange={(event) => onCountInputChange(event.target.value)}
+                placeholder="輸入正整數"
+              />
+              <p className="text-sm text-muted-foreground">
+                {manualCount != null
+                  ? `目前將使用手動 count：${manualCount}`
+                  : "留空時會退回自動 count。"}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {countError ? <Alert variant="error">{countError}</Alert> : null}
+    </section>
   );
 }

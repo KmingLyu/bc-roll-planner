@@ -1,269 +1,205 @@
-import React, { useMemo, useState } from "react";
+import { Fragment, useMemo } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import type { PlanResult } from "@/features/planner/logic/core";
+import { buildDrawRows, type DrawRow } from "@/features/planner/logic/view-model";
 import type { TrackGraph } from "@/types/models";
+import { getEventDisplayLines } from "@/utils/event-display";
+import { cn } from "@/lib/utils";
 
-import {
-  Box,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableRow,
-} from "@mui/material";
-import { useTheme } from "@mui/material/styles";
-import useMediaQuery from "@mui/material/useMediaQuery";
+function cellTone(row: DrawRow, track: "A" | "B") {
+  if (track === "A") {
+    if (row.isTargetA) return "border-success/30 bg-success/10";
+    if (row.statusA === "guaranteed") return "border-secondary/30 bg-secondary/20";
+    if (row.statusA === "hit") return "border-warning/30 bg-warning/10";
+    return "border-border/60 bg-muted/20";
+  }
+  if (row.isTargetB) return "border-success/30 bg-success/10";
+  if (row.statusB === "guaranteed") return "border-secondary/30 bg-secondary/20";
+  if (row.statusB === "hit") return "border-warning/30 bg-warning/10";
+  return "border-border/60 bg-muted/20";
+}
 
-import {
-  buildDrawRows,
-  makeEventColorPicker,
-  type DrawRow,
-} from "../../logic/view-model";
+function eventLabel(row: DrawRow) {
+  return getEventDisplayLines({
+    name: row.eventName,
+    raw_name: row.eventRawName,
+    start_date: row.eventStartDate,
+    end_date: row.eventEndDate,
+  });
+}
 
-import { HeaderBar } from "./ui/HeaderBar";
-import { useColWidths } from "./useColWidths";
-import { groupByStep } from "./groupByStep";
+function groupRowsByEvent(rows: DrawRow[]) {
+  const groups: Array<{ eventValue: string; rows: DrawRow[] }> = [];
+  for (const row of rows) {
+    const lastGroup = groups.at(-1);
+    if (lastGroup?.eventValue === row.eventValue) {
+      lastGroup.rows.push(row);
+      continue;
+    }
+    groups.push({ eventValue: row.eventValue, rows: [row] });
+  }
+  return groups;
+}
 
-import type { DrawTableColumn, EventRunMeta } from "./types";
-import { makeDefaultColumns, makeDetailColumns } from "./table/columns";
-import { StepBlock } from "./table/StepBlock";
+function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
+  const groups = useMemo(() => groupRowsByEvent(rows), [rows]);
 
-export { type DrawTableColumn } from "./types";
+  return (
+    <div className="hidden lg:block">
+      <div className="overflow-hidden rounded-[28px] border border-border/80 bg-background">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="border-b border-border/80 bg-muted/30">
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                Action
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                A
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                B
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {groups.map((group) => {
+              const label = eventLabel(group.rows[0]);
+              return (
+                <Fragment key={group.eventValue}>
+                  <tr key={`${group.eventValue}-header`} className="border-b border-border/60 bg-card/70">
+                    <td colSpan={3} className="px-4 py-4">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <Badge variant="outline">{label.dateText}</Badge>
+                        <div className="text-sm font-semibold text-foreground">
+                          {label.nameText}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                  {group.rows.map((row) => (
+                    <tr key={row.key} className="border-b border-border/60 align-top last:border-b-0">
+                      <td className="px-4 py-4">
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {row.stepText !== "-" ? (
+                              <Badge variant={row.isTarget ? "warning" : "muted"}>
+                                {row.stepText}
+                              </Badge>
+                            ) : null}
+                            {row.countText !== "-" ? (
+                              <Badge variant="outline">#{row.countText}</Badge>
+                            ) : null}
+                            <span className="text-sm font-semibold text-foreground">
+                              {row.actionText}
+                            </span>
+                          </div>
+                          <div className="text-sm leading-6 text-muted-foreground">
+                            {row.note}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className={cn("rounded-3xl border px-4 py-4 text-sm", cellTone(row, "A"))}>
+                          <div className="font-medium text-foreground">{row.A}</div>
+                          {row.isDuplicateA ? (
+                            <div className="mt-2 text-xs text-muted-foreground">重複命中</div>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className={cn("rounded-3xl border px-4 py-4 text-sm", cellTone(row, "B"))}>
+                          <div className="font-medium text-foreground">{row.B}</div>
+                          {row.isDuplicateB ? (
+                            <div className="mt-2 text-xs text-muted-foreground">重複命中</div>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function ResultsMobileCards({ rows }: { rows: DrawRow[] }) {
+  return (
+    <div className="space-y-3 lg:hidden">
+      {rows.map((row) => {
+        const label = eventLabel(row);
+        return (
+          <div key={row.key} className="rounded-[28px] border border-border/80 bg-background p-4 shadow-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline">{label.dateText}</Badge>
+              <Badge variant={row.isTarget ? "warning" : "muted"}>
+                {row.stepText !== "-" ? row.stepText : row.actionText}
+              </Badge>
+              {row.countText !== "-" ? <Badge variant="outline">#{row.countText}</Badge> : null}
+            </div>
+
+            <div className="mt-3">
+              <div className="text-sm font-semibold text-foreground">{label.nameText}</div>
+              <div className="mt-1 text-sm text-muted-foreground">{row.note}</div>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className={cn("rounded-3xl border px-4 py-3", cellTone(row, "A"))}>
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  A
+                </div>
+                <div className="mt-2 text-sm font-medium text-foreground">{row.A}</div>
+              </div>
+              <div className={cn("rounded-3xl border px-4 py-3", cellTone(row, "B"))}>
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  B
+                </div>
+                <div className="mt-2 text-sm font-medium text-foreground">{row.B}</div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export function ResultTable(props: {
   result: PlanResult;
   graphsByEvent: Record<string, TrackGraph>;
   targetCatIds: number[];
   catNameById: Map<number, string>;
-
-  /**
-   * ✅ 擴充點 1：可插拔欄位
-   * - 不傳就用預設主表欄位
-   */
-  columns?: DrawTableColumn[];
-
-  /**
-   * ✅ 擴充點 2：右鍵選單 / Row actions 的入口（先把事件管線接好）
-   * - 你之後要開 MUI Menu / ContextMenu 都很方便
-   */
-  onRowContextMenu?: (row: DrawRow, e: React.MouseEvent) => void;
-
-  /**
-   * 可選：標題
-   */
-  title?: string;
-
-  /**
-   * 是否顯示表格內標題（外層已提供標題時可關閉）
-   */
   showTitle?: boolean;
 }) {
-  const {
-    result,
-    graphsByEvent,
-    targetCatIds,
-    catNameById,
-    columns,
-    onRowContextMenu,
-    title = "規劃結果",
-    showTitle = true,
-  } = props;
+  const { result, graphsByEvent, targetCatIds, catNameById, showTitle = true } =
+    props;
 
-  const targetSet = useMemo(() => new Set(targetCatIds), [targetCatIds]);
-  const theme = useTheme();
-  const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
-
-  const allRows = useMemo(() => {
-    return buildDrawRows({
-      result,
-      graphsByEvent,
-      targetIdSet: targetSet,
-      catNameById,
-    });
-  }, [result, graphsByEvent, targetSet, catNameById]);
-
-  // UI states
-  const [openTen, setOpenTen] = useState<Record<number, boolean>>({});
-  const [showTargetsOnly, setShowTargetsOnly] = useState(false);
-  const [showTargetDrawsOnly, setShowTargetDrawsOnly] = useState(false);
-  const [showLegend, setShowLegend] = useState(false);
-
-  // filter: 只看目標步驟
-  const filteredRows = useMemo(() => {
-    if (!showTargetsOnly) return allRows;
-
-    const okStep = new Set<number>();
-    for (const r of allRows) {
-      if (r.isTarget) okStep.add(r.stepIndex);
-    }
-    return allRows.filter((r) => okStep.has(r.stepIndex));
-  }, [allRows, showTargetsOnly]);
-
-  // event 出現順序 -> picker
-  const eventOrder = useMemo(() => {
-    const seen = new Set<string>();
-    const out: string[] = [];
-    for (const r of filteredRows) {
-      const k = String(r.eventValue || "");
-      if (!k || seen.has(k)) continue;
-      seen.add(k);
-      out.push(k);
-    }
-    return out;
-  }, [filteredRows]);
-
-  const eventPicker = useMemo(
-    () => makeEventColorPicker(eventOrder),
-    [eventOrder],
+  const rows = useMemo(
+    () =>
+      buildDrawRows({
+        result,
+        graphsByEvent,
+        targetIdSet: new Set(targetCatIds),
+        catNameById,
+      }),
+    [catNameById, graphsByEvent, result, targetCatIds],
   );
-
-  const colW = useColWidths();
-
-  const bodyCellSx = useMemo(
-    () => ({
-      bgcolor: "transparent",
-      borderBottom: "1px solid",
-      borderColor: "divider",
-      py: 1.2,
-      verticalAlign: "middle",
-    }),
-    [],
-  );
-
-  const steps = useMemo(() => groupByStep(filteredRows), [filteredRows]);
-
-  const detailColumns = useMemo(() => makeDetailColumns(), []);
-
-  // ✅ columns：預設主表 3 欄，但可以外部覆蓋/新增
-  const effectiveColumns = useMemo(() => {
-    return columns && columns.length ? columns : makeDefaultColumns();
-  }, [columns]);
-
-  // StepBlock 需要的「不含 per-row 資訊」ctx
-  const baseCtx = useMemo(
-    () => ({
-      colW,
-      bodyCellSx,
-      eventColorOf: eventPicker.colorOf,
-      eventTintOf: eventPicker.tintOf,
-      onRowContextMenu,
-    }),
-    [colW, bodyCellSx, eventPicker, onRowContextMenu],
-  );
-
-  const stepBlocks = useMemo(() => {
-    return steps.map(([stepIndex, rows]) => {
-      const eventAnchor = rows[0];
-      return {
-        stepIndex,
-        rows,
-        eventValue: String(eventAnchor?.eventValue || ""),
-        eventName: eventAnchor?.eventName || "-",
-        eventRawName: eventAnchor?.eventRawName || eventAnchor?.eventName || "-",
-        eventStartDate: eventAnchor?.eventStartDate ?? null,
-        eventEndDate: eventAnchor?.eventEndDate ?? null,
-      };
-    });
-  }, [steps]);
-
-  const eventRuns = useMemo<EventRunMeta[]>(() => {
-    return stepBlocks.map((block, idx, arr) => {
-      const prevEvent = idx > 0 ? arr[idx - 1]?.eventValue : null;
-      const nextEvent = idx < arr.length - 1 ? arr[idx + 1]?.eventValue : null;
-      return {
-        eventValue: block.eventValue,
-        eventName: block.eventName,
-        eventRawName: block.eventRawName,
-        eventStartDate: block.eventStartDate,
-        eventEndDate: block.eventEndDate,
-        color: eventPicker.colorOf(block.eventValue),
-        tint: eventPicker.tintOf(block.eventValue),
-        isStart: prevEvent !== block.eventValue,
-        isEnd: nextEvent !== block.eventValue,
-      };
-    });
-  }, [eventPicker, stepBlocks]);
 
   return (
-    <Stack
-      spacing={1}
-      sx={{ width: "100%", minWidth: 0, backgroundColor: "transparent" }}
-    >
-      <HeaderBar
-        title={showTitle ? title : undefined}
-        rowsCount={filteredRows.length}
-        stepsCount={steps.length}
-        showLegend={showLegend}
-        onToggleLegend={setShowLegend}
-        showTargetsOnly={showTargetsOnly}
-        onToggleTargetsOnly={setShowTargetsOnly}
-        showTargetDrawsOnly={showTargetDrawsOnly}
-        onToggleTargetDrawsOnly={setShowTargetDrawsOnly}
-      />
-
-      <TableContainer
-        component={Box}
-        sx={{
-          width: "100%",
-          maxWidth: "100%",
-          minWidth: 0,
-          backgroundColor: "transparent",
-          overflowX: "auto",
-          overflowY: "hidden",
-          px: { xs: 0, sm: 0.25 },
-          pb: 0.5,
-        }}
-      >
-        <Table
-          size="medium"
-          sx={{
-            minWidth: isSmDown ? 560 : 640,
-            tableLayout: "fixed",
-            borderCollapse: "separate",
-          }}
-        >
-          <TableBody>
-            {steps.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={effectiveColumns.length}
-                  sx={{ py: 6, textAlign: "center" }}
-                >
-                  沒有資料
-                </TableCell>
-              </TableRow>
-            ) : (
-              stepBlocks.map(({ stepIndex, rows }, idx) => {
-                const isOpen = !!openTen[stepIndex];
-                return (
-                  <React.Fragment key={`step-${stepIndex}`}>
-                    <StepBlock
-                      stepIndex={stepIndex}
-                      rows={rows}
-                      open={isOpen}
-                      onToggleOpen={() =>
-                        setOpenTen((p) => ({
-                          ...p,
-                          [stepIndex]: !p[stepIndex],
-                        }))
-                      }
-                      showTargetDrawsOnly={showTargetDrawsOnly}
-                      columns={effectiveColumns}
-                      detailColumns={detailColumns}
-                      eventRun={eventRuns[idx]}
-                      baseCtx={baseCtx}
-                    />
-                  </React.Fragment>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      {/* 你目前 showLegend 只影響 Header 顯示；未來你要加 TableHead 也很容易，
-          因為 columns 已經定義好了（可直接用 columns map 出 header）。 */}
-      {showLegend ? null : null}
-    </Stack>
+    <Card className="rounded-[32px] border-border/80 shadow-none">
+      {showTitle ? (
+        <CardHeader>
+          <CardTitle className="text-lg">規劃結果</CardTitle>
+        </CardHeader>
+      ) : null}
+      <CardContent className="space-y-4">
+        <ResultsDesktopTable rows={rows} />
+        <ResultsMobileCards rows={rows} />
+      </CardContent>
+    </Card>
   );
 }

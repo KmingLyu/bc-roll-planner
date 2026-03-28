@@ -1,5 +1,5 @@
-import { Box, Typography } from "@mui/material";
 import type { ActionLabel } from "../logic/view-model";
+import { cn } from "@/lib/utils";
 
 const ACTION_IMAGE: Record<ActionLabel, string> = {
   金券: "/稀有券.png",
@@ -18,24 +18,29 @@ export function ResourceImg({
   label,
   height = 20,
   showCount = true,
+  className,
 }: {
   label: ActionLabel;
   height?: number;
   showCount?: boolean;
+  className?: string;
 }) {
   const src = ACTION_IMAGE[label];
   const count = showCount ? ACTION_COUNT[label] : undefined;
   return (
-    <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}>
-      <img src={src} alt={label} height={height} style={{ display: "block" }} />
+    <span className={cn("inline-flex items-center gap-1.5", className)}>
+      <img
+        src={src}
+        alt={label}
+        width={height}
+        height={height}
+        style={{ display: "block" }}
+      />
       {count != null && (
-        <Typography
-          component="span"
-          sx={{ fontSize: "0.65rem", fontWeight: 900, lineHeight: 1 }}
-        >
+        <span className="text-[0.65rem] font-black leading-none text-muted-foreground">
           × {count}
-        </Typography>
+        </span>
       )}
-    </Box>
+    </span>
   );
 }

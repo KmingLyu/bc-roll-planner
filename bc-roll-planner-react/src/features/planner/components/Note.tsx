@@ -1,43 +1,23 @@
-import { Link, Typography } from "@mui/material";
 import { DATA_SOURCES } from "@/config/dataSources";
-
-type DisclaimerNoteProps = {
-  /** 文字顏色（可用 MUI token 或 CSS 色碼） */
-  textColor?: string;
-  /** 連結顏色（可用 MUI token 或 CSS 色碼） */
-  linkColor?: string;
-  /** caption 字體大小微調 */
-  fontSize?: number | string;
-};
+import { cn } from "@/lib/utils";
 
 export function DisclaimerNote({
-  textColor = "text.secondary",
-  linkColor = "primary.main",
-  fontSize,
-}: DisclaimerNoteProps) {
+  className,
+}: {
+  className?: string;
+}) {
   return (
-    <Typography
-      variant="caption"
-      sx={{
-        display: "block",
-        color: textColor,
-        fontSize,
-      }}
-    >
+    <p className={cn("text-sm leading-6 text-muted-foreground", className)}>
       ※ 本工具資料主要取自 {DATA_SOURCES.crawler.name}（
-      <Link
+      <a
         href={DATA_SOURCES.crawler.url}
         target="_blank"
         rel="noreferrer"
-        sx={{
-          color: linkColor,
-          textDecorationColor: linkColor,
-          "&:hover": { opacity: 0.85 },
-        }}
+        className="font-medium text-primary underline decoration-primary/30 underline-offset-4 transition-colors hover:text-primary/80"
       >
         {DATA_SOURCES.crawler.url}
-      </Link>
+      </a>
       ），可能因來源變動而不完整或延遲，規劃結果需自行驗證。
-    </Typography>
+    </p>
   );
 }

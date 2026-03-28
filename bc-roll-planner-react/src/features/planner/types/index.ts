@@ -1,31 +1,3 @@
-export type UiFlags = {
-  showControlPanel: boolean;
-
-  showSeedCount: boolean;
-  seedCountCollapsed: boolean;
-
-  showEvents: boolean;
-  eventsCollapsed: boolean;
-
-  showTargetCats: boolean;
-  targetCatsCollapsed: boolean;
-
-  showPlanner: boolean;
-  plannerCollapsed: boolean;
-
-  showPlannerResultSummary: boolean;
-  plannerResultSummaryCollapsed: boolean;
-
-  showPlannerResultTable: boolean;
-  plannerResultTableCollapsed: boolean;
-
-  showGraphDebug: boolean;
-  graphDebugCollapsed: boolean;
-
-  showSimulator: boolean;
-  simulatorCollapsed: boolean;
-};
-
 export type PlannerResources = {
   tickets: number;
   platinum_tickets: number;
@@ -38,3 +10,27 @@ export type PlannerUiConfig = {
   max_expansions: number;
 };
 
+export type PlannerStage = "input" | "results";
+
+export type PlannerDraftInputs = {
+  seed: string;
+  countInput: string;
+  resources: PlannerResources;
+  cfg: PlannerUiConfig;
+  selectedEventValues: string[];
+  primaryEventValue: string;
+  targetCatIds: number[];
+};
+
+export type PlannerAppliedInputs = PlannerDraftInputs & {
+  resolvedCount: number;
+  manualCount: number | null;
+};
+
+export type PlannerSessionState = {
+  stage: PlannerStage;
+  inputRailOpen: boolean;
+  mobileEditorOpen: boolean;
+  manualCountExpanded: boolean;
+  advancedSettingsOpen: boolean;
+};

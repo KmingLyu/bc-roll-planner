@@ -17,7 +17,6 @@ import type {
 } from "@/features/planner/logic/core";
 import type { TrackGraph } from "@/types/models";
 import { parsePosId } from "@/utils/cursor";
-import { APP_THEME_TOKENS } from "@/styles/theme/tokens";
 
 /**
  * ============================================================
@@ -80,9 +79,9 @@ export const STATUS_STYLE: Record<
   },
 
   normal: {
-    bg: APP_THEME_TOKENS.chip.background,
-    node: APP_THEME_TOKENS.palette.backgroundDefault,
-    border: APP_THEME_TOKENS.chip.border,
+    bg: "#f8fafc",
+    node: "#f8fafc",
+    border: "#cbd5e1",
   },
 };
 
@@ -92,7 +91,7 @@ export const STATUS_STYLE: Record<
  * - 淺綠底稍微再淡一點，避免壓過內容
  */
 export const TARGET_BORDER_STYLE = {
-  border: `2.5px solid ${APP_THEME_TOKENS.planner.target.border}`,
+  border: "2.5px solid rgba(16, 185, 129, 0.95)",
   boxShadow: "none",
   background: "#e7f8f2",
 };
@@ -104,7 +103,7 @@ export const TARGET_BORDER_STYLE = {
  */
 export const TARGET_NODE_STYLE = {
   bg: "#10b981",
-  borderColor: APP_THEME_TOKENS.planner.target.border,
+  borderColor: "rgba(16, 185, 129, 0.95)",
   ringShadow: "none",
   textColor: "rgba(0, 0, 0, 0.85)",
 };
@@ -118,7 +117,10 @@ export function hashString(s: string): number {
 }
 
 // 30 色（Hue 調色盤）
-export const EVENT_HUES_30 = [...APP_THEME_TOKENS.planner.eventHues] as const;
+export const EVENT_HUES_30 = [
+  240, 24, 180, 288, 0, 216, 324, 48, 204, 336, 12, 252, 276, 36, 228, 312,
+  192, 348, 264, 96, 108, 120, 132, 144, 156, 168, 72, 84, 60, 300,
+] as const;
 
 export function makeEventColorPicker(eventValuesInOrder: string[]) {
   // 照 list 順序分配 hue（同名 event 只分配一次）

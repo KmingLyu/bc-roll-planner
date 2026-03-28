@@ -514,7 +514,7 @@ function usePlannerScreen() {
 
 function PlannerHeader() {
   return (
-    <header className="space-y-3 border-b border-border/45 pb-4">
+    <header className="space-y-2 border-b border-border/45 pb-3">
       <div>
         <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
           貓咪大戰爭抽卡規劃
@@ -536,7 +536,7 @@ function PlannerInputSummary({ compact = false }: { compact?: boolean }) {
   ];
 
   return (
-    <div className={compact ? "space-y-3" : "space-y-4"}>
+    <div className={compact ? "space-y-3" : "space-y-3"}>
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="outline">Seed {draft.seed.trim() || "-"}</Badge>
         <Badge variant={manualCount != null ? "default" : "muted"}>
@@ -621,7 +621,7 @@ function PlannerInputEditor({ layout }: { layout: "immersive" | "compact" }) {
 
   const content = (
     <>
-      <div className="space-y-6">
+      <div className="space-y-5">
         <SeedCountForm
           seed={draft.seed}
           countInput={draft.countInput}
@@ -634,14 +634,14 @@ function PlannerInputEditor({ layout }: { layout: "immersive" | "compact" }) {
           onToggleManualCount={toggleManualCount}
         />
 
-        <div className="border-t border-border/45 pt-4">
+        <div className="workspace-divider pt-3.5">
           <ResourceForm
             value={draft.resources}
             onChange={setResources}
           />
         </div>
 
-        <div className="border-t border-border/45 pt-4">
+        <div className="workspace-divider pt-3.5">
           <EventsPicker
             loadState={eventsState}
             error={eventsErr}
@@ -654,11 +654,11 @@ function PlannerInputEditor({ layout }: { layout: "immersive" | "compact" }) {
           />
         </div>
 
-        <div className="border-t border-border/45 pt-4">
+        <div className="workspace-divider pt-3.5">
           <PlannerTargetPanel compact={layout === "compact"} />
         </div>
 
-        <div className="border-t border-border/45 pt-4">
+        <div className="workspace-divider pt-3.5">
           <div className="space-y-3">
             {appliedSession && resultsStale ? (
               <Alert variant="warning">條件已變更</Alert>
@@ -682,12 +682,12 @@ function PlannerInputEditor({ layout }: { layout: "immersive" | "compact" }) {
   );
 
   if (layout === "compact") {
-    return <div className="space-y-6">{content}</div>;
+    return <div className="space-y-5">{content}</div>;
   }
 
   return (
-    <Card className="border-border/35 shadow-none">
-      <CardContent className="space-y-6 px-4 py-4 sm:px-5 sm:py-5">
+    <Card className="workspace-pane border-border/55">
+      <CardContent className="space-y-5 px-4 py-3.5 sm:px-4 sm:py-4">
         {content}
       </CardContent>
     </Card>
@@ -696,7 +696,9 @@ function PlannerInputEditor({ layout }: { layout: "immersive" | "compact" }) {
 
 function PlannerInputStage() {
   return (
-    <PlannerInputEditor layout="immersive" />
+    <div className="max-w-[1080px]">
+      <PlannerInputEditor layout="immersive" />
+    </div>
   );
 }
 
@@ -712,13 +714,15 @@ function PlannerResultsSidebarSummary() {
   if (!appliedSession) return null;
 
   return (
-    <Card className="sticky top-0 border-border/35 shadow-none">
-      <CardContent className="subtle-scrollbar max-h-[calc(100vh-1rem)] space-y-5 overflow-y-auto pt-4">
-        <div className="text-lg font-semibold text-foreground">目前條件</div>
+    <Card className="workspace-pane sticky top-0 self-start border-border/55">
+      <div className="workspace-toolbar">
+        <div className="text-sm font-semibold text-foreground">目前條件</div>
+      </div>
+      <CardContent className="subtle-scrollbar max-h-[calc(100vh-3rem)] space-y-4 overflow-y-auto">
 
         <PlannerInputSummary compact />
 
-        <div className="border-t border-border/45 pt-4">
+        <div className="workspace-divider pt-4">
           <ResultStatsSidebar
             result={appliedSession.result}
             graphsByEvent={appliedSession.graphsByEvent}
@@ -749,10 +753,12 @@ function PlannerResultsSidebarEdit() {
   const { resultsStale, showSidebarSummary, goToInputStage } = usePlannerScreen();
 
   return (
-    <Card className="sticky top-0 border-border/35 shadow-none">
-      <CardContent className="subtle-scrollbar max-h-[calc(100vh-1rem)] space-y-5 overflow-y-auto pt-4">
+    <Card className="workspace-pane sticky top-0 self-start border-border/55">
+      <div className="workspace-toolbar">
+        <div className="text-sm font-semibold text-foreground">重新編輯</div>
+      </div>
+      <CardContent className="subtle-scrollbar max-h-[calc(100vh-3rem)] space-y-4 overflow-y-auto">
         <div className="space-y-3">
-          <div className="text-lg font-semibold text-foreground">重新編輯</div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" onClick={showSidebarSummary}>
               查看摘要
@@ -768,7 +774,7 @@ function PlannerResultsSidebarEdit() {
           <Alert variant="warning">條件已變更，重新執行後才會更新結果。</Alert>
         ) : null}
 
-        <div className="border-t border-border/45 pt-4">
+        <div className="workspace-divider pt-4">
           <PlannerInputEditor layout="compact" />
         </div>
       </CardContent>
@@ -792,7 +798,7 @@ function PlannerResultsView() {
   if (!appliedSession) return null;
 
   return (
-    <div>
+    <div className="workspace-pane overflow-hidden border-border/55">
       <ResultTable
         result={appliedSession.result}
         graphsByEvent={appliedSession.graphsByEvent}
@@ -822,10 +828,10 @@ function PlannerResultsStage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="lg:hidden">
-        <Card className="border-border/35 shadow-none">
-          <CardContent className="space-y-4 pt-4">
+        <Card className="workspace-pane border-border/55">
+          <CardContent className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="text-sm font-semibold text-foreground">已套用條件</div>
               {resultsStale ? <Badge variant="warning">條件已變更</Badge> : null}
@@ -866,7 +872,7 @@ function PlannerResultsStage() {
             description=""
           >
             <div className="space-y-6">
-              <div className="flex flex-wrap gap-2 border-b border-border/45 pb-4">
+              <div className="workspace-toolbar -mx-4 -mt-3.5 mb-4">
                 <Button
                   size="sm"
                   variant={session.sidebarMode === "summary" ? "secondary" : "ghost"}
@@ -923,7 +929,7 @@ function PlannerScreen() {
   }, [session.stage, appliedSession]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div ref={topRef} />
       <PlannerHeader />
       {session.stage === "results" && appliedSession ? (

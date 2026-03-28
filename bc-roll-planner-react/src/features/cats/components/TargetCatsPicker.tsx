@@ -78,8 +78,8 @@ export function TargetCatsPicker(props: {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+      <div className="grid gap-2 sm:grid-cols-[auto_minmax(0,320px)] sm:items-center sm:justify-between">
+        <div className="flex items-center gap-1.5">
           <Badge className={countBadgeClass(selectedIds.length)} variant="muted">
             已選 {selectedIds.length}
           </Badge>
@@ -92,17 +92,16 @@ export function TargetCatsPicker(props: {
             清空
           </Button>
         </div>
+        <Input
+          name="target-cat-search"
+          autoComplete="off"
+          value={query}
+          onChange={(event) =>
+            startTransition(() => setQuery(event.target.value))
+          }
+          placeholder="搜尋目標貓咪"
+        />
       </div>
-
-      <Input
-        name="target-cat-search"
-        autoComplete="off"
-        value={query}
-        onChange={(event) =>
-          startTransition(() => setQuery(event.target.value))
-        }
-        placeholder="搜尋目標貓咪"
-      />
 
       {loadState === "loading" ? <Alert variant="info">正在載入 event 貓池…</Alert> : null}
       {loadState === "error" ? <Alert variant="error">{error}</Alert> : null}
@@ -145,7 +144,7 @@ export function TargetCatsPicker(props: {
               {openGroups[group.tier] ?? (normalizedQuery ? group.cats.length > 0 : false) ? (
                 <div className="pt-2">
                   <div
-                    className="grid gap-2"
+                    className="grid gap-1.5"
                     style={{
                       gridTemplateColumns: `repeat(auto-fit, minmax(${minColWidth}px, 1fr))`,
                     }}

@@ -82,10 +82,10 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
   );
 
   return (
-    <div className="hidden lg:block overflow-x-auto border-t border-border/40">
+    <div className="hidden lg:block overflow-x-auto">
       <table className="w-full border-collapse">
         <thead>
-          <tr className="border-b border-border/45 bg-muted/15">
+          <tr className="border-b border-border/50 bg-muted/20">
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
               Action
             </th>
@@ -108,7 +108,11 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
                   className="border-b border-border/35"
                   style={{ backgroundColor: accentTint }}
                 >
-                  <td colSpan={3} className="px-4 py-3.5" style={{ boxShadow: `inset 3px 0 0 ${accentColor}` }}>
+                  <td
+                    colSpan={3}
+                    className="px-4 py-3"
+                    style={{ boxShadow: `inset 3px 0 0 ${accentColor}` }}
+                  >
                     <div className="flex flex-wrap items-center gap-3">
                       <Badge variant="outline">{label.dateText}</Badge>
                       <div className="text-sm font-semibold text-foreground">
@@ -122,7 +126,10 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
                     key={row.key}
                     className="border-b border-border/35 align-top last:border-b-0"
                   >
-                    <td className="px-4 py-3.5" style={{ boxShadow: `inset 2px 0 0 ${accentColor}` }}>
+                    <td
+                      className="px-4 py-3"
+                      style={{ boxShadow: `inset 2px 0 0 ${accentColor}` }}
+                    >
                       <div className="space-y-1.5">
                         <div className="flex flex-wrap items-center gap-2">
                           {row.stepText !== "-" ? (
@@ -139,10 +146,10 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3.5">
+                    <td className="px-4 py-3">
                       <ResultTrackCell row={row} track="A" />
                     </td>
-                    <td className="px-4 py-3.5">
+                    <td className="px-4 py-3">
                       <ResultTrackCell row={row} track="B" />
                     </td>
                   </tr>
@@ -171,7 +178,7 @@ function ResultsMobileCards({ rows }: { rows: DrawRow[] }) {
         return (
           <div
             key={row.key}
-            className="border border-border/35 p-4"
+            className="workspace-pane p-3.5"
             style={{
               backgroundColor: accentTint,
               boxShadow: `inset 3px 0 0 ${accentColor}`,
@@ -224,9 +231,9 @@ export function ResultTable(props: {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-0">
       {showTitle ? (
-        <div className="text-lg font-semibold text-foreground">規劃結果</div>
+        <div className="workspace-toolbar text-sm font-semibold text-foreground">規劃結果</div>
       ) : null}
       <ResultsDesktopTable rows={rows} />
       <ResultsMobileCards rows={rows} />

@@ -209,7 +209,7 @@ export function EventsPicker(props: {
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-sm font-semibold text-foreground">Event</div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {value.length ? (
             <Button
               variant="ghost"
@@ -237,28 +237,32 @@ export function EventsPicker(props: {
         </div>
       </div>
 
-      {selectedEvents.length ? (
-        <div className="flex flex-wrap gap-2">
-          {selectedEvents.map((event) => (
-            <Badge
-              key={event.value}
-              variant={primaryValue === event.value ? "default" : "outline"}
-            >
-              {event.name}
-            </Badge>
-          ))}
+      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_280px] sm:items-start">
+        <div className="min-w-0">
+          {selectedEvents.length ? (
+            <div className="flex flex-wrap gap-1.5">
+              {selectedEvents.map((event) => (
+                <Badge
+                  key={event.value}
+                  variant={primaryValue === event.value ? "default" : "outline"}
+                >
+                  {event.name}
+                </Badge>
+              ))}
+            </div>
+          ) : (
+            <div className="text-sm text-muted-foreground">尚未選擇 event</div>
+          )}
         </div>
-      ) : (
-        <div className="text-sm text-muted-foreground">尚未選擇 event</div>
-      )}
 
-      <Input
-        name="event-search"
-        autoComplete="off"
-        value={query}
-        onChange={(event) => startTransition(() => setQuery(event.target.value))}
-        placeholder="搜尋卡池名稱或日期"
-      />
+        <Input
+          name="event-search"
+          autoComplete="off"
+          value={query}
+          onChange={(event) => startTransition(() => setQuery(event.target.value))}
+          placeholder="搜尋卡池名稱或日期"
+        />
+      </div>
 
       {panelOpen ? (
         <div className="space-y-3 border-t border-border/45 pt-3">

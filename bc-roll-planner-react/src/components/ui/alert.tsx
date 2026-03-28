@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 const styles = {
   info: {
     icon: Info,
-    className: "border-primary/20 bg-primary/5 text-foreground",
+    className: "border-primary/25 bg-primary/5 text-foreground",
   },
   success: {
     icon: CheckCircle2,
@@ -36,7 +36,7 @@ export function Alert({
   return (
     <div
       className={cn(
-        "flex gap-3 rounded-md border px-3 py-2.5 text-sm leading-6",
+        "flex gap-3 rounded-[4px] border-l-2 border-r border-y px-3 py-2 text-sm leading-6",
         styles[variant].className,
         className,
       )}

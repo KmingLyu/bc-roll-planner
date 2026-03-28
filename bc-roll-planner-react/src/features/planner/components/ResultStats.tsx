@@ -93,10 +93,10 @@ function useResultStatsModel(params: {
 function StatItem({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
         {label}
       </div>
-      <div className="text-2xl font-semibold tracking-tight text-foreground">{value}</div>
+      <div className="text-[28px] font-semibold tracking-tight text-foreground">{value}</div>
     </div>
   );
 }
@@ -111,21 +111,21 @@ export function ResultStatsSidebar(props: {
   const stats = useResultStatsModel({ result, graphsByEvent, catNameById });
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
         <Badge variant={result.success ? "success" : "warning"}>
           {result.success ? "已命中全部目標" : "尚未完全命中"}
         </Badge>
       </div>
 
-      <div className={compact ? "grid gap-4 sm:grid-cols-2" : "grid gap-4"}>
+      <div className={compact ? "grid gap-4 sm:grid-cols-2" : "grid gap-4 sm:grid-cols-2"}>
         <StatItem label="命中目標" value={`${result.targets_hit}/${result.targets_total}`} />
         <StatItem label="終點位置" value={result.final_cursor_id} />
         <StatItem label="抽卡步驟" value={result.plan?.length ?? 0} />
         <StatItem label="獲得貓咪" value={result.all_draws?.length ?? 0} />
       </div>
 
-      <section className="space-y-3 border-t border-border/45 pt-4">
+      <section className="space-y-3 border-t border-border/45 pt-3.5">
         <div className="text-sm font-semibold text-foreground">資源消耗</div>
         <div className="flex flex-wrap gap-2">
           {Array.from(stats.byAction.entries())
@@ -145,7 +145,7 @@ export function ResultStatsSidebar(props: {
         </div>
       </section>
 
-      <section className="space-y-3 border-t border-border/45 pt-4">
+      <section className="space-y-3 border-t border-border/45 pt-3.5">
         <div className="text-sm font-semibold text-foreground">命中目標</div>
         <div className="flex flex-wrap gap-2">
           {stats.hitTargets.length ? (
@@ -166,7 +166,7 @@ export function ResultStatsSidebar(props: {
         </div>
       </section>
 
-      <section className="space-y-3 border-t border-border/45 pt-4">
+      <section className="space-y-3 border-t border-border/45 pt-3.5">
         <div className="text-sm font-semibold text-foreground">event 分布</div>
         {stats.byEvent.length ? (
           <div className="space-y-3">

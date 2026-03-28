@@ -24,15 +24,15 @@ export default function NumberField({
   }
   return (
     <BaseNumberField.Root {...other} className={cn("w-full", className)}>
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-1">
         {label ? (
-          <label htmlFor={id} className="text-sm font-medium text-foreground">
+          <label htmlFor={id} className="text-[13px] font-medium text-foreground">
             {label}
           </label>
         ) : null}
         <div
           className={cn(
-            "field-shell gap-1.5",
+            "field-shell gap-1",
             error && "border-destructive ring-4 ring-destructive/10",
           )}
         >
@@ -42,7 +42,7 @@ export default function NumberField({
           </BaseNumberField.Decrement>
           <BaseNumberField.Input
             id={id}
-            className="h-9 min-w-0 flex-1 border-0 bg-transparent text-sm outline-none"
+            className="h-8 min-w-0 flex-1 border-0 bg-transparent text-sm outline-none"
             {...inputProps}
           />
           <BaseNumberField.Increment className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">

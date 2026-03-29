@@ -128,6 +128,33 @@ function shouldShowTrackDot(row: DrawRow, track: "A" | "B") {
   return !(row.isGuaranteedRow && row.track !== track);
 }
 
+function buildTenRollSummary(value: string) {
+  if (!value || value === "-") {
+    return {
+      hitCount: 0,
+      summaryText: "未命中",
+      namesText: "",
+    };
+  }
+
+  const names = value.split("、").filter(Boolean);
+  return {
+    hitCount: names.length,
+    summaryText: `命中 ${names.length} 隻`,
+    namesText: value,
+  };
+}
+
+function buildTenRollRangeLabel(
+  row: DrawRow,
+  track: "A" | "B",
+  drawCount: number,
+) {
+  if (row.pos == null || drawCount <= 0) return track;
+  const endPos = row.pos + drawCount - 1;
+  return `${row.pos}${track}~${endPos}${track}`;
+}
+
 function ActionVisual({
   label,
   compact = false,
@@ -136,16 +163,23 @@ function ActionVisual({
   compact?: boolean;
 }) {
   return (
-    <ResourceImg
-      label={label}
-      height={compact ? 22 : 26}
+    <div
       className={cn(
-        "shrink-0",
-        compact
-          ? "[&_span]:text-[11px] [&_span]:font-bold"
-          : "[&_span]:text-[13px] [&_span]:font-bold",
+        "flex shrink-0 items-center",
+        compact ? "w-[86px]" : "w-[104px]",
       )}
-    />
+    >
+      <ResourceImg
+        label={label}
+        height={compact ? 24 : 30}
+        className={cn(
+          "justify-start",
+          compact
+            ? "[&_span]:text-[11px] [&_span]:font-bold"
+            : "[&_span]:text-[14px] [&_span]:font-bold",
+        )}
+      />
+    </div>
   );
 }
 
@@ -187,6 +221,70 @@ function ResultCatPreview({ catId }: { catId: number | null }) {
   );
 }
 
+function TenRollSummaryCell(props: {
+  row: DrawRow;
+  track: "A" | "B";
+  drawCount: number;
+  compact?: boolean;
+}) {
+  const { row, track, drawCount, compact = false } = props;
+  const value = track === "A" ? row.A : row.B;
+  const isHit = track === "A" ? row.isTargetA : row.isTargetB;
+  const summary = buildTenRollSummary(value);
+  const rangeLabel = buildTenRollRangeLabel(row, track, drawCount);
+
+  return (
+    <div
+      className={cn(
+        "px-4 py-3",
+        compact ? "space-y-1.5 px-3 py-2.5" : "space-y-2",
+        isHit ? "rounded-[8px] border border-success/30 bg-success/5" : "",
+      )}
+    >
+      <div
+        className={cn(
+          "flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em]",
+          isHit ? "text-success" : "text-muted-foreground",
+        )}
+      >
+        <span className={cn("size-2.5 rounded-full", trackDotClass(row, track))} />
+        <span>{rangeLabel}</span>
+      </div>
+      {isHit ? (
+        <>
+          <div
+            className={cn(
+              "font-semibold text-success",
+              compact ? "text-[15px] leading-5" : "text-[17px] leading-6",
+            )}
+          >
+            {summary.summaryText}
+          </div>
+          {summary.namesText ? (
+            <div
+              className={cn(
+                "font-medium text-foreground",
+                compact ? "text-[14px] leading-5" : "text-[15px] leading-6",
+              )}
+            >
+              {summary.namesText}
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <div
+          className={cn(
+            "font-semibold text-muted-foreground",
+            compact ? "text-[15px] leading-5" : "text-[17px] leading-6",
+          )}
+        >
+          -
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ResultTrackCell(props: {
   row: DrawRow;
   track: "A" | "B";
@@ -194,8 +292,22 @@ function ResultTrackCell(props: {
 }) {
   const { row, track, compact = false } = props;
   const value = track === "A" ? row.A : row.B;
-  const isDuplicate = track === "A" ? row.isDuplicateA : row.isDuplicateB;
   const catId = track === "A" ? row.catIdA : row.catIdB;
+  const isGuaranteedOtherTrack =
+    row.isGuaranteedRow && row.track != null && row.track !== track;
+
+  if (isGuaranteedOtherTrack) {
+    return (
+      <div
+        className={cn(
+          "flex h-full items-start px-4 py-3 text-lg font-semibold text-muted-foreground",
+          compact ? "px-3 py-2.5 text-base" : "",
+        )}
+      >
+        <span>-</span>
+      </div>
+    );
+  }
 
   return (
     <div className={cn(compact ? "space-y-1.5" : "space-y-2", trackFrameClass(row, track, compact))}>
@@ -208,13 +320,10 @@ function ResultTrackCell(props: {
 
       <div className="flex items-start gap-3.5">
         <ResultCatPreview catId={catId} />
-        <div className="min-w-0 space-y-1 pt-0.5">
+        <div className="min-w-0 pt-0.5">
           <div className={cn("font-semibold text-foreground", compact ? "text-[16px] leading-5" : "text-[18px] leading-6")}>
             {value}
           </div>
-          {isDuplicate ? (
-            <div className="text-xs text-muted-foreground">重複命中</div>
-          ) : null}
         </div>
       </div>
     </div>
@@ -223,46 +332,49 @@ function ResultTrackCell(props: {
 
 function ResultActionCell(props: {
   row: DrawRow;
-  tenExpanded?: boolean;
-  onToggleTen?: () => void;
   compact?: boolean;
 }) {
-  const { row, tenExpanded = false, onToggleTen, compact = false } = props;
-
-  if (row.isTen && row.isHeader) {
-    return (
-      <button
-        type="button"
-        onClick={onToggleTen}
-        className="grid w-full grid-cols-[auto_2rem_auto] items-center gap-2.5 text-left"
-      >
-        {row.stepText !== "-" ? (
-          <Badge variant={row.isTarget ? "success" : "muted"}>{row.stepText}</Badge>
-        ) : null}
-        <span className="inline-flex size-6 items-center justify-center rounded-[4px] border border-border/60 bg-background text-muted-foreground">
-          {tenExpanded ? (
-            <ChevronDown className="size-4" />
-          ) : (
-            <ChevronRight className="size-4" />
-          )}
-        </span>
-        <ActionVisual label={row.actionText} compact={compact} />
-      </button>
-    );
-  }
+  const { row, compact = false } = props;
 
   if (row.isTen && !row.isHeader) {
     return <div className="h-5" />;
   }
 
   return (
-    <div className="grid w-full grid-cols-[auto_2rem_auto] items-center gap-2.5">
+    <div className="flex w-full items-center gap-3">
       {row.stepText !== "-" ? (
         <Badge variant={row.isTarget ? "success" : "muted"}>{row.stepText}</Badge>
       ) : null}
-      <span className="size-6" aria-hidden="true" />
       <ActionVisual label={row.actionText} compact={compact} />
     </div>
+  );
+}
+
+function ResultTenRollToggle(props: {
+  expanded: boolean;
+  onToggle: () => void;
+  compact?: boolean;
+}) {
+  const { expanded, onToggle, compact = false } = props;
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={cn(
+        "inline-flex items-center justify-end gap-1.5 rounded-[6px] px-2 py-1 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground",
+        compact ? "text-xs" : "text-sm font-medium",
+      )}
+      aria-expanded={expanded}
+      aria-label={expanded ? "收合 10 連抽明細" : "展開 10 連抽明細"}
+    >
+      <span className="whitespace-nowrap">{expanded ? "收合" : "展開"}</span>
+      {expanded ? (
+        <ChevronDown className="size-4" />
+      ) : (
+        <ChevronRight className="size-4" />
+      )}
+    </button>
   );
 }
 
@@ -282,7 +394,13 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
 
   return (
     <div className="hidden lg:block overflow-x-auto">
-      <table className="w-full border-collapse">
+      <table className="w-full table-fixed border-collapse">
+        <colgroup>
+          <col className="w-[28%]" />
+          <col className="w-[33%]" />
+          <col className="w-[33%]" />
+          <col className="w-[92px]" />
+        </colgroup>
         <thead>
           <tr className="border-b border-border/50 bg-muted/20">
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
@@ -293,6 +411,9 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
             </th>
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
               B
+            </th>
+            <th className="w-[92px] px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              <span className="sr-only">Toggle</span>
             </th>
           </tr>
         </thead>
@@ -310,7 +431,7 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
                   style={{ backgroundColor: accentTint }}
                 >
                   <td
-                    colSpan={3}
+                    colSpan={4}
                     className="px-4 py-2"
                     style={{ boxShadow: `inset 3px 0 0 ${accentColor}` }}
                   >
@@ -343,6 +464,7 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
                         <td className="px-4 py-2">
                           <ResultTrackCell row={row} track="B" />
                         </td>
+                        <td className="px-4 py-2" />
                       </tr>
                     );
                   }
@@ -356,17 +478,27 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
                           className="px-4 py-2"
                           style={{ boxShadow: `inset 2px 0 0 ${accentColor}` }}
                         >
-                          <ResultActionCell
+                          <ResultActionCell row={block.summary} />
+                        </td>
+                        <td className="px-4 py-2">
+                          <TenRollSummaryCell
                             row={block.summary}
-                            tenExpanded={isExpanded}
-                            onToggleTen={() => toggleTenRow(block.summary.key)}
+                            track="A"
+                            drawCount={block.children.length}
                           />
                         </td>
                         <td className="px-4 py-2">
-                          <ResultTrackCell row={block.summary} track="A" />
+                          <TenRollSummaryCell
+                            row={block.summary}
+                            track="B"
+                            drawCount={block.children.length}
+                          />
                         </td>
-                        <td className="px-4 py-2">
-                          <ResultTrackCell row={block.summary} track="B" />
+                        <td className="px-4 py-2 text-right">
+                          <ResultTenRollToggle
+                            expanded={isExpanded}
+                            onToggle={() => toggleTenRow(block.summary.key)}
+                          />
                         </td>
                       </tr>
 
@@ -388,6 +520,7 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
                               <td className="px-4 py-2">
                                 <ResultTrackCell row={row} track="B" />
                               </td>
+                              <td className="px-4 py-2" />
                             </tr>
                           ))
                         : null}
@@ -459,15 +592,27 @@ function ResultsMobileCards({ rows }: { rows: DrawRow[] }) {
 
                 return (
                   <div key={block.key} className="space-y-3 p-3.5">
-                    <ResultActionCell
-                      row={block.summary}
-                      compact
-                      tenExpanded={isExpanded}
-                      onToggleTen={() => toggleTenRow(block.summary.key)}
-                    />
+                    <div className="flex items-center justify-between gap-3">
+                      <ResultActionCell row={block.summary} compact />
+                      <ResultTenRollToggle
+                        expanded={isExpanded}
+                        onToggle={() => toggleTenRow(block.summary.key)}
+                        compact
+                      />
+                    </div>
                     <div className="grid gap-4 pt-1 sm:grid-cols-2">
-                      <ResultTrackCell row={block.summary} track="A" compact />
-                      <ResultTrackCell row={block.summary} track="B" compact />
+                      <TenRollSummaryCell
+                        row={block.summary}
+                        track="A"
+                        drawCount={block.children.length}
+                        compact
+                      />
+                      <TenRollSummaryCell
+                        row={block.summary}
+                        track="B"
+                        drawCount={block.children.length}
+                        compact
+                      />
                     </div>
 
                     {isExpanded ? (

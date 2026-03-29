@@ -116,12 +116,12 @@ function trackFrameClass(row: DrawRow, track: "A" | "B", compact: boolean) {
 
   if (isTarget) {
     return cn(
-      "rounded-[10px] border-2 border-success/70 bg-success/10 shadow-[inset_0_0_0_1px_rgba(34,197,94,0.12)]",
-      compact ? "px-3 py-2.5" : "px-4 py-3",
+      "rounded-[8px] border border-success/30 bg-success/5",
+      compact ? "px-3 py-2" : "px-3.5 py-2.5",
     );
   }
 
-  return compact ? "px-3 py-2.5" : "px-4 py-3";
+  return compact ? "px-3 py-2" : "px-3.5 py-2.5";
 }
 
 function shouldShowTrackDot(row: DrawRow, track: "A" | "B") {
@@ -166,24 +166,30 @@ function ActionVisual({
     <div
       className={cn(
         "flex shrink-0 items-center",
-        compact ? "w-[86px]" : "w-[104px]",
+        compact ? "w-[94px]" : "w-[118px]",
       )}
     >
       <ResourceImg
         label={label}
-        height={compact ? 24 : 30}
+        height={compact ? 28 : 36}
         className={cn(
           "justify-start",
           compact
-            ? "[&_span]:text-[11px] [&_span]:font-bold"
-            : "[&_span]:text-[14px] [&_span]:font-bold",
+            ? "[&_span]:text-[13px] [&_span]:font-bold"
+            : "[&_span]:text-[16px] [&_span]:font-bold",
         )}
       />
     </div>
   );
 }
 
-function ResultCatPreview({ catId }: { catId: number | null }) {
+function ResultCatPreview({
+  catId,
+  compact = false,
+}: {
+  catId: number | null;
+  compact?: boolean;
+}) {
   const [imageFailed, setImageFailed] = useState(false);
 
   if (!catId) return null;
@@ -201,21 +207,34 @@ function ResultCatPreview({ catId }: { catId: number | null }) {
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="inline-flex size-14 shrink-0 items-center justify-center rounded-[6px] border border-border/60 bg-background transition-colors hover:border-primary/50 hover:bg-accent/30"
+      className={cn(
+        "relative inline-flex shrink-0 items-start justify-center overflow-hidden transition-opacity hover:opacity-85",
+        compact ? "size-[60px]" : "size-[72px]",
+      )}
       aria-label={`查看貓咪 #${catId}`}
     >
       {imageUrl && !imageFailed ? (
         <img
           src={imageUrl}
           alt=""
-          width={48}
-          height={48}
+          width={compact ? 66 : 80}
+          height={compact ? 66 : 80}
           loading="lazy"
           onError={() => setImageFailed(true)}
-          className="size-12 object-cover"
+          className={cn(
+            "pointer-events-none select-none object-contain object-top",
+            compact ? "mt-[-2px] size-[66px]" : "mt-[-4px] size-[80px]",
+          )}
         />
       ) : (
-        <span className="text-[11px] font-medium text-muted-foreground">#{catId}</span>
+        <span
+          className={cn(
+            "inline-flex size-full items-center justify-center font-medium text-muted-foreground",
+            compact ? "text-xs" : "text-[13px]",
+          )}
+        >
+          #{catId}
+        </span>
       )}
     </a>
   );
@@ -243,11 +262,18 @@ function TenRollSummaryCell(props: {
     >
       <div
         className={cn(
-          "flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.14em]",
+          "flex items-center gap-2.5 text-[13px] font-semibold uppercase tracking-[0.12em]",
+          compact ? "text-[12px]" : "text-[15px]",
           isHit ? "text-success" : "text-muted-foreground",
         )}
       >
-        <span className={cn("size-2.5 rounded-full", trackDotClass(row, track))} />
+        <span
+          className={cn(
+            compact ? "size-3" : "size-3.5",
+            "rounded-full",
+            trackDotClass(row, track),
+          )}
+        />
         <span>{rangeLabel}</span>
       </div>
       {isHit ? (
@@ -255,7 +281,7 @@ function TenRollSummaryCell(props: {
           <div
             className={cn(
               "font-semibold text-success",
-              compact ? "text-[15px] leading-5" : "text-[17px] leading-6",
+              compact ? "text-[16px] leading-5" : "text-[20px] leading-6",
             )}
           >
             {summary.summaryText}
@@ -264,7 +290,7 @@ function TenRollSummaryCell(props: {
             <div
               className={cn(
                 "font-medium text-foreground",
-                compact ? "text-[14px] leading-5" : "text-[15px] leading-6",
+                compact ? "text-[14px] leading-5" : "text-[17px] leading-6",
               )}
             >
               {summary.namesText}
@@ -275,7 +301,7 @@ function TenRollSummaryCell(props: {
         <div
           className={cn(
             "font-semibold text-muted-foreground",
-            compact ? "text-[15px] leading-5" : "text-[17px] leading-6",
+            compact ? "text-[16px] leading-5" : "text-[20px] leading-6",
           )}
         >
           -
@@ -300,8 +326,8 @@ function ResultTrackCell(props: {
     return (
       <div
         className={cn(
-          "flex h-full items-start px-4 py-3 text-lg font-semibold text-muted-foreground",
-          compact ? "px-3 py-2.5 text-base" : "",
+          "flex h-full items-start px-3.5 py-2.5 text-xl font-semibold text-muted-foreground",
+          compact ? "px-3 py-2 text-lg" : "",
         )}
       >
         <span>-</span>
@@ -311,17 +337,34 @@ function ResultTrackCell(props: {
 
   return (
     <div className={cn(compact ? "space-y-1.5" : "space-y-2", trackFrameClass(row, track, compact))}>
-      <div className={cn("flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.12em]", trackLabelClass(row, track))}>
+      <div
+        className={cn(
+          "flex items-center gap-2.5 font-semibold uppercase tracking-[0.1em]",
+          compact ? "text-[13px]" : "text-[15px]",
+          trackLabelClass(row, track),
+        )}
+      >
         {shouldShowTrackDot(row, track) ? (
-          <span className={cn("size-2.5 rounded-full", trackDotClass(row, track))} />
+          <span
+            className={cn(
+              compact ? "size-3" : "size-3.5",
+              "rounded-full",
+              trackDotClass(row, track),
+            )}
+          />
         ) : null}
         <span>{trackPositionLabel(row, track)}</span>
       </div>
 
-      <div className="flex items-start gap-3.5">
-        <ResultCatPreview catId={catId} />
-        <div className="min-w-0 pt-0.5">
-          <div className={cn("font-semibold text-foreground", compact ? "text-[16px] leading-5" : "text-[18px] leading-6")}>
+      <div className={cn("flex items-start", compact ? "gap-3" : "gap-3.5")}>
+        <ResultCatPreview catId={catId} compact={compact} />
+        <div className="min-w-0">
+          <div
+            className={cn(
+              "font-semibold text-foreground",
+              compact ? "text-[18px] leading-5" : "text-[22px] leading-7",
+            )}
+          >
             {value}
           </div>
         </div>
@@ -341,9 +384,18 @@ function ResultActionCell(props: {
   }
 
   return (
-    <div className="flex w-full items-center gap-3">
+    <div className={cn("flex w-full items-center", compact ? "gap-2.5" : "gap-3")}>
       {row.stepText !== "-" ? (
-        <Badge variant={row.isTarget ? "success" : "muted"}>{row.stepText}</Badge>
+        <Badge
+          variant={row.isTarget ? "success" : "muted"}
+          className={cn(
+            compact
+              ? "px-2.5 py-0.5 text-[13px] font-semibold"
+              : "px-3 py-1 text-[15px] font-semibold",
+          )}
+        >
+          {row.stepText}
+        </Badge>
       ) : null}
       <ActionVisual label={row.actionText} compact={compact} />
     </div>
@@ -363,7 +415,7 @@ function ResultTenRollToggle(props: {
       onClick={onToggle}
       className={cn(
         "inline-flex items-center justify-end gap-1.5 rounded-[6px] px-2 py-1 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground",
-        compact ? "text-xs" : "text-sm font-medium",
+        compact ? "text-[13px]" : "text-[15px] font-medium",
       )}
       aria-expanded={expanded}
       aria-label={expanded ? "收合 10 連抽明細" : "展開 10 連抽明細"}
@@ -403,16 +455,16 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
         </colgroup>
         <thead>
           <tr className="border-b border-border/50 bg-muted/20">
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            <th className="px-3 py-2.5 text-left text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Action
             </th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            <th className="px-3 py-2.5 text-left text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               A
             </th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            <th className="px-3 py-2.5 text-left text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               B
             </th>
-            <th className="w-[92px] px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            <th className="w-[92px] px-3 py-2.5 text-right text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               <span className="sr-only">Toggle</span>
             </th>
           </tr>
@@ -432,7 +484,7 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
                 >
                   <td
                     colSpan={4}
-                    className="px-4 py-2"
+                    className="px-3 py-1.5"
                     style={{ boxShadow: `inset 3px 0 0 ${accentColor}` }}
                   >
                     <div className="flex flex-wrap items-center gap-3">
@@ -453,18 +505,18 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
                         className="border-b border-border/35 align-top last:border-b-0"
                       >
                         <td
-                          className="px-4 py-2"
+                          className="px-3 py-1.5"
                           style={{ boxShadow: `inset 2px 0 0 ${accentColor}` }}
                         >
                           <ResultActionCell row={row} />
                         </td>
-                        <td className="px-4 py-2">
+                        <td className="px-3 py-1.5">
                           <ResultTrackCell row={row} track="A" />
                         </td>
-                        <td className="px-4 py-2">
+                        <td className="px-3 py-1.5">
                           <ResultTrackCell row={row} track="B" />
                         </td>
-                        <td className="px-4 py-2" />
+                        <td className="px-3 py-1.5" />
                       </tr>
                     );
                   }
@@ -475,26 +527,26 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
                     <Fragment key={block.key}>
                       <tr className="border-b border-border/35 align-top">
                         <td
-                          className="px-4 py-2"
+                          className="px-3 py-1.5"
                           style={{ boxShadow: `inset 2px 0 0 ${accentColor}` }}
                         >
                           <ResultActionCell row={block.summary} />
                         </td>
-                        <td className="px-4 py-2">
+                        <td className="px-3 py-1.5">
                           <TenRollSummaryCell
                             row={block.summary}
                             track="A"
                             drawCount={block.children.length}
                           />
                         </td>
-                        <td className="px-4 py-2">
+                        <td className="px-3 py-1.5">
                           <TenRollSummaryCell
                             row={block.summary}
                             track="B"
                             drawCount={block.children.length}
                           />
                         </td>
-                        <td className="px-4 py-2 text-right">
+                        <td className="px-3 py-1.5 text-right">
                           <ResultTenRollToggle
                             expanded={isExpanded}
                             onToggle={() => toggleTenRow(block.summary.key)}
@@ -509,18 +561,18 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
                               className="border-b border-border/35 align-top last:border-b-0"
                             >
                               <td
-                                className="px-4 py-2"
+                                className="px-3 py-1.5"
                                 style={{ boxShadow: `inset 2px 0 0 ${accentColor}` }}
                               >
                                 <ResultActionCell row={row} />
                               </td>
-                              <td className="px-4 py-2">
+                              <td className="px-3 py-1.5">
                                 <ResultTrackCell row={row} track="A" />
                               </td>
-                              <td className="px-4 py-2">
+                              <td className="px-3 py-1.5">
                                 <ResultTrackCell row={row} track="B" />
                               </td>
-                              <td className="px-4 py-2" />
+                              <td className="px-3 py-1.5" />
                             </tr>
                           ))
                         : null}

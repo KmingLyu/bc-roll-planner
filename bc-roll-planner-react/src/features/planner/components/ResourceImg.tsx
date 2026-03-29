@@ -38,7 +38,7 @@ export function ResourceImg({
       />
       {count != null && (
         <span className="text-[0.65rem] font-black leading-none text-muted-foreground">
-          × {count}
+          x{count}
         </span>
       )}
     </span>

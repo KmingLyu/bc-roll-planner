@@ -329,8 +329,8 @@ export function buildDrawRows(params: {
         catIdA: hitMapA.size === 1 ? [...hitMapA.keys()][0] : null,
         catIdB: hitMapB.size === 1 ? [...hitMapB.keys()][0] : null,
 
-        statusA: "hit",
-        statusB: "hit",
+        statusA: hitA > 0 ? "hit" : "normal",
+        statusB: hitB > 0 ? "hit" : "normal",
         isTargetA: hitA > 0,
         isTargetB: hitB > 0,
 
@@ -405,6 +405,16 @@ export function buildDrawRows(params: {
         // 解析不到 track 的保守處理：維持你原本習慣（當作 B）
         baseB = (d.cat_name || "").trim() ? d.cat_name : baseB;
         catIdB = d.cat_id ?? catIdB;
+      }
+
+      if (isGuaranteed) {
+        if (track === "A") {
+          baseB = UI_TEXT.dash;
+          catIdB = null;
+        } else if (track === "B") {
+          baseA = UI_TEXT.dash;
+          catIdA = null;
+        }
       }
 
       const isTarget = d.cat_id != null && targetIdSet.has(d.cat_id);

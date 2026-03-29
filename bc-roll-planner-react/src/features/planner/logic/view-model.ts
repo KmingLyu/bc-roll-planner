@@ -252,6 +252,8 @@ export type DrawRow = {
 
   pos: number | null;
   track: "A" | "B" | null;
+  endPos: number | null;
+  endTrack: "A" | "B" | null;
   used: DrawHit["used"];
   catId: number | null;
 
@@ -313,6 +315,8 @@ export function buildDrawRows(params: {
       const totalHit = hitA + hitB;
       const sp = posTrackFromPosId(st.start_cursor_id);
 
+      const ep = posTrackFromPosId(st.end_cursor_id);
+
       out.push({
         key: `s${si}-ten-summary`,
         countText: sp.ok ? String(sp.pos) : UI_TEXT.dash,
@@ -337,6 +341,8 @@ export function buildDrawRows(params: {
         note: `${st.start_cursor_id} → ${st.end_cursor_id}`,
         pos: sp.ok ? sp.pos : null,
         track: sp.ok ? sp.track : null,
+        endPos: ep.ok ? ep.pos : null,
+        endTrack: ep.ok ? ep.track : null,
         used: "normal",
         catId: null,
 
@@ -363,6 +369,7 @@ export function buildDrawRows(params: {
 
       const pos = from.ok ? from.pos : null;
       const track = from.ok ? from.track : null;
+      const to = posTrackFromPosId(d.to_pos_id);
 
       // const baseA = isGuaranteed
       //   ? track === "A"
@@ -514,6 +521,8 @@ export function buildDrawRows(params: {
         })(),
         pos,
         track,
+        endPos: to.ok ? to.pos : null,
+        endTrack: to.ok ? to.track : null,
         used: d.used,
         catId: d.cat_id ?? null,
         stepIndex: si,

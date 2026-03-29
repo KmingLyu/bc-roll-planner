@@ -145,14 +145,71 @@ function buildTenRollSummary(value: string) {
   };
 }
 
+function getTenRollEndSnapshot(row: DrawRow, children: DrawRow[]) {
+  if (row.pos == null) {
+    return {
+      endPos: null,
+      endTrack: row.track === "A" || row.track === "B" ? row.track : "A",
+    };
+  }
+
+  const lastChildWithIndex = [...children]
+    .reverse()
+    .find(
+      (child) =>
+        !child.isGuaranteedRow &&
+        child.pos != null &&
+        (child.track === "A" || child.track === "B"),
+    );
+
+  if (!lastChildWithIndex) {
+    if (row.endPos != null && (row.endTrack === "A" || row.endTrack === "B")) {
+      return {
+        endPos: row.endPos,
+        endTrack: row.endTrack,
+      };
+    }
+
+    return {
+      endPos: null,
+      endTrack: row.track === "A" || row.track === "B" ? row.track : "A",
+    };
+  }
+
+  return {
+    endPos: lastChildWithIndex.pos,
+    endTrack: lastChildWithIndex.track,
+  };
+}
+
 function buildTenRollRangeLabel(
   row: DrawRow,
   track: "A" | "B",
-  drawCount: number,
+  children: DrawRow[],
 ) {
-  if (row.pos == null || drawCount <= 0) return track;
-  const endPos = row.pos + drawCount - 1;
+  if (row.pos == null) return track;
+  const { endPos } = getTenRollEndSnapshot(row, children);
+  if (endPos == null) return track;
   return `${row.pos}${track}~${endPos}${track}`;
+}
+
+function resolveActiveTrack(row: DrawRow): "A" | "B" {
+  if (row.track === "A" || row.track === "B") return row.track;
+  return row.statusA !== "normal" ? "A" : "B";
+}
+
+function buildMobileTenRollCombinedRangeLabel(
+  row: DrawRow,
+  children: DrawRow[],
+) {
+  const startTrack = row.track === "A" || row.track === "B" ? row.track : "A";
+  const startPos = row.pos;
+  const startLabel = startPos != null ? `${startPos}${startTrack}` : startTrack;
+
+  if (startPos == null) return startLabel;
+  const { endPos, endTrack } = getTenRollEndSnapshot(row, children);
+  if (endPos == null) return startLabel;
+  return `${startLabel}~${endPos}${endTrack}`;
 }
 
 function ActionVisual({
@@ -243,14 +300,14 @@ function ResultCatPreview({
 function TenRollSummaryCell(props: {
   row: DrawRow;
   track: "A" | "B";
-  drawCount: number;
+  children: DrawRow[];
   compact?: boolean;
 }) {
-  const { row, track, drawCount, compact = false } = props;
+  const { row, track, children, compact = false } = props;
   const value = track === "A" ? row.A : row.B;
   const isHit = track === "A" ? row.isTargetA : row.isTargetB;
   const summary = buildTenRollSummary(value);
-  const rangeLabel = buildTenRollRangeLabel(row, track, drawCount);
+  const rangeLabel = buildTenRollRangeLabel(row, track, children);
 
   return (
     <div
@@ -307,6 +364,53 @@ function TenRollSummaryCell(props: {
           -
         </div>
       )}
+    </div>
+  );
+}
+
+function MobileTenRollCombinedSummary(props: {
+  row: DrawRow;
+  children: DrawRow[];
+}) {
+  const { row, children } = props;
+  const summaryA = buildTenRollSummary(row.A);
+  const summaryB = buildTenRollSummary(row.B);
+  const isHit = row.isTargetA || row.isTargetB;
+  const namesText = [summaryA.namesText, summaryB.namesText]
+    .filter(Boolean)
+    .join("、");
+  const hitCount = summaryA.hitCount + summaryB.hitCount;
+  const rangeLabel = buildMobileTenRollCombinedRangeLabel(row, children);
+
+  return (
+    <div
+      className={cn(
+        "space-y-1.5 rounded-[8px] border px-3 py-2.5",
+        isHit ? "border-success/30 bg-success/5" : "border-border/35 bg-muted/10",
+      )}
+    >
+      <div
+        className={cn(
+          "flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.1em]",
+          isHit ? "text-success" : "text-muted-foreground",
+        )}
+      >
+        <span
+          className={cn(
+            "size-3 rounded-full",
+            isHit ? "bg-success" : "bg-border",
+          )}
+        />
+        <span>{rangeLabel}</span>
+      </div>
+      <div
+        className={cn(
+          "pl-5 text-[15px] leading-5",
+          isHit ? "font-medium text-foreground" : "font-semibold text-muted-foreground",
+        )}
+      >
+        {isHit ? `命中 ${hitCount} 隻｜${namesText}` : "-"}
+      </div>
     </div>
   );
 }
@@ -506,7 +610,7 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
                       >
                         <td
                           className="px-3 py-1.5"
-                          style={{ boxShadow: `inset 2px 0 0 ${accentColor}` }}
+                          style={{ boxShadow: `inset 3px 0 0 ${accentColor}` }}
                         >
                           <ResultActionCell row={row} />
                         </td>
@@ -528,7 +632,7 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
                       <tr className="border-b border-border/35 align-top">
                         <td
                           className="px-3 py-1.5"
-                          style={{ boxShadow: `inset 2px 0 0 ${accentColor}` }}
+                          style={{ boxShadow: `inset 3px 0 0 ${accentColor}` }}
                         >
                           <ResultActionCell row={block.summary} />
                         </td>
@@ -536,14 +640,14 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
                           <TenRollSummaryCell
                             row={block.summary}
                             track="A"
-                            drawCount={block.children.length}
+                            children={block.children}
                           />
                         </td>
                         <td className="px-3 py-1.5">
                           <TenRollSummaryCell
                             row={block.summary}
                             track="B"
-                            drawCount={block.children.length}
+                            children={block.children}
                           />
                         </td>
                         <td className="px-3 py-1.5 text-right">
@@ -562,7 +666,7 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
                             >
                               <td
                                 className="px-3 py-1.5"
-                                style={{ boxShadow: `inset 2px 0 0 ${accentColor}` }}
+                                style={{ boxShadow: `inset 3px 0 0 ${accentColor}` }}
                               >
                                 <ResultActionCell row={row} />
                               </td>
@@ -611,12 +715,15 @@ function ResultsMobileCards({ rows }: { rows: DrawRow[] }) {
         const blocks = groupRowsByStep(group.rows);
 
         return (
-          <div key={group.eventValue} className="workspace-pane overflow-hidden">
+          <div
+            key={group.eventValue}
+            className="workspace-pane overflow-hidden"
+            style={{ boxShadow: `inset 3px 0 0 ${accentColor}` }}
+          >
             <div
               className="border-b border-border/35 px-3.5 py-3"
               style={{
                 backgroundColor: accentTint,
-                boxShadow: `inset 3px 0 0 ${accentColor}`,
               }}
             >
               <div className="flex flex-wrap items-center gap-2">
@@ -629,10 +736,14 @@ function ResultsMobileCards({ rows }: { rows: DrawRow[] }) {
               {blocks.map((block) => {
                 if (block.kind === "single") {
                   const row = block.row;
+                  const activeTrack = resolveActiveTrack(row);
                   return (
                     <div key={row.key} className="space-y-3 p-3.5">
                       <ResultActionCell row={row} compact />
-                      <div className="grid gap-4 pt-1 sm:grid-cols-2">
+                      <div className="pt-1 sm:hidden">
+                        <ResultTrackCell row={row} track={activeTrack} compact />
+                      </div>
+                      <div className="hidden gap-4 pt-1 sm:grid sm:grid-cols-2">
                         <ResultTrackCell row={row} track="A" compact />
                         <ResultTrackCell row={row} track="B" compact />
                       </div>
@@ -652,32 +763,43 @@ function ResultsMobileCards({ rows }: { rows: DrawRow[] }) {
                         compact
                       />
                     </div>
-                    <div className="grid gap-4 pt-1 sm:grid-cols-2">
+                    <div className="pt-1 sm:hidden">
+                      <MobileTenRollCombinedSummary
+                        row={block.summary}
+                        children={block.children}
+                      />
+                    </div>
+                    <div className="hidden gap-4 pt-1 sm:grid sm:grid-cols-2">
                       <TenRollSummaryCell
                         row={block.summary}
                         track="A"
-                        drawCount={block.children.length}
+                        children={block.children}
                         compact
                       />
                       <TenRollSummaryCell
                         row={block.summary}
                         track="B"
-                        drawCount={block.children.length}
+                        children={block.children}
                         compact
                       />
                     </div>
 
                     {isExpanded ? (
                       <div className="space-y-3 border-t border-border/35 pt-3">
-                        {block.children.map((row) => (
+                        {block.children.map((row) => {
+                          const activeTrack = resolveActiveTrack(row);
+                          return (
                           <div key={row.key} className="space-y-3">
                             <ResultActionCell row={row} compact />
-                            <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="sm:hidden">
+                              <ResultTrackCell row={row} track={activeTrack} compact />
+                            </div>
+                            <div className="hidden gap-4 sm:grid sm:grid-cols-2">
                               <ResultTrackCell row={row} track="A" compact />
                               <ResultTrackCell row={row} track="B" compact />
                             </div>
                           </div>
-                        ))}
+                        )})}
                       </div>
                     ) : null}
                   </div>

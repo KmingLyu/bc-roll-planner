@@ -309,12 +309,15 @@ function TenRollSummaryCell(props: {
   const summary = buildTenRollSummary(value);
   const rangeLabel = buildTenRollRangeLabel(row, track, children);
 
+  const otherIsHit = track === "A" ? row.isTargetB : row.isTargetA;
+
   return (
     <div
       className={cn(
         "px-4 py-3",
         compact ? "space-y-1.5 px-3 py-2.5" : "space-y-2",
         isHit ? "rounded-[8px] border border-success/30 bg-success/5" : "",
+        !isHit && otherIsHit ? "opacity-40" : "",
       )}
     >
       <div
@@ -423,6 +426,9 @@ function ResultTrackCell(props: {
   const { row, track, compact = false } = props;
   const value = track === "A" ? row.A : row.B;
   const catId = track === "A" ? row.catIdA : row.catIdB;
+  const thisStatus = track === "A" ? row.statusA : row.statusB;
+  const otherStatus = track === "A" ? row.statusB : row.statusA;
+  const shouldDim = thisStatus === "normal" && otherStatus !== "normal";
   const isGuaranteedOtherTrack =
     row.isGuaranteedRow && row.track != null && row.track !== track;
 
@@ -440,7 +446,7 @@ function ResultTrackCell(props: {
   }
 
   return (
-    <div className={cn(compact ? "space-y-1.5" : "space-y-2", trackFrameClass(row, track, compact))}>
+    <div className={cn(compact ? "space-y-1.5" : "space-y-2", trackFrameClass(row, track, compact), shouldDim ? "opacity-40" : "")}>
       <div
         className={cn(
           "flex items-center gap-2.5 font-semibold uppercase tracking-[0.1em]",

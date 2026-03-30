@@ -36,8 +36,8 @@ export function CatSelectableItem(props: {
         type="button"
         onClick={() => onToggle(!checked)}
         className={cn(
-          "flex min-w-0 flex-1 items-start gap-2.5 px-1.5 py-1.5 text-left transition-colors",
-          dense ? "min-h-[56px]" : "min-h-[72px]",
+          "flex min-w-0 flex-1 items-start gap-2.5 px-1.5 py-1 text-left transition-colors",
+          dense ? "min-h-[48px]" : "min-h-[72px]",
         )}
       >
         <div
@@ -50,34 +50,26 @@ export function CatSelectableItem(props: {
         >
           ✓
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 space-y-1">
-              <div className="line-clamp-2 text-sm font-semibold leading-5 text-foreground">
-                {name}
-              </div>
-              {secondary ? (
-                <div className="text-xs text-muted-foreground">{secondary}</div>
-              ) : (
-                <div className="text-xs text-muted-foreground">#{catId}</div>
-              )}
-            </div>
-            {showImage ? (
-              <img
-                src={imageUrl}
-                alt=""
-                width={32}
-                height={32}
-                loading="lazy"
-                onError={() => setImageFailed(true)}
-                className="size-8 rounded-md object-cover ring-1 ring-border/20"
-              />
-            ) : (
-              <div className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                #{catId}
-              </div>
-            )}
+        {showImage ? (
+          <img
+            src={imageUrl}
+            alt=""
+            width={32}
+            height={32}
+            loading="lazy"
+            onError={() => setImageFailed(true)}
+            className="size-8 shrink-0 rounded-md object-cover ring-1 ring-border/20"
+          />
+        ) : null}
+        <div className="min-w-0 space-y-1">
+          <div className="line-clamp-2 text-sm font-semibold leading-5 text-foreground">
+            {name}
           </div>
+          {secondary ? (
+            <div className="text-xs text-muted-foreground">{secondary}</div>
+          ) : (
+            <div className="text-xs text-muted-foreground">#{catId}</div>
+          )}
         </div>
       </button>
       {href ? (

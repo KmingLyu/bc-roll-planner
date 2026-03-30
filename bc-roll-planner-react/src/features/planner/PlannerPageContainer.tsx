@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { PencilLine } from "lucide-react";
+import { ChevronDown, PencilLine } from "lucide-react";
 import type { Event, TrackGraph } from "@/types/models";
 import { ApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
@@ -293,13 +293,13 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
     resolvedCount <= 0;
 
   const runHint = !viewDraft.selectedEventValues.length
-    ? "請先選擇至少一個 event。"
+    ? "請先選擇至少一個卡池。"
     : !hasSeed
-      ? "請先輸入 seed。"
+      ? "請先輸入種子碼。"
       : countError
         ? "請修正 count。"
         : !viewDraft.targetCatIds.length
-          ? "請先選擇至少一隻目標貓。"
+          ? "請先選擇至少一隻目標貓咪。"
           : resolvedCount <= 0
             ? "目前沒有可用資源可規劃。"
             : "";
@@ -358,11 +358,11 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
 
   async function runPlannerFlow() {
     if (!viewDraft.selectedEventValues.length) {
-      runPlanner({ kind: "errorOnly", error: "請先選擇至少一個 event。" });
+      runPlanner({ kind: "errorOnly", error: "請先選擇至少一個卡池。" });
       return;
     }
     if (!hasSeed) {
-      runPlanner({ kind: "errorOnly", error: "請先輸入 seed。" });
+      runPlanner({ kind: "errorOnly", error: "請先輸入種子碼。" });
       return;
     }
     if (countError) {
@@ -370,7 +370,7 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     if (!viewDraft.targetCatIds.length) {
-      runPlanner({ kind: "errorOnly", error: "請先選擇至少一隻目標貓。" });
+      runPlanner({ kind: "errorOnly", error: "請先選擇至少一隻目標貓咪。" });
       return;
     }
     if (!Number.isFinite(resolvedCount) || resolvedCount <= 0) {
@@ -399,7 +399,7 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
     if (!primaryGraph || !Object.keys(primaryGraph.nodes || {}).length) {
       runPlanner({
         kind: "errorOnly",
-        error: "主要 event 的 TrackGraph 不存在或內容為空。",
+        error: "主要卡池的 TrackGraph 不存在或內容為空。",
       });
       return;
     }
@@ -540,11 +540,11 @@ function PlannerInputSummary({ compact = false }: { compact?: boolean }) {
   return (
     <div className={compact ? "space-y-3" : "space-y-3"}>
       <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="outline">Seed {draft.seed.trim() || "-"}</Badge>
+        <Badge variant="outline">種子碼 {draft.seed.trim() || "-"}</Badge>
         <Badge variant={manualCount != null ? "default" : "muted"}>
           {manualCount != null ? "手動 count" : "自動 count"} {resolvedCount}
         </Badge>
-        <Badge variant="muted">events {draft.selectedEventValues.length}</Badge>
+        <Badge variant="muted">卡池 {draft.selectedEventValues.length}</Badge>
         <Badge variant="muted">目標 {draft.targetCatIds.length}</Badge>
       </div>
 
@@ -569,28 +569,80 @@ function PlannerTargetPanel({ compact = false }: { compact?: boolean }) {
     clearTargetCatIds,
   } = usePlannerScreen();
 
+  const [panelOpen, setPanelOpen] = useState(false);
+
+  const selectedCatNames = useMemo(() => {
+    const idSet = new Set(draft.targetCatIds);
+    const names: string[] = [];
+    for (const group of tierGroups) {
+      for (const cat of group.cats) {
+        if (idSet.has(cat.id)) names.push(cat.name);
+      }
+    }
+    return names;
+  }, [draft.targetCatIds, tierGroups]);
+
   return (
-    <section className="space-y-4">
-      <h3 className="text-base font-semibold text-foreground">目標貓</h3>
-      <TargetCatsSelectionContent
-        loadState={catsState}
-        error={catsErr}
-        groups={tierGroups}
-        selectedIds={draft.targetCatIds}
-        onChange={setTargetCatIds}
-        onClear={clearTargetCatIds}
-        getCatHref={(catId) =>
-          buildGodfatCatHref(catId, {
-            lang: BC_ENV.lang,
-            ui: BC_ENV.ui,
-          })
-        }
-        getCatImageUrl={(catId) =>
-          buildGodfatCatImageUrl(catId, { lang: BC_ENV.lang })
-        }
-        minColWidth={compact ? 150 : 170}
-        dense
-      />
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className="text-sm font-semibold text-foreground">目標貓咪</div>
+          {draft.targetCatIds.length > 0 && (
+            <Badge variant="muted">{draft.targetCatIds.length}</Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5">
+          {draft.targetCatIds.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={clearTargetCatIds}>
+              清空
+            </Button>
+          )}
+          <Button
+            variant={panelOpen ? "outline" : "ghost"}
+            size="sm"
+            onClick={() =>
+              startTransition(() => setPanelOpen((current) => !current))
+            }
+          >
+            {panelOpen ? "收合" : "展開"}
+            <ChevronDown
+              className={cn("size-4 transition-transform", panelOpen && "rotate-180")}
+            />
+          </Button>
+        </div>
+      </div>
+
+      {selectedCatNames.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selectedCatNames.map((name) => (
+            <Badge key={name} variant="outline">
+              {name}
+            </Badge>
+          ))}
+        </div>
+      )}
+
+      {panelOpen && (
+        <TargetCatsSelectionContent
+          loadState={catsState}
+          error={catsErr}
+          groups={tierGroups}
+          selectedIds={draft.targetCatIds}
+          onChange={setTargetCatIds}
+          onClear={clearTargetCatIds}
+          getCatHref={(catId) =>
+            buildGodfatCatHref(catId, {
+              lang: BC_ENV.lang,
+              ui: BC_ENV.ui,
+            })
+          }
+          getCatImageUrl={(catId) =>
+            buildGodfatCatImageUrl(catId, { lang: BC_ENV.lang })
+          }
+          minColWidth={compact ? 160 : 200}
+          dense
+        />
+      )}
     </section>
   );
 }
@@ -606,7 +658,6 @@ function PlannerInputEditor({ layout }: { layout: "immersive" | "compact" }) {
     setCountInput,
     setResources,
     setSelectedEventValues,
-    setPrimaryEventValue,
     toggleManualCount,
     eventsState,
     eventsErr,
@@ -643,7 +694,7 @@ function PlannerInputEditor({ layout }: { layout: "immersive" | "compact" }) {
           />
         </div>
 
-        <div className="workspace-divider pt-3.5">
+        <div className="border-t border-border pt-5">
           <EventsPicker
             loadState={eventsState}
             error={eventsErr}
@@ -651,16 +702,14 @@ function PlannerInputEditor({ layout }: { layout: "immersive" | "compact" }) {
             pastEvents={pastEvents}
             value={draft.selectedEventValues}
             onChange={setSelectedEventValues}
-            primaryValue={draft.primaryEventValue}
-            onPrimaryChange={setPrimaryEventValue}
           />
         </div>
 
-        <div className="workspace-divider pt-3.5">
+        <div className="border-t border-border pt-5">
           <PlannerTargetPanel compact={layout === "compact"} />
         </div>
 
-        <div className="workspace-divider pt-3.5">
+        <div className="border-t border-border pt-5">
           <div className="space-y-3">
             {appliedSession && resultsStale ? (
               <Alert variant="warning">條件已變更</Alert>

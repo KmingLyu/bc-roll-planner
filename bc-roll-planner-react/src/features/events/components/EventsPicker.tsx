@@ -18,15 +18,11 @@ type LoadState = "idle" | "loading" | "ok" | "error";
 function EventOption({
   event,
   checked,
-  isPrimary,
   onToggle,
-  onPrimary,
 }: {
   event: Event;
   checked: boolean;
-  isPrimary: boolean;
   onToggle: () => void;
-  onPrimary: () => void;
 }) {
   const { dateText, nameText, titleText } = getEventDisplayLines(event);
 
@@ -35,84 +31,26 @@ function EventOption({
       type="button"
       onClick={onToggle}
       className={cn(
-        "flex w-full items-start justify-between gap-3 px-2.5 py-2 text-left transition-colors",
+        "flex w-full items-start gap-2.5 px-2.5 py-2 text-left transition-colors",
         checked ? "bg-primary/5" : "hover:bg-muted/35",
       )}
       title={titleText}
     >
-      <div className="min-w-0 space-y-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="text-sm font-medium text-foreground">{nameText}</div>
-          {isPrimary ? <Badge variant="default">主要</Badge> : null}
-        </div>
+      <div
+        className={cn(
+          "mt-0.5 inline-flex size-[18px] shrink-0 items-center justify-center rounded-md border text-[10px] font-bold",
+          checked
+            ? "border-primary bg-primary text-primary-foreground"
+            : "border-border text-transparent",
+        )}
+      >
+        ✓
+      </div>
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="text-sm font-medium text-foreground">{nameText}</div>
         <div className="text-xs text-muted-foreground">{dateText}</div>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
-        {checked && !isPrimary ? (
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={(eventObject) => {
-              eventObject.stopPropagation();
-              onPrimary();
-            }}
-            onKeyDown={(eventObject) => {
-              if (eventObject.key === "Enter" || eventObject.key === " ") {
-                eventObject.preventDefault();
-                eventObject.stopPropagation();
-                onPrimary();
-              }
-            }}
-            className="text-xs font-medium text-muted-foreground hover:text-foreground"
-          >
-            設為主要
-          </span>
-        ) : null}
-        <div
-          className={cn(
-            "inline-flex size-[18px] items-center justify-center rounded-md border text-[10px] font-bold",
-            checked
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-border text-transparent",
-          )}
-        >
-          ✓
-        </div>
-      </div>
     </button>
-  );
-}
-
-function EventGroupSection({
-  label,
-  count,
-  open,
-  onToggle,
-  children,
-}: {
-  label: string;
-  count: number;
-  open: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="border-t border-border/45 pt-3 first:border-t-0 first:pt-0">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center justify-between gap-3 py-1 text-left"
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-foreground">{label}</span>
-          <Badge variant="muted">{count}</Badge>
-        </div>
-        <ChevronDown
-          className={cn("size-4 text-muted-foreground transition-transform", open && "rotate-180")}
-        />
-      </button>
-      {open ? <div className="subtle-scrollbar mt-2 max-h-[22rem] space-y-1 overflow-y-auto pr-1">{children}</div> : null}
-    </section>
   );
 }
 
@@ -123,8 +61,6 @@ export function EventsPicker(props: {
   pastEvents: Event[];
   value: string[];
   onChange: (next: string[]) => void;
-  primaryValue: string;
-  onPrimaryChange: (v: string) => void;
 }) {
   const {
     loadState,
@@ -133,14 +69,10 @@ export function EventsPicker(props: {
     pastEvents,
     value,
     onChange,
-    primaryValue,
-    onPrimaryChange,
   } = props;
 
   const [query, setQuery] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
-  const [upcomingOpen, setUpcomingOpen] = useState<boolean | undefined>(undefined);
-  const [pastOpen, setPastOpen] = useState<boolean | undefined>(undefined);
   const deferredQuery = useDeferredValue(query);
   const normalizedQuery = deferredQuery.trim().toLowerCase();
   const selectedSet = useMemo(() => new Set(value), [value]);
@@ -149,75 +81,53 @@ export function EventsPicker(props: {
     upcomingEvents.find((event) => event.value === eventValue) ??
     pastEvents.find((event) => event.value === eventValue);
 
+  const filterEvents = (events: Event[]) =>
+    events.filter((event) => {
+      if (!normalizedQuery) return true;
+      return (
+        event.name.toLowerCase().includes(normalizedQuery) ||
+        event.raw_name.toLowerCase().includes(normalizedQuery) ||
+        String(event.start_date ?? "").toLowerCase().includes(normalizedQuery) ||
+        String(event.end_date ?? "").toLowerCase().includes(normalizedQuery)
+      );
+    });
+
   const filteredUpcoming = useMemo(
-    () =>
-      upcomingEvents.filter((event) => {
-        if (!normalizedQuery) return true;
-        return (
-          event.name.toLowerCase().includes(normalizedQuery) ||
-          event.raw_name.toLowerCase().includes(normalizedQuery) ||
-          String(event.start_date ?? "").toLowerCase().includes(normalizedQuery) ||
-          String(event.end_date ?? "").toLowerCase().includes(normalizedQuery)
-        );
-      }),
+    () => filterEvents(upcomingEvents),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [normalizedQuery, upcomingEvents],
   );
   const filteredPast = useMemo(
-    () =>
-      pastEvents.filter((event) => {
-        if (!normalizedQuery) return true;
-        return (
-          event.name.toLowerCase().includes(normalizedQuery) ||
-          event.raw_name.toLowerCase().includes(normalizedQuery) ||
-          String(event.start_date ?? "").toLowerCase().includes(normalizedQuery) ||
-          String(event.end_date ?? "").toLowerCase().includes(normalizedQuery)
-        );
-      }),
+    () => filterEvents(pastEvents),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [normalizedQuery, pastEvents],
   );
 
   const selectedEvents = value
     .map((eventValue) => findEvent(eventValue))
     .filter(Boolean) as Event[];
-  const autoUpcomingOpen =
-    (!!normalizedQuery && filteredUpcoming.length > 0) ||
-    filteredUpcoming.some((event) => selectedSet.has(event.value));
-  const autoPastOpen =
-    (!!normalizedQuery && filteredPast.length > 0) ||
-    filteredPast.some((event) => selectedSet.has(event.value));
-  const effectiveUpcomingOpen = upcomingOpen ?? autoUpcomingOpen;
-  const effectivePastOpen = pastOpen ?? autoPastOpen;
 
   const toggleEvent = (eventValue: string) => {
     if (selectedSet.has(eventValue)) {
-      const next = value.filter((entry) => entry !== eventValue);
-      onChange(next);
-      if (primaryValue === eventValue) {
-        onPrimaryChange(next[0] ?? "");
-      }
+      onChange(value.filter((entry) => entry !== eventValue));
       return;
     }
-
-    const next = [...value, eventValue];
-    onChange(next);
-    if (!primaryValue) {
-      onPrimaryChange(eventValue);
-    }
+    onChange([...value, eventValue]);
   };
 
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-sm font-semibold text-foreground">Event</div>
+        <div className="flex items-center gap-2">
+          <div className="text-sm font-semibold text-foreground">卡池</div>
+          {value.length > 0 && <Badge variant="muted">{value.length}</Badge>}
+        </div>
         <div className="flex items-center gap-1.5">
           {value.length ? (
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                onChange([]);
-                onPrimaryChange("");
-              }}
+              onClick={() => onChange([])}
             >
               清空
             </Button>
@@ -237,97 +147,80 @@ export function EventsPicker(props: {
         </div>
       </div>
 
-      <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_320px] sm:items-start">
-        <div className="min-w-0">
-          {selectedEvents.length ? (
-            <div className="flex flex-wrap gap-1.5">
-              {selectedEvents.map((event) => (
-                <Badge
-                  key={event.value}
-                  variant={primaryValue === event.value ? "default" : "outline"}
-                >
-                  {event.name}
-                </Badge>
-              ))}
-            </div>
-          ) : (
-            <div className="text-sm text-muted-foreground">尚未選擇 event</div>
-          )}
+      {selectedEvents.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selectedEvents.map((event) => (
+            <Badge
+              key={event.value}
+              variant="outline"
+            >
+              {event.name}
+            </Badge>
+          ))}
         </div>
-
-        <div className="relative w-full sm:w-[320px] sm:justify-self-end">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            name="event-search"
-            autoComplete="off"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="搜尋卡池名稱或日期"
-            className="workspace-search pl-11"
-          />
-        </div>
-      </div>
+      )}
 
       {panelOpen ? (
         <div className="space-y-3 border-t border-border/45 pt-3">
-          {loadState === "loading" ? <Alert variant="info">正在載入 events…</Alert> : null}
+          <div className="relative w-full sm:w-[320px] sm:ml-auto">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              name="event-search"
+              autoComplete="off"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="搜尋卡池名稱或日期"
+              className="workspace-search pl-11"
+            />
+          </div>
+          {loadState === "loading" ? <Alert variant="info">正在載入卡池…</Alert> : null}
           {loadState === "error" ? <Alert variant="error">{error}</Alert> : null}
 
-          <EventGroupSection
-            label="Upcoming"
-            count={filteredUpcoming.length}
-            open={effectiveUpcomingOpen}
-            onToggle={() =>
-              startTransition(() =>
-                setUpcomingOpen((current) => !(current ?? autoUpcomingOpen)),
-              )
-            }
-          >
-            {filteredUpcoming.length ? (
-              filteredUpcoming.map((event) => (
-                <EventOption
-                  key={event.value}
-                  event={event}
-                  checked={selectedSet.has(event.value)}
-                  isPrimary={primaryValue === event.value}
-                  onToggle={() => toggleEvent(event.value)}
-                  onPrimary={() => onPrimaryChange(event.value)}
-                />
-              ))
-            ) : (
-              <div className="bg-muted/30 px-3 py-4 text-sm text-muted-foreground">
-                沒有符合搜尋條件的 upcoming events
-              </div>
+          <div className="subtle-scrollbar max-h-[28rem] space-y-3 overflow-y-auto pr-1">
+            {filteredUpcoming.length > 0 && (
+              <section>
+                <div className="flex items-center gap-2 py-1">
+                  <span className="text-sm font-semibold text-foreground">Upcoming</span>
+                  <Badge variant="muted">{filteredUpcoming.length}</Badge>
+                </div>
+                <div className="mt-1 grid grid-cols-1 gap-1 sm:grid-cols-2">
+                  {filteredUpcoming.map((event) => (
+                    <EventOption
+                      key={event.value}
+                      event={event}
+                      checked={selectedSet.has(event.value)}
+                      onToggle={() => toggleEvent(event.value)}
+                    />
+                  ))}
+                </div>
+              </section>
             )}
-          </EventGroupSection>
 
-          <EventGroupSection
-            label="Past"
-            count={filteredPast.length}
-            open={effectivePastOpen}
-            onToggle={() =>
-              startTransition(() =>
-                setPastOpen((current) => !(current ?? autoPastOpen)),
-              )
-            }
-          >
-            {filteredPast.length ? (
-              filteredPast.map((event) => (
-                <EventOption
-                  key={event.value}
-                  event={event}
-                  checked={selectedSet.has(event.value)}
-                  isPrimary={primaryValue === event.value}
-                  onToggle={() => toggleEvent(event.value)}
-                  onPrimary={() => onPrimaryChange(event.value)}
-                />
-              ))
-            ) : (
+            {filteredPast.length > 0 && (
+              <section className={filteredUpcoming.length > 0 ? "border-t border-border/45 pt-3" : ""}>
+                <div className="flex items-center gap-2 py-1">
+                  <span className="text-sm font-semibold text-foreground">Past</span>
+                  <Badge variant="muted">{filteredPast.length}</Badge>
+                </div>
+                <div className="mt-1 grid grid-cols-1 gap-1 sm:grid-cols-2">
+                  {filteredPast.map((event) => (
+                    <EventOption
+                      key={event.value}
+                      event={event}
+                      checked={selectedSet.has(event.value)}
+                      onToggle={() => toggleEvent(event.value)}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {!filteredUpcoming.length && !filteredPast.length && (
               <div className="bg-muted/30 px-3 py-4 text-sm text-muted-foreground">
-                沒有符合搜尋條件的 past events
+                沒有符合搜尋條件的卡池
               </div>
             )}
-          </EventGroupSection>
+          </div>
         </div>
       ) : null}
     </section>

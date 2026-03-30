@@ -1,7 +1,6 @@
 import { startTransition, useDeferredValue, useMemo, useState } from "react";
 import { ChevronDown, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { TierGroup } from "@/features/cats/types";
 import { cn } from "@/lib/utils";
@@ -14,12 +13,6 @@ function tierLabel(tier: TierGroup["tier"]) {
   if (tier === "super") return "Super";
   if (tier === "uber") return "Uber";
   return "Legendary";
-}
-
-function countBadgeClass(selectedCount: number) {
-  return selectedCount
-    ? "bg-primary/8 text-primary"
-    : "bg-muted text-muted-foreground";
 }
 
 export function TargetCatsPicker(props: {
@@ -77,35 +70,20 @@ export function TargetCatsPicker(props: {
 
   return (
     <div className="space-y-3">
-      <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_320px] sm:items-center">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <Badge className={countBadgeClass(selectedIds.length)} variant="muted">
-            已選 {selectedIds.length}
-          </Badge>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClear}
-            disabled={!selectedIds.length}
-          >
-            清空
-          </Button>
-        </div>
-        <div className="relative w-full sm:w-[320px] sm:justify-self-end">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            name="target-cat-search"
-            autoComplete="off"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="搜尋目標貓咪"
-            className="workspace-search pl-11"
-          />
-        </div>
+      <div className="relative w-full sm:w-[320px] sm:ml-auto">
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          name="target-cat-search"
+          autoComplete="off"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="搜尋目標貓咪"
+          className="workspace-search pl-11"
+        />
       </div>
 
       {loadState === "loading" ? (
-        <div className="text-sm text-muted-foreground">正在載入 event 貓池…</div>
+        <div className="text-sm text-muted-foreground">正在載入貓池…</div>
       ) : null}
       {loadState === "error" ? (
         <div className="text-sm text-destructive">{error}</div>

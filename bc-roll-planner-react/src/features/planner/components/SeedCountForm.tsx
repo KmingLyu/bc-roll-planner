@@ -31,7 +31,7 @@ export function SeedCountForm(props: {
   return (
     <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
       <div className="space-y-1.5">
-        <Label htmlFor="planner-seed">Seed</Label>
+        <Label htmlFor="planner-seed">種子碼</Label>
         <Input
           id="planner-seed"
           name="seed"

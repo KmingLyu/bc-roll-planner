@@ -531,7 +531,7 @@ function PlannerInputSummary({ compact = false }: { compact?: boolean }) {
   const { draft, resolvedCount, manualCount } = usePlannerScreen();
 
   const resourceSummary = [
-    ["金券", draft.resources.tickets],
+    ["稀有券", draft.resources.tickets],
     ["白金券", draft.resources.platinum_tickets],
     ["傳說券", draft.resources.legend_tickets],
     ["罐頭", draft.resources.food],

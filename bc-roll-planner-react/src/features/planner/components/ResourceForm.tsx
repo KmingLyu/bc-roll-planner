@@ -20,7 +20,7 @@ type ResourceField = {
 };
 
 const RESOURCE_FIELDS: ResourceField[] = [
-  { key: "tickets", label: "金券", src: "/稀有券.png" },
+  { key: "tickets", label: "稀有券", src: "/稀有券.png" },
   { key: "platinum_tickets", label: "白金券", src: "/白金券.png" },
   { key: "legend_tickets", label: "傳說券", src: "/傳說券.png" },
   { key: "food", label: "罐頭", src: "/貓罐頭.png" },

@@ -2,7 +2,7 @@ import type { ActionLabel } from "../logic/view-model";
 import { cn } from "@/lib/utils";
 
 const ACTION_IMAGE: Record<ActionLabel, string> = {
-  金券: "/稀有券.png",
+  稀有券: "/稀有券.png",
   白金券: "/白金券.png",
   傳說券: "/傳說券.png",
   罐頭: "/貓罐頭.png",

@@ -21,7 +21,7 @@ from bc_roll_models import (
 PoolType = Literal["normal", "platinum", "legend"]
 
 ResourceType = Literal[
-    "ticket",  # 金券
+    "ticket",  # 稀有券
     "platinum_ticket",  # 白金券
     "legend_ticket",  # 傳說券
     "food",  # 貓罐頭
@@ -123,7 +123,7 @@ class PlannerConfig:
     legend_pool: PoolType = "legend"
 
     # ✅ 每種池允許哪些抽法（action_key）
-    # - normal: 金券單抽、罐頭單抽、罐頭十連
+    # - normal: 稀有券單抽、罐頭單抽、罐頭十連
     # - platinum: 只能白金券單抽
     # - legend: 只能傳說券單抽
     allowed_actions_by_pool: Dict[PoolType, Tuple[str, ...]] = None
@@ -510,7 +510,7 @@ def plan_min_cost(
             # 更新 mask
             next_mask = apply_hit(s.mask, target_index, hit.cat_id)
 
-            # (A1) 金券單抽
+            # (A1) 稀有券單抽
             if s.tickets_left >= 1 and cfg.is_action_allowed(pool, "ticket_single"):
                 inc = cost_inc_for_action(cfg, "ticket_single")
                 ns = PlannerState(

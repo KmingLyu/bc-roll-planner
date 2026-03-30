@@ -58,7 +58,7 @@ export function formatHitCatNames(
     .join("、");
 }
 
-export const ACTIONS = ["金券", "白金券", "傳說券", "罐頭", "10連抽"] as const;
+export const ACTIONS = ["稀有券", "白金券", "傳說券", "罐頭", "10連抽"] as const;
 export type ActionLabel = (typeof ACTIONS)[number];
 
 export type StatusKey = "normal" | "hit" | "guaranteed";
@@ -168,14 +168,14 @@ export function truncateText(s: string, n: number): string {
 }
 
 export function actionLabelFromStep(step: PlanStep): ActionLabel {
-  if (step.resource === "ticket" && step.method === "single") return "金券";
+  if (step.resource === "ticket" && step.method === "single") return "稀有券";
   if (step.resource === "platinum_ticket" && step.method === "single")
     return "白金券";
   if (step.resource === "legend_ticket" && step.method === "single")
     return "傳說券";
   if (step.resource === "food" && step.method === "single") return "罐頭";
   if (step.resource === "food" && step.method === "ten") return "10連抽";
-  return "金券";
+  return "稀有券";
 }
 
 export function safeGetNormalCatName(

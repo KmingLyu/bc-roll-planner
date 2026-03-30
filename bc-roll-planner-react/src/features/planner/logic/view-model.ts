@@ -262,9 +262,85 @@ export type DrawRow = {
   isHeader: boolean;
   isTen: boolean;
   isGuaranteedRow: boolean;
+  isVirtual: boolean;
 
   isTarget: boolean;
 };
+
+function buildSkippedPositionRows(params: {
+  graph: TrackGraph | undefined;
+  step: PlanStep;
+  action: ActionLabel;
+  eventName: string;
+  eventRawName: string;
+  eventStartDate: string | null;
+  eventEndDate: string | null;
+  stepIndex: number;
+  withinStepIndex: number;
+  fromPos: number | null;
+  toPos: number | null;
+}): DrawRow[] {
+  const {
+    graph,
+    step,
+    action,
+    eventName,
+    eventRawName,
+    eventStartDate,
+    eventEndDate,
+    stepIndex,
+    withinStepIndex,
+    fromPos,
+    toPos,
+  } = params;
+
+  if (fromPos == null || toPos == null || toPos <= fromPos + 1) return [];
+
+  const rows: DrawRow[] = [];
+
+  for (let pos = fromPos + 1; pos < toPos; pos += 1) {
+    const normalA = safeGetNormalCat(graph, `${pos}A`);
+    const normalB = safeGetNormalCat(graph, `${pos}B`);
+
+    rows.push({
+      key: `s${stepIndex}-gap-${withinStepIndex}-${pos}`,
+      countText: String(pos),
+      stepText: UI_TEXT.dash,
+      actionText: action,
+      eventValue: step.event_value,
+      eventName,
+      eventRawName,
+      eventStartDate,
+      eventEndDate,
+      A: normalA?.name || UI_TEXT.dash,
+      B: normalB?.name || UI_TEXT.dash,
+      catIdA: normalA?.id ?? null,
+      catIdB: normalB?.id ?? null,
+      statusA: "normal",
+      statusB: "normal",
+      isTargetA: false,
+      isTargetB: false,
+      isDuplicateA: false,
+      isDuplicateB: false,
+      note: `補位 ${pos}A / ${pos}B`,
+      pos,
+      track: null,
+      endPos: null,
+      endTrack: null,
+      used: "normal",
+      catId: null,
+      stepIndex,
+      withinStepIndex,
+      isHeader: false,
+      isTen: step.method === "ten",
+      isGuaranteedRow: false,
+      isVirtual: true,
+      isTarget: false,
+    });
+  }
+
+  return rows;
+}
 
 export function buildDrawRows(params: {
   result: PlanResult;
@@ -351,6 +427,7 @@ export function buildDrawRows(params: {
         isHeader: true,
         isTen: true,
         isGuaranteedRow: false,
+        isVirtual: false,
 
         isTarget: totalHit > 0,
 
@@ -530,10 +607,27 @@ export function buildDrawRows(params: {
         isHeader: !isTen && di === 0,
         isTen,
         isGuaranteedRow: isGuaranteed,
+        isVirtual: false,
         isTarget,
         isDuplicateA,
         isDuplicateB,
       });
+
+      out.push(
+        ...buildSkippedPositionRows({
+          graph: g,
+          step: st,
+          action,
+          eventName,
+          eventRawName,
+          eventStartDate,
+          eventEndDate,
+          stepIndex: si,
+          withinStepIndex: di + 1,
+          fromPos: pos,
+          toPos: to.ok ? to.pos : null,
+        }),
+      );
     }
   }
 

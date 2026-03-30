@@ -428,7 +428,8 @@ function ResultTrackCell(props: {
   const catId = track === "A" ? row.catIdA : row.catIdB;
   const thisStatus = track === "A" ? row.statusA : row.statusB;
   const otherStatus = track === "A" ? row.statusB : row.statusA;
-  const shouldDim = thisStatus === "normal" && otherStatus !== "normal";
+  const shouldDim =
+    row.isVirtual || (thisStatus === "normal" && otherStatus !== "normal");
   const isGuaranteedOtherTrack =
     row.isGuaranteedRow && row.track != null && row.track !== track;
 
@@ -488,6 +489,10 @@ function ResultActionCell(props: {
   compact?: boolean;
 }) {
   const { row, compact = false } = props;
+
+  if (row.isVirtual) {
+    return <div className={compact ? "h-0" : "h-0"} />;
+  }
 
   if (row.isTen && !row.isHeader) {
     return <div className="h-5" />;
@@ -700,7 +705,11 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
 
 function ResultsMobileCards({ rows }: { rows: DrawRow[] }) {
   const [expandedTenRows, setExpandedTenRows] = useState<Record<string, boolean>>({});
-  const groups = useMemo(() => groupRowsByEvent(rows), [rows]);
+  const mobileRows = useMemo(
+    () => rows.filter((row) => !row.isVirtual),
+    [rows],
+  );
+  const groups = useMemo(() => groupRowsByEvent(mobileRows), [mobileRows]);
   const colorPicker = useMemo(
     () => makeEventColorPicker(groups.map((group) => group.eventValue)),
     [groups],

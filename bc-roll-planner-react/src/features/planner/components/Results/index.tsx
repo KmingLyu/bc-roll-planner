@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ResourceImg } from "@/features/planner/components/ResourceImg";
 import type { PlanResult } from "@/features/planner/logic/core";
@@ -532,9 +532,9 @@ function ResultTenRollToggle(props: {
     >
       <span className="whitespace-nowrap">{expanded ? "收合" : "展開"}</span>
       {expanded ? (
-        <ChevronDown className="size-4" />
+        <ChevronUp className="size-4" />
       ) : (
-        <ChevronRight className="size-4" />
+        <ChevronDown className="size-4" />
       )}
     </button>
   );

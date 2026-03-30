@@ -26,6 +26,12 @@ type ResultStatsModel = {
   }>;
 };
 
+type ResourceUsageItem = {
+  key: ActionLabel;
+  label: ActionLabel;
+  value: number;
+};
+
 function useResultStatsModel(params: {
   result: PlanResult;
   graphsByEvent: Record<string, TrackGraph>;
@@ -109,6 +115,28 @@ export function ResultStatsSidebar(props: {
 }) {
   const { result, graphsByEvent, catNameById, compact = false } = props;
   const stats = useResultStatsModel({ result, graphsByEvent, catNameById });
+  const resourceUsage = useMemo<ResourceUsageItem[]>(() => {
+    const singleFood = stats.byAction.get("罐頭") || 0;
+    const tenFood = stats.byAction.get("10連抽") || 0;
+    const totalFood = singleFood * 150 + tenFood * 1500;
+
+    return ACTIONS.reduce<ResourceUsageItem[]>((items, action) => {
+      if (action === "10連抽") return items;
+
+      if (action === "罐頭") {
+        if (totalFood > 0) {
+          items.push({ key: action, label: action, value: totalFood });
+        }
+        return items;
+      }
+
+      const count = stats.byAction.get(action) || 0;
+      if (count > 0) {
+        items.push({ key: action, label: action, value: count });
+      }
+      return items;
+    }, []);
+  }, [stats.byAction]);
 
   return (
     <div className="space-y-4">
@@ -128,18 +156,16 @@ export function ResultStatsSidebar(props: {
       <section className="space-y-3 border-t border-border/45 pt-3.5">
         <div className="text-sm font-semibold text-foreground">資源消耗</div>
         <div className="flex flex-wrap gap-2">
-          {Array.from(stats.byAction.entries())
-            .filter(([, count]) => count > 0)
-            .map(([action, count]) => (
+          {resourceUsage.map((item) => (
               <div
-                key={action}
+                key={item.key}
                 className="inline-flex items-center gap-2 rounded-md bg-muted/40 px-2.5 py-1.5 text-sm"
               >
-                <ResourceImg label={action} height={18} showCount={false} />
-                <span>× {count}</span>
+                <ResourceImg label={item.label} height={18} showCount={false} />
+                <span>× {item.value}</span>
               </div>
             ))}
-          {Array.from(stats.byAction.values()).every((count) => count === 0) ? (
+          {resourceUsage.length === 0 ? (
             <Badge variant="muted">沒有消耗任何資源</Badge>
           ) : null}
         </div>

@@ -1,4 +1,5 @@
 import { LoaderCircle } from "lucide-react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 
 export function RunBlockingOverlay(props: {
@@ -7,11 +8,11 @@ export function RunBlockingOverlay(props: {
 }) {
   const { open, onCancel } = props;
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/38 px-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/38 px-4 backdrop-blur-[2px]"
       aria-live="polite"
       aria-modal="true"
       role="alertdialog"
@@ -28,6 +29,7 @@ export function RunBlockingOverlay(props: {
           取消
         </Button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

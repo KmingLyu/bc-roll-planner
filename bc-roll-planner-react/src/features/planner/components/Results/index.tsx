@@ -560,7 +560,7 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
     }));
 
   return (
-    <div className="hidden lg:block overflow-x-auto">
+    <div className="hidden lg:block">
       <table className="w-full table-fixed border-collapse">
         <colgroup>
           <col className="w-[28%]" />
@@ -593,14 +593,15 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
 
             return (
               <Fragment key={group.eventValue}>
-                <tr
-                  className="border-b border-border/35"
-                  style={{ backgroundColor: accentTint }}
-                >
-                  <td
+                <tr className="border-b border-border/35">
+                  <th
                     colSpan={4}
-                    className="px-3 py-1.5"
-                    style={{ boxShadow: `inset 3px 0 0 ${accentColor}` }}
+                    className="sticky top-0 z-20 px-3 py-1.5 text-left"
+                    style={{
+                      backgroundColor: "hsl(var(--card))",
+                      backgroundImage: `linear-gradient(0deg, ${accentTint}, ${accentTint})`,
+                      boxShadow: `inset 3px 0 0 ${accentColor}`,
+                    }}
                   >
                     <div className="flex flex-wrap items-center gap-3">
                       <Badge variant="outline">{label.dateText}</Badge>
@@ -608,7 +609,7 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
                         {label.nameText}
                       </div>
                     </div>
-                  </td>
+                  </th>
                 </tr>
 
                 {blocks.map((block) => {
@@ -732,13 +733,15 @@ function ResultsMobileCards({ rows }: { rows: DrawRow[] }) {
         return (
           <div
             key={group.eventValue}
-            className="workspace-pane overflow-hidden"
+            className="workspace-pane"
             style={{ boxShadow: `inset 3px 0 0 ${accentColor}` }}
           >
             <div
-              className="border-b border-border/35 px-3.5 py-3"
+              className="sticky top-0 z-20 border-b border-border/35 px-3.5 py-3"
               style={{
-                backgroundColor: accentTint,
+                backgroundColor: "hsl(var(--card))",
+                backgroundImage: `linear-gradient(0deg, ${accentTint}, ${accentTint})`,
+                boxShadow: `inset 3px 0 0 ${accentColor}`,
               }}
             >
               <div className="flex flex-wrap items-center gap-2">

@@ -867,7 +867,7 @@ function PlannerResultsView() {
   if (!appliedSession) return null;
 
   return (
-    <div className="workspace-pane overflow-hidden border-border/55">
+    <div className="workspace-pane border-border/55">
       <ResultTable
         result={appliedSession.result}
         graphsByEvent={appliedSession.graphsByEvent}

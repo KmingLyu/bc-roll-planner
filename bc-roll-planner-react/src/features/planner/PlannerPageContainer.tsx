@@ -9,7 +9,7 @@ import {
 } from "react";
 import { ChevronDown, PencilLine } from "lucide-react";
 import type { Event, TrackGraph } from "@/types/models";
-import { ApiError } from "@/lib/api-client";
+import { ApiError, isAbortError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { EventsPicker, useEvents } from "@/features/events";
 import {
@@ -21,7 +21,6 @@ import {
   buildGodfatCatImageUrl,
 } from "@/features/cats/presentation/godfat";
 import { useTrackGraphs } from "@/features/track-graph";
-import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +29,7 @@ import {
 } from "@/components/ui/card";
 import { DisclaimerNote } from "./components/Note";
 import { ResourceForm } from "./components/ResourceForm";
+import { RunBlockingOverlay } from "./components/RunBlockingOverlay";
 import { RunBar } from "./components/RunBar";
 import { SeedCountForm } from "./components/SeedCountForm";
 import { ResultStatsSidebar } from "./components/ResultStats";
@@ -54,6 +54,11 @@ type AppliedPlannerSession = {
   graphsByEvent: Record<string, TrackGraph>;
 };
 
+type ActivePlannerRun = {
+  token: number;
+  controller: AbortController;
+};
+
 type PlannerScreenContextValue = {
   draft: PlannerDraftInputs;
   session: PlannerSessionState;
@@ -67,6 +72,7 @@ type PlannerScreenContextValue = {
   resultsStale: boolean;
   runDisabled: boolean;
   runHint: string;
+  runOverlayOpen: boolean;
   eventsState: LoadState;
   eventsErr: string;
   upcomingEvents: Event[];
@@ -84,6 +90,7 @@ type PlannerScreenContextValue = {
   clearTargetCatIds: () => void;
   toggleManualCount: () => void;
   goToInputStage: () => void;
+  cancelPlannerFlow: () => void;
   runPlannerFlow: () => Promise<void>;
 };
 
@@ -197,10 +204,13 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
   const hasSyntheticResultsHistoryRef = useRef(false);
 
   const pendingRunRef = useRef<{
+    token: number;
     signature: string;
     inputs: PlannerAppliedInputs;
     graphsByEvent: Record<string, TrackGraph>;
   } | null>(null);
+  const activeRunRef = useRef<ActivePlannerRun | null>(null);
+  const runTokenRef = useRef(0);
 
   const { manualCount, countError } = useMemo(
     () => parseManualCount(draft.countInput),
@@ -275,7 +285,14 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
     ui: BC_ENV.ui,
   });
 
-  const { runPlanner, planErr, planResult, planState } = usePlannerWorker();
+  const {
+    runPlanner,
+    planErr,
+    planResult,
+    planState,
+    setLoading,
+    cancelPlanner,
+  } = usePlannerWorker();
 
   const draftSignature = useMemo(() => buildDraftSignature(viewDraft), [viewDraft]);
   const resultsStale = appliedSession
@@ -304,11 +321,30 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
             ? "目前沒有可用資源可規劃。"
             : "";
 
+  const runOverlayOpen = planState === "loading";
+
+  function clearActiveRun(token?: number) {
+    if (token != null && activeRunRef.current?.token !== token) return;
+    activeRunRef.current = null;
+  }
+
+  function isCurrentRun(token: number) {
+    return activeRunRef.current?.token === token;
+  }
+
+  function cancelPlannerFlow() {
+    activeRunRef.current?.controller.abort();
+    activeRunRef.current = null;
+    pendingRunRef.current = null;
+    cancelPlanner();
+  }
+
   useEffect(() => {
     if (planState !== "ok" || !planResult || !pendingRunRef.current) return;
 
     const completedRun = pendingRunRef.current;
     pendingRunRef.current = null;
+    clearActiveRun(completedRun.token);
 
     setAppliedSession({
       signature: completedRun.signature,
@@ -323,6 +359,13 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
       }));
     });
   }, [planResult, planState]);
+
+  useEffect(() => {
+    if (planState !== "error") return;
+
+    pendingRunRef.current = null;
+    clearActiveRun();
+  }, [planState]);
 
   useEffect(() => {
     if (session.stage !== "results" || hasSyntheticResultsHistoryRef.current) return;
@@ -356,6 +399,14 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      activeRunRef.current?.controller.abort();
+      activeRunRef.current = null;
+      pendingRunRef.current = null;
+    };
+  }, []);
+
   async function runPlannerFlow() {
     if (!viewDraft.selectedEventValues.length) {
       runPlanner({ kind: "errorOnly", error: "請先選擇至少一個卡池。" });
@@ -378,14 +429,37 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    activeRunRef.current?.controller.abort();
+    pendingRunRef.current = null;
+    cancelPlanner();
+
+    const token = ++runTokenRef.current;
+    const controller = new AbortController();
+    activeRunRef.current = {
+      token,
+      controller,
+    };
+    setLoading();
+
     let graphsByEvent: Record<string, TrackGraph>;
     try {
-      graphsByEvent = await fetchGraphs(resolvedCount);
+      graphsByEvent = await fetchGraphs(resolvedCount, {
+        signal: controller.signal,
+      });
     } catch (error) {
+      if (isAbortError(error) || controller.signal.aborted || !isCurrentRun(token)) {
+        return;
+      }
+
+      clearActiveRun(token);
       runPlanner({
         kind: "errorOnly",
         error: `取得 TrackGraph 失敗：${safeErrText(error)}`,
       });
+      return;
+    }
+
+    if (controller.signal.aborted || !isCurrentRun(token)) {
       return;
     }
 
@@ -397,6 +471,7 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
 
     const primaryGraph = primary ? graphsByEvent[primary] : undefined;
     if (!primaryGraph || !Object.keys(primaryGraph.nodes || {}).length) {
+      clearActiveRun(token);
       runPlanner({
         kind: "errorOnly",
         error: "主要卡池的 TrackGraph 不存在或內容為空。",
@@ -405,6 +480,7 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
     }
 
     pendingRunRef.current = {
+      token,
       signature: draftSignature,
       inputs: {
         ...draft,
@@ -454,6 +530,7 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
       resultsStale,
       runDisabled,
       runHint,
+      runOverlayOpen,
       eventsState,
       eventsErr,
       upcomingEvents,
@@ -496,6 +573,7 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
           })),
         );
       },
+      cancelPlannerFlow,
       runPlannerFlow,
     };
 
@@ -711,10 +789,6 @@ function PlannerInputEditor({ layout }: { layout: "immersive" | "compact" }) {
 
         <div className="border-t border-border pt-5">
           <div className="space-y-3">
-            {appliedSession && resultsStale ? (
-              <Alert variant="warning">條件已變更</Alert>
-            ) : null}
-
             <RunBar
               state={planState}
               onRun={() => {
@@ -757,7 +831,6 @@ function PlannerSidebarRail() {
   const {
     appliedSession,
     catNameById,
-    resultsStale,
     goToInputStage,
   } = usePlannerScreen();
 
@@ -783,9 +856,6 @@ function PlannerSidebarRail() {
           />
         </div>
 
-        {resultsStale ? (
-          <Alert variant="warning">條件已變更，記得重新執行。</Alert>
-        ) : null}
       </CardContent>
     </Card>
   );
@@ -813,7 +883,6 @@ function PlannerResultsStage() {
   const {
     appliedSession,
     catNameById,
-    resultsStale,
     goToInputStage,
   } = usePlannerScreen();
 
@@ -828,7 +897,6 @@ function PlannerResultsStage() {
           <CardContent className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="text-sm font-semibold text-foreground">目前條件</div>
-              {resultsStale ? <Badge variant="warning">條件已變更</Badge> : null}
             </div>
             <PlannerInputSummary compact />
             <div className="workspace-divider pt-3">
@@ -862,7 +930,8 @@ function PlannerResultsStage() {
 }
 
 function PlannerScreen() {
-  const { session, appliedSession } = usePlannerScreen();
+  const { session, appliedSession, runOverlayOpen, cancelPlannerFlow } =
+    usePlannerScreen();
   const topRef = useRef<HTMLDivElement | null>(null);
   const isResultsStage = session.stage === "results" && !!appliedSession;
   const shouldRestoreInputView = session.stage === "input" && !!appliedSession;
@@ -885,21 +954,40 @@ function PlannerScreen() {
     });
   }, [shouldRestoreInputView]);
 
+  useEffect(() => {
+    if (!runOverlayOpen) return;
+
+    const { body, documentElement } = document;
+    const prevBodyOverflow = body.style.overflow;
+    const prevHtmlOverflow = documentElement.style.overflow;
+
+    body.style.overflow = "hidden";
+    documentElement.style.overflow = "hidden";
+
+    return () => {
+      body.style.overflow = prevBodyOverflow;
+      documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, [runOverlayOpen]);
+
   return (
-    <div
-      className={cn(
-        "mx-auto w-full space-y-4",
-        isResultsStage ? "max-w-[1480px]" : "max-w-[1220px]",
-      )}
-    >
-      <div ref={topRef} />
-      <PlannerHeader />
-      {isResultsStage ? (
-        <PlannerResultsStage />
-      ) : (
-        <PlannerInputStage />
-      )}
-    </div>
+    <>
+      <div
+        className={cn(
+          "mx-auto w-full space-y-4",
+          isResultsStage ? "max-w-[1480px]" : "max-w-[1220px]",
+        )}
+      >
+        <div ref={topRef} />
+        <PlannerHeader />
+        {isResultsStage ? (
+          <PlannerResultsStage />
+        ) : (
+          <PlannerInputStage />
+        )}
+      </div>
+      <RunBlockingOverlay open={runOverlayOpen} onCancel={cancelPlannerFlow} />
+    </>
   );
 }
 

@@ -2,7 +2,7 @@
 import { useRef, useState } from "react";
 import type { Event, TrackGraph } from "@/types/models";
 import { fetchTrackGraph } from "@/features/track-graph/api/getTrackGraph";
-import { ApiError } from "@/lib/api-client";
+import { ApiError, isAbortError } from "@/lib/api-client";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
 
@@ -42,7 +42,12 @@ export function useTrackGraphs(params: {
   }
 
   // 回傳 next graphs
-  async function fetchGraphs(count: number): Promise<Record<string, TrackGraph>> {
+  async function fetchGraphs(
+    count: number,
+    options?: { signal?: AbortSignal },
+  ): Promise<Record<string, TrackGraph>> {
+    const signal = options?.signal;
+
     // 沒選 event：回到 idle，回傳空
     if (selectedEventValues.length === 0) {
       setGraphState("idle");
@@ -77,6 +82,7 @@ export function useTrackGraphs(params: {
             seed: s,
             event: ev,
             count: c,
+            signal,
             lang,
             ui,
             name: meta?.name ?? ev,
@@ -101,7 +107,15 @@ export function useTrackGraphs(params: {
       setGraphByEvent(next);
       setGraphState("ok");
       return next;
-    } catch (e: any) {
+    } catch (error: unknown) {
+      if (isAbortError(error) || signal?.aborted) {
+        if (seq === seqRef.current) {
+          setGraphState("idle");
+          setGraphErr("");
+        }
+        throw error;
+      }
+
       // 過期請求失敗：不覆蓋最新狀態，回傳最新已知
       if (seq !== seqRef.current) {
         return latestGraphsRef.current;
@@ -109,11 +123,13 @@ export function useTrackGraphs(params: {
 
       setGraphState("error");
       setGraphErr(
-        e instanceof ApiError
-          ? `${e.message} (HTTP ${e.status})`
-          : String(e?.message || e)
+        error instanceof ApiError
+          ? `${error.message} (HTTP ${error.status})`
+          : error instanceof Error
+            ? error.message
+            : String(error)
       );
-      throw e;
+      throw error;
     }
   }
 

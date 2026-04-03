@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useState, type CSSProperties } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -160,13 +160,10 @@ export function TargetCatsPicker(props: {
               </div>
               <div className="pt-0.5">
                 <div
-                  className="grid grid-cols-1 gap-1 sm:[grid-template-columns:repeat(auto-fill,minmax(var(--target-cat-col-width),var(--target-cat-col-width)))]"
-                  style={
-                    {
-                      "--target-cat-col-width": `${minColWidth}px`,
-                      justifyContent: "start",
-                    } as CSSProperties
-                  }
+                  className="grid gap-1"
+                  style={{
+                    gridTemplateColumns: `repeat(auto-fit, minmax(min(100%, ${minColWidth}px), 1fr))`,
+                  }}
                 >
                   {group.cats.map((cat) => (
                     <CatSelectableItem

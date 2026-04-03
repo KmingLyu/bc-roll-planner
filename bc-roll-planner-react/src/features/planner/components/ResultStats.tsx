@@ -103,20 +103,29 @@ function StatItem({
   value,
   labelClassName,
   valueClassName,
+  compact = false,
 }: {
   label: string;
   value: React.ReactNode;
   labelClassName?: string;
   valueClassName?: string;
+  compact?: boolean;
 }) {
   return (
     <div className="space-y-1">
-      <div className={cn("text-[13px] font-medium text-muted-foreground", labelClassName)}>
+      <div
+        className={cn(
+          "font-medium text-muted-foreground",
+          compact ? "text-[12px]" : "text-[13px]",
+          labelClassName,
+        )}
+      >
         {label}
       </div>
       <div
         className={cn(
-          "text-[30px] font-semibold leading-none tracking-tight text-foreground",
+          "font-semibold leading-none tracking-tight text-foreground",
+          compact ? "text-[28px]" : "text-[30px]",
           valueClassName,
         )}
       >
@@ -160,11 +169,15 @@ export function ResultStatsSidebar(props: {
   return (
     <div className="space-y-4">
       <div className="rounded-xl">
-        <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
-          <StatItem label="命中目標" value={`${result.targets_hit}/${result.targets_total}`} />
-          <StatItem label="終點位置" value={result.final_cursor_id} />
-          <StatItem label="抽卡步驟" value={result.plan?.length ?? 0} />
-          <StatItem label="獲得貓咪" value={result.all_draws?.length ?? 0} />
+        <div className={cn("grid grid-cols-2", compact ? "gap-x-4 gap-y-6" : "gap-x-6 gap-y-5")}>
+          <StatItem
+            label="命中目標"
+            value={`${result.targets_hit}/${result.targets_total}`}
+            compact={compact}
+          />
+          <StatItem label="終點位置" value={result.final_cursor_id} compact={compact} />
+          <StatItem label="抽卡步驟" value={result.plan?.length ?? 0} compact={compact} />
+          <StatItem label="獲得貓咪" value={result.all_draws?.length ?? 0} compact={compact} />
         </div>
       </div>
 

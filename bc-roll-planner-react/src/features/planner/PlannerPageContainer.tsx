@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { GitBranch, Mail, PencilLine, Search } from "lucide-react";
+import { ArrowUp, GitBranch, Mail, PencilLine, Search } from "lucide-react";
 import type { Event, TrackGraph } from "@/types/models";
 import { ApiError, isAbortError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
@@ -624,9 +624,18 @@ function PlannerHeader() {
   );
 }
 
-function PlannerFooter() {
+function PlannerFooter({
+  reserveScrollTopSpace = false,
+}: {
+  reserveScrollTopSpace?: boolean;
+}) {
   return (
-    <footer className="mt-2 border-t border-border/45 pt-5 pb-2 sm:pt-6 sm:pb-3">
+    <footer
+      className={cn(
+        "mt-2 border-t border-border/45 pt-5 pb-2 sm:pt-6 sm:pb-3",
+        reserveScrollTopSpace && "pr-[4.75rem] sm:pr-[9.5rem] lg:pr-[10.5rem]",
+      )}
+    >
       <div className="flex justify-end">
         <div className="flex max-w-[760px] flex-wrap items-center justify-end gap-x-3 gap-y-2.5 text-[15px] text-muted-foreground/85">
           <span className="text-[14px] font-semibold text-muted-foreground/75">
@@ -1093,10 +1102,36 @@ function PlannerResultsStage() {
   );
 }
 
+function ResultScrollTopButton(props: {
+  visible: boolean;
+  onClick: () => void;
+}) {
+  const { visible, onClick } = props;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="回到最上方"
+      className={cn(
+        "fixed z-40 inline-flex items-center justify-center gap-2 rounded-full border border-border/70 bg-background/92 text-foreground shadow-[0_14px_32px_rgba(15,23,42,0.14)] backdrop-blur transition-all duration-200 focus-visible:ring-4 focus-visible:ring-primary/20",
+        "bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] right-4 size-12 sm:bottom-[calc(env(safe-area-inset-bottom,0px)+1.25rem)] sm:right-5 sm:h-11 sm:w-auto sm:px-4 lg:bottom-6 lg:right-6 2xl:right-[calc((100vw-1480px)/2+1.5rem)]",
+        visible
+          ? "translate-y-0 opacity-100 hover:-translate-y-0.5 hover:bg-background"
+          : "pointer-events-none translate-y-3 opacity-0",
+      )}
+    >
+      <ArrowUp className="size-4 shrink-0" />
+      <span className="hidden text-sm font-semibold sm:inline">回到頂部</span>
+    </button>
+  );
+}
+
 function PlannerScreen() {
   const { session, appliedSession, runOverlayOpen, cancelPlannerFlow } =
     usePlannerScreen();
   const topRef = useRef<HTMLDivElement | null>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const isResultsStage = session.stage === "results" && !!appliedSession;
   const shouldRestoreInputView = session.stage === "input" && !!appliedSession;
 
@@ -1134,6 +1169,18 @@ function PlannerScreen() {
     };
   }, [runOverlayOpen]);
 
+  useEffect(() => {
+    if (!isResultsStage) return;
+
+    const onScroll = () => {
+      setShowScrollTop(window.scrollY > 140);
+    };
+
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [isResultsStage]);
+
   return (
     <>
       <div
@@ -1145,8 +1192,17 @@ function PlannerScreen() {
         <div ref={topRef} />
         <PlannerHeader />
         {isResultsStage ? <PlannerResultsStage /> : <PlannerInputStage />}
-        <PlannerFooter />
+        <PlannerFooter reserveScrollTopSpace={isResultsStage} />
       </div>
+      <ResultScrollTopButton
+        visible={isResultsStage && showScrollTop}
+        onClick={() =>
+          topRef.current?.scrollIntoView({
+            block: "start",
+            behavior: "smooth",
+          })
+        }
+      />
       <RunBlockingOverlay open={runOverlayOpen} onCancel={cancelPlannerFlow} />
     </>
   );

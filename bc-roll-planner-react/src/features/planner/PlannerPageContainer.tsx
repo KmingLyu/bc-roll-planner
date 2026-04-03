@@ -7,7 +7,10 @@ import {
   useRef,
   useState,
 } from "react";
-import { PencilLine, Search } from "lucide-react";
+import {
+  PencilLine,
+  Search,
+} from "lucide-react";
 import type { Event, TrackGraph } from "@/types/models";
 import { ApiError, isAbortError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
@@ -652,11 +655,36 @@ function PlannerInputSummary({ compact: _compact = false }: { compact?: boolean 
   );
 }
 
+function SelectedCatSummaryItem({
+  catId,
+  name,
+}: {
+  catId: number;
+  name: string;
+}) {
+  return (
+    <div className="inline-flex max-w-full items-center gap-2 rounded-full bg-muted/28 px-2.5 py-1.5">
+      <img
+        src={buildGodfatCatImageUrl(catId, { lang: BC_ENV.lang })}
+        alt=""
+        width={28}
+        height={28}
+        className="size-7 shrink-0 rounded-md bg-background object-cover"
+        loading="lazy"
+      />
+      <span className="min-w-0 break-keep text-sm font-medium leading-5 text-foreground">
+        {name}
+      </span>
+    </div>
+  );
+}
+
 function PlannerTargetPanel() {
   const {
     catsState,
     catsErr,
     tierGroups,
+    catNameById,
     draft,
     setTargetCatIds,
     clearTargetCatIds,
@@ -665,51 +693,72 @@ function PlannerTargetPanel() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [catQuery, setCatQuery] = useState("");
 
-  const selectedCatNames = useMemo(() => {
-    const idSet = new Set(draft.targetCatIds);
-    const names: string[] = [];
+  const selectedCats = useMemo(() => {
+    const namesFromGroups = new Map<number, string>();
     for (const group of tierGroups) {
       for (const cat of group.cats) {
-        if (idSet.has(cat.id)) names.push(cat.name);
+        namesFromGroups.set(cat.id, cat.name);
       }
     }
-    return names;
-  }, [draft.targetCatIds, tierGroups]);
+
+    return draft.targetCatIds.map((catId) => ({
+      id: catId,
+      name:
+        namesFromGroups.get(catId) ??
+        catNameById.get(catId) ??
+        `貓咪 #${catId}`,
+    }));
+  }, [catNameById, draft.targetCatIds, tierGroups]);
+  const visibleSelectedCats = selectedCats.slice(0, 8);
+  const hiddenSelectedCatCount = Math.max(0, selectedCats.length - visibleSelectedCats.length);
 
   return (
-    <section className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <section className="space-y-2.5">
+      <div className="flex items-center gap-2">
         <div className="flex items-center gap-2">
-          <div className="text-sm font-semibold text-foreground">目標貓咪</div>
+          <div className="text-sm font-semibold text-foreground">選擇目標貓咪</div>
           {draft.targetCatIds.length > 0 && (
             <Badge variant="muted">{draft.targetCatIds.length}</Badge>
           )}
-        </div>
-        <div className="flex items-center gap-1.5">
           {draft.targetCatIds.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={clearTargetCatIds}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-1 h-auto rounded-none border-l border-border/55 px-0 pl-3 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground"
+              onClick={clearTargetCatIds}
+            >
               清空
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSheetOpen(true)}
-          >
-            選擇
-          </Button>
         </div>
       </div>
 
-      {selectedCatNames.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {selectedCatNames.map((name) => (
-            <Badge key={name} variant="outline">
-              {name}
-            </Badge>
-          ))}
-        </div>
-      )}
+      <button
+        type="button"
+        onClick={() => setSheetOpen(true)}
+        className="group block w-full rounded-2xl border border-border/55 bg-background px-4 py-3 text-left transition-colors hover:border-border hover:bg-muted/[0.04] active:bg-muted/[0.08]"
+      >
+        {selectedCats.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {visibleSelectedCats.map((cat) => (
+              <SelectedCatSummaryItem
+                key={cat.id}
+                catId={cat.id}
+                name={cat.name}
+              />
+            ))}
+            {hiddenSelectedCatCount > 0 ? (
+              <div className="inline-flex items-center rounded-full bg-muted/24 px-3 py-1.5 text-sm font-medium text-muted-foreground">
+                +{hiddenSelectedCatCount} 隻已選貓咪
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="py-2 text-sm text-muted-foreground">
+            點擊選擇目標貓咪
+          </div>
+        )}
+      </button>
 
       <BottomSheet
         open={sheetOpen}
@@ -719,14 +768,17 @@ function PlannerTargetPanel() {
         }}
         title={`選擇目標貓咪${draft.targetCatIds.length ? ` (${draft.targetCatIds.length})` : ""}`}
         toolbar={(
-          <div className="flex items-center gap-2">
-            <div className="w-16 shrink-0">
+          <div className="flex items-center gap-4">
+            <div className="w-20 shrink-0">
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={clearTargetCatIds}
-                className={cn("w-full shrink-0", draft.targetCatIds.length > 0 ? "visible" : "invisible")}
+                className={cn(
+                  "h-auto w-full shrink-0 justify-end px-0 pr-2 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground",
+                  draft.targetCatIds.length > 0 ? "visible" : "invisible",
+                )}
                 tabIndex={draft.targetCatIds.length > 0 ? 0 : -1}
                 aria-hidden={draft.targetCatIds.length > 0 ? undefined : true}
               >
@@ -821,19 +873,21 @@ function PlannerInputEditor({ layout }: { layout: "immersive" | "compact" }) {
           />
         </div>
 
-        <div className="border-t border-border pt-5">
-          <EventsPicker
-            loadState={eventsState}
-            error={eventsErr}
-            upcomingEvents={upcomingEvents}
-            pastEvents={pastEvents}
-            value={draft.selectedEventValues}
-            onChange={setSelectedEventValues}
-          />
-        </div>
+        <div className="grid gap-5 lg:grid-cols-[minmax(280px,0.9fr)_minmax(0,1.35fr)]">
+          <div className="border-t border-border pt-5">
+            <EventsPicker
+              loadState={eventsState}
+              error={eventsErr}
+              upcomingEvents={upcomingEvents}
+              pastEvents={pastEvents}
+              value={draft.selectedEventValues}
+              onChange={setSelectedEventValues}
+            />
+          </div>
 
-        <div className="border-t border-border pt-5">
-          <PlannerTargetPanel />
+          <div className="border-t border-border pt-5">
+            <PlannerTargetPanel />
+          </div>
         </div>
 
         <div className="border-t border-border pt-5">

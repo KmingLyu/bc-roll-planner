@@ -31,7 +31,7 @@ export function CatSelectableItem(props: {
       className={cn(
         "group flex h-full w-full items-start rounded-lg border px-2 py-2 text-left transition-colors",
         checked
-          ? "border-primary bg-primary/10 ring-2 ring-primary/20 shadow-[0_10px_24px_-18px_rgba(37,99,235,0.75)]"
+          ? "border-primary/45 bg-primary/[0.06] shadow-[inset_0_0_0_1px_rgba(59,130,246,0.12)]"
           : "border-transparent hover:border-border/60 hover:bg-muted/20",
       )}
     >
@@ -51,7 +51,7 @@ export function CatSelectableItem(props: {
             onError={() => setImageFailed(true)}
             className={cn(
               "size-[34px] shrink-0 rounded-md object-cover ring-1 ring-border/20",
-              checked && "ring-primary/35",
+              checked && "ring-primary/25",
             )}
           />
         ) : null}
@@ -59,7 +59,7 @@ export function CatSelectableItem(props: {
           <div
             className={cn(
               "line-clamp-2 break-keep text-sm font-semibold leading-5 text-foreground",
-              checked && "text-primary",
+              checked && "text-foreground",
             )}
           >
             {name}

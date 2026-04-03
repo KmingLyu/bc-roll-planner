@@ -3,9 +3,14 @@ import {
   useMemo,
   useState,
 } from "react";
-import { Search } from "lucide-react";
+import {
+  Search,
+} from "lucide-react";
 import type { Event } from "@/types/models";
-import { getEventDisplayLines } from "@/utils/event-display";
+import {
+  formatEventDateText,
+  getEventDisplayLines,
+} from "@/utils/event-display";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -33,7 +38,7 @@ function EventOption({
       className={cn(
         "flex w-full items-start rounded-lg border px-2 py-2 text-left transition-colors",
         checked
-          ? "border-primary bg-primary/10 ring-2 ring-primary/20 shadow-[0_10px_24px_-18px_rgba(37,99,235,0.75)]"
+          ? "border-primary/45 bg-primary/[0.06] shadow-[inset_0_0_0_1px_rgba(59,130,246,0.12)]"
           : "border-transparent hover:border-border/60 hover:bg-muted/20",
       )}
       title={titleText}
@@ -42,7 +47,7 @@ function EventOption({
         <div
           className={cn(
             "text-sm font-semibold leading-5 text-foreground",
-            checked && "text-primary",
+            checked && "text-foreground",
           )}
         >
           {nameText}
@@ -50,6 +55,27 @@ function EventOption({
         <div className="text-xs text-muted-foreground">{dateText}</div>
       </div>
     </button>
+  );
+}
+
+function SelectedEventSummaryItem(props: {
+  nameText: string;
+  dateText: string;
+  titleText: string;
+}) {
+  const { nameText, dateText, titleText } = props;
+  return (
+    <div
+      className="py-2.5 first:pt-0 last:pb-0"
+      title={titleText}
+    >
+      <div className="text-sm font-semibold leading-5 text-foreground">
+        {nameText}
+      </div>
+      <div className="mt-1 text-xs text-muted-foreground">
+        {dateText}
+      </div>
+    </div>
   );
 }
 
@@ -102,9 +128,27 @@ export function EventsPicker(props: {
     [normalizedQuery, pastEvents],
   );
 
-  const selectedEvents = value
-    .map((eventValue) => findEvent(eventValue))
-    .filter(Boolean) as Event[];
+  const selectedEventSummaries = value.map((eventValue) => {
+    const event = findEvent(eventValue);
+    if (!event) {
+      return {
+        id: eventValue,
+        nameText: eventValue,
+        dateText: "卡池資料載入中",
+        titleText: eventValue,
+      };
+    }
+
+    const { dateText, nameText, titleText } = getEventDisplayLines(event);
+    return {
+      id: event.value,
+      nameText,
+      dateText: formatEventDateText(event),
+      titleText,
+    };
+  });
+  const visibleSelectedEvents = selectedEventSummaries.slice(0, 3);
+  const hiddenSelectedEventCount = Math.max(0, selectedEventSummaries.length - visibleSelectedEvents.length);
 
   const toggleEvent = (eventValue: string) => {
     if (selectedSet.has(eventValue)) {
@@ -115,44 +159,51 @@ export function EventsPicker(props: {
   };
 
   return (
-    <section className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <section className="space-y-2.5">
+      <div className="flex items-center gap-2">
         <div className="flex items-center gap-2">
-          <div className="text-sm font-semibold text-foreground">卡池</div>
+          <div className="text-sm font-semibold text-foreground">選擇卡池</div>
           {value.length > 0 && <Badge variant="muted">{value.length}</Badge>}
-        </div>
-        <div className="flex items-center gap-1.5">
           {value.length ? (
             <Button
               variant="ghost"
               size="sm"
+              className="ml-1 h-auto rounded-none border-l border-border/55 px-0 pl-3 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground"
               onClick={() => onChange([])}
             >
               清空
             </Button>
           ) : null}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSheetOpen(true)}
-          >
-            選擇
-          </Button>
         </div>
       </div>
 
-      {selectedEvents.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {selectedEvents.map((event) => (
-            <Badge
-              key={event.value}
-              variant="outline"
-            >
-              {event.name}
-            </Badge>
-          ))}
-        </div>
-      )}
+      <button
+        type="button"
+        onClick={() => setSheetOpen(true)}
+        className="group block w-full rounded-2xl border border-border/55 bg-background px-4 py-3 text-left transition-colors hover:border-border hover:bg-muted/[0.04] active:bg-muted/[0.08]"
+      >
+        {selectedEventSummaries.length > 0 ? (
+          <div className="divide-y divide-border/40">
+            {visibleSelectedEvents.map((event) => (
+              <SelectedEventSummaryItem
+                key={event.id}
+                nameText={event.nameText}
+                dateText={event.dateText}
+                titleText={event.titleText}
+              />
+            ))}
+            {hiddenSelectedEventCount > 0 ? (
+              <div className="pt-2 text-sm font-medium text-muted-foreground">
+                +{hiddenSelectedEventCount} 個已選卡池
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="py-2 text-sm text-muted-foreground">
+            點擊選擇卡池
+          </div>
+        )}
+      </button>
 
       <BottomSheet
         open={sheetOpen}
@@ -162,14 +213,17 @@ export function EventsPicker(props: {
         }}
         title={`選擇卡池${value.length ? ` (${value.length})` : ""}`}
         toolbar={(
-          <div className="flex items-center gap-2">
-            <div className="w-16 shrink-0">
+          <div className="flex items-center gap-4">
+            <div className="w-20 shrink-0">
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => onChange([])}
-                className={cn("w-full shrink-0", value.length > 0 ? "visible" : "invisible")}
+                className={cn(
+                  "h-auto w-full shrink-0 justify-end px-0 pr-2 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground",
+                  value.length > 0 ? "visible" : "invisible",
+                )}
                 tabIndex={value.length > 0 ? 0 : -1}
                 aria-hidden={value.length > 0 ? undefined : true}
               >

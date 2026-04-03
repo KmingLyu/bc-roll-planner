@@ -971,6 +971,51 @@ function PlannerInputStage() {
   );
 }
 
+function ResultSummaryStatusBadge({ success }: { success: boolean }) {
+  return (
+    <Badge
+      variant={success ? "success" : "warning"}
+      className={cn(
+        "rounded-full px-2.5 py-1 text-[12px] font-semibold tracking-normal",
+        success ? "bg-success/12 text-success" : "bg-warning/12 text-warning",
+      )}
+    >
+      {success ? "已命中全部目標" : "尚未完全命中"}
+    </Badge>
+  );
+}
+
+function ResultSummaryHeader(props: {
+  success: boolean;
+  onReset: () => void;
+}) {
+  const { success, onReset } = props;
+
+  return (
+    <div
+      className={cn(
+        "workspace-toolbar",
+        "items-start sm:items-center",
+      )}
+    >
+      <div className="min-w-0 flex flex-1 flex-wrap items-center gap-2.5">
+        <div className="text-sm font-semibold text-foreground">結果摘要</div>
+        <ResultSummaryStatusBadge success={success} />
+      </div>
+
+      <Button
+        variant="ghost"
+        size="sm"
+        className="shrink-0 self-start text-muted-foreground hover:text-foreground"
+        onClick={onReset}
+      >
+        <PencilLine className="size-4" />
+        重新輸入
+      </Button>
+    </div>
+  );
+}
+
 function PlannerSidebarRail() {
   const { appliedSession, catNameById, goToInputStage } = usePlannerScreen();
 
@@ -978,26 +1023,10 @@ function PlannerSidebarRail() {
 
   return (
     <Card className="workspace-pane sticky top-0 self-start border-border/55">
-      <div className="workspace-toolbar">
-        <div className="flex items-center gap-2.5">
-          <div className="text-sm font-semibold text-foreground">結果摘要</div>
-          <Badge
-            variant={appliedSession.result.success ? "success" : "warning"}
-            className={cn(
-              "rounded-full px-2.5 py-1 text-[12px] font-semibold tracking-normal",
-              appliedSession.result.success
-                ? "bg-success/12 text-success"
-                : "bg-warning/12 text-warning",
-            )}
-          >
-            {appliedSession.result.success ? "已命中全部目標" : "尚未完全命中"}
-          </Badge>
-        </div>
-        <Button variant="ghost" size="sm" onClick={goToInputStage}>
-          <PencilLine className="size-4" />
-          重新輸入
-        </Button>
-      </div>
+      <ResultSummaryHeader
+        success={appliedSession.result.success}
+        onReset={goToInputStage}
+      />
       <CardContent className="subtle-scrollbar max-h-[calc(100vh-3rem)] overflow-y-auto">
         <ResultStatsSidebar
           result={appliedSession.result}
@@ -1045,41 +1074,17 @@ function PlannerResultsStage() {
     <div className="space-y-4">
       <div className="lg:hidden">
         <Card className="workspace-pane border-border/55">
+          <ResultSummaryHeader
+            success={appliedSession.result.success}
+            onReset={goToInputStage}
+          />
           <CardContent className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <div className="text-sm font-semibold text-foreground">
-                  結果摘要
-                </div>
-                <Badge
-                  variant={
-                    appliedSession.result.success ? "success" : "warning"
-                  }
-                  className={cn(
-                    "rounded-full px-2.5 py-1 text-[12px] font-semibold tracking-normal",
-                    appliedSession.result.success
-                      ? "bg-success/12 text-success"
-                      : "bg-warning/12 text-warning",
-                  )}
-                >
-                  {appliedSession.result.success
-                    ? "已命中全部目標"
-                    : "尚未完全命中"}
-                </Badge>
-              </div>
-            </div>
             <ResultStatsSidebar
               result={appliedSession.result}
               graphsByEvent={appliedSession.graphsByEvent}
               catNameById={catNameById}
               compact
             />
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={goToInputStage}>
-                <PencilLine className="size-4" />
-                重新輸入
-              </Button>
-            </div>
           </CardContent>
         </Card>
       </div>

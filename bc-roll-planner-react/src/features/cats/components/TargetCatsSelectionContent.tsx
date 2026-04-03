@@ -20,6 +20,9 @@ export function TargetCatsSelectionContent(props: {
   onClear: () => void;
   getCatHref?: (catId: number) => string | undefined;
   getCatImageUrl?: (catId: number) => string | undefined;
+  query?: string;
+  onQueryChange?: (value: string) => void;
+  hideSearchInput?: boolean;
   minColWidth?: number;
   dense?: boolean;
 }) {
@@ -32,7 +35,10 @@ export function TargetCatsSelectionContent(props: {
     onClear,
     getCatHref,
     getCatImageUrl,
-    minColWidth = 130,
+    query,
+    onQueryChange,
+    hideSearchInput = false,
+    minColWidth = 176,
     dense = true,
   } = props;
 
@@ -52,6 +58,9 @@ export function TargetCatsSelectionContent(props: {
       onClear={onClear}
       getCatHref={getCatHref}
       getCatImageUrl={getCatImageUrl}
+      query={query}
+      onQueryChange={onQueryChange}
+      hideSearchInput={hideSearchInput}
       minColWidth={minColWidth}
       dense={dense}
     />

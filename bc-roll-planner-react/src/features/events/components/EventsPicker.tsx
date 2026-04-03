@@ -1,16 +1,16 @@
 import {
-  startTransition,
   useDeferredValue,
   useMemo,
   useState,
 } from "react";
-import { ChevronDown, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import type { Event } from "@/types/models";
 import { getEventDisplayLines } from "@/utils/event-display";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { cn } from "@/lib/utils";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
@@ -31,23 +31,22 @@ function EventOption({
       type="button"
       onClick={onToggle}
       className={cn(
-        "flex w-full items-start gap-2.5 px-2.5 py-2 text-left transition-colors",
-        checked ? "bg-primary/5" : "hover:bg-muted/35",
+        "flex w-full items-start rounded-lg border px-2 py-2 text-left transition-colors",
+        checked
+          ? "border-primary bg-primary/10 ring-2 ring-primary/20 shadow-[0_10px_24px_-18px_rgba(37,99,235,0.75)]"
+          : "border-transparent hover:border-border/60 hover:bg-muted/20",
       )}
       title={titleText}
     >
-      <div
-        className={cn(
-          "mt-0.5 inline-flex size-[18px] shrink-0 items-center justify-center rounded-md border text-[10px] font-bold",
-          checked
-            ? "border-primary bg-primary text-primary-foreground"
-            : "border-border text-transparent",
-        )}
-      >
-        ✓
-      </div>
-      <div className="min-w-0 flex-1 space-y-1">
-        <div className="text-sm font-medium text-foreground">{nameText}</div>
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <div
+          className={cn(
+            "text-sm font-semibold leading-5 text-foreground",
+            checked && "text-primary",
+          )}
+        >
+          {nameText}
+        </div>
         <div className="text-xs text-muted-foreground">{dateText}</div>
       </div>
     </button>
@@ -72,7 +71,7 @@ export function EventsPicker(props: {
   } = props;
 
   const [query, setQuery] = useState("");
-  const [panelOpen, setPanelOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const deferredQuery = useDeferredValue(query);
   const normalizedQuery = deferredQuery.trim().toLowerCase();
   const selectedSet = useMemo(() => new Set(value), [value]);
@@ -133,16 +132,11 @@ export function EventsPicker(props: {
             </Button>
           ) : null}
           <Button
-            variant={panelOpen ? "outline" : "ghost"}
+            variant="ghost"
             size="sm"
-            onClick={() =>
-              startTransition(() => setPanelOpen((current) => !current))
-            }
+            onClick={() => setSheetOpen(true)}
           >
-            {panelOpen ? "收合" : "展開"}
-            <ChevronDown
-              className={cn("size-4 transition-transform", panelOpen && "rotate-180")}
-            />
+            選擇
           </Button>
         </div>
       </div>
@@ -160,26 +154,51 @@ export function EventsPicker(props: {
         </div>
       )}
 
-      {panelOpen ? (
-        <div className="space-y-3 border-t border-border/45 pt-3">
-          <div className="relative w-full sm:w-[320px] sm:ml-auto">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              name="event-search"
-              autoComplete="off"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="搜尋卡池名稱或日期"
-              className="workspace-search pl-11"
-            />
+      <BottomSheet
+        open={sheetOpen}
+        onOpenChange={(nextOpen) => {
+          setSheetOpen(nextOpen);
+          if (!nextOpen) setQuery("");
+        }}
+        title={`選擇卡池${value.length ? ` (${value.length})` : ""}`}
+        toolbar={(
+          <div className="flex items-center gap-2">
+            <div className="w-16 shrink-0">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => onChange([])}
+                className={cn("w-full shrink-0", value.length > 0 ? "visible" : "invisible")}
+                tabIndex={value.length > 0 ? 0 : -1}
+                aria-hidden={value.length > 0 ? undefined : true}
+              >
+                清空
+              </Button>
+            </div>
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                name="event-search"
+                autoComplete="off"
+                autoFocus
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="搜尋卡池名稱或日期"
+                className="workspace-search pl-11"
+              />
+            </div>
           </div>
+        )}
+      >
+        <div className="space-y-3">
           {loadState === "loading" ? <Alert variant="info">正在載入卡池…</Alert> : null}
           {loadState === "error" ? <Alert variant="error">{error}</Alert> : null}
 
-          <div className="subtle-scrollbar max-h-[28rem] space-y-3 overflow-y-auto pr-1">
+          <div className="space-y-3">
             {filteredUpcoming.length > 0 && (
               <section>
-                <div className="flex items-center gap-2 py-1">
+                <div className="sticky top-0 z-10 -mx-5 mb-1 flex items-center gap-2 border-b border-border/45 bg-card/95 px-5 py-2 backdrop-blur supports-[backdrop-filter]:bg-card/85">
                   <span className="text-sm font-semibold text-foreground">Upcoming</span>
                   <Badge variant="muted">{filteredUpcoming.length}</Badge>
                 </div>
@@ -198,7 +217,7 @@ export function EventsPicker(props: {
 
             {filteredPast.length > 0 && (
               <section className={filteredUpcoming.length > 0 ? "border-t border-border/45 pt-3" : ""}>
-                <div className="flex items-center gap-2 py-1">
+                <div className="sticky top-0 z-10 -mx-5 mb-1 flex items-center gap-2 border-b border-border/45 bg-card/95 px-5 py-2 backdrop-blur supports-[backdrop-filter]:bg-card/85">
                   <span className="text-sm font-semibold text-foreground">Past</span>
                   <Badge variant="muted">{filteredPast.length}</Badge>
                 </div>
@@ -222,7 +241,7 @@ export function EventsPicker(props: {
             )}
           </div>
         </div>
-      ) : null}
+      </BottomSheet>
     </section>
   );
 }

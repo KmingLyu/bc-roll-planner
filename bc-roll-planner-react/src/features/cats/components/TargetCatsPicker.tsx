@@ -1,9 +1,8 @@
-import { startTransition, useDeferredValue, useMemo, useState } from "react";
-import { ChevronDown, Search } from "lucide-react";
+import { useDeferredValue, useMemo, useState } from "react";
+import { Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import type { TierGroup } from "@/features/cats/types";
-import { cn } from "@/lib/utils";
 import { CatSelectableItem } from "./CatSelectableItem";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
@@ -22,6 +21,9 @@ export function TargetCatsPicker(props: {
   selectedIds: number[];
   onChange: (next: number[]) => void;
   onClear: () => void;
+  query?: string;
+  onQueryChange?: (value: string) => void;
+  hideSearchInput?: boolean;
   minColWidth?: number;
   dense?: boolean;
   getCatHref?: (catId: number) => string | undefined;
@@ -34,18 +36,21 @@ export function TargetCatsPicker(props: {
     groups,
     selectedIds,
     onChange,
-    onClear,
-    minColWidth = 220,
+    onClear: _onClear,
+    query,
+    onQueryChange,
+    hideSearchInput = false,
+    minColWidth = 176,
     dense = true,
     getCatHref,
     getCatImageUrl,
     renderCatSecondary,
   } = props;
 
-  const [query, setQuery] = useState("");
-  const [openGroups, setOpenGroups] = useState<Partial<Record<TierGroup["tier"], boolean>>>({});
+  const [internalQuery, setInternalQuery] = useState("");
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
-  const deferredQuery = useDeferredValue(query);
+  const queryValue = query ?? internalQuery;
+  const deferredQuery = useDeferredValue(queryValue);
   const normalizedQuery = deferredQuery.trim().toLowerCase();
 
   const filteredGroups = useMemo(() => {
@@ -68,19 +73,29 @@ export function TargetCatsPicker(props: {
     onChange(selectedIds.filter((value) => value !== id));
   }
 
+  function handleQueryChange(value: string) {
+    if (onQueryChange) {
+      onQueryChange(value);
+      return;
+    }
+    setInternalQuery(value);
+  }
+
   return (
     <div className="space-y-3">
-      <div className="relative w-full sm:w-[320px] sm:ml-auto">
-        <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          name="target-cat-search"
-          autoComplete="off"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="搜尋目標貓咪"
-          className="workspace-search pl-11"
-        />
-      </div>
+      {!hideSearchInput ? (
+        <div className="relative w-full">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            name="target-cat-search"
+            autoComplete="off"
+            value={queryValue}
+            onChange={(event) => handleQueryChange(event.target.value)}
+            placeholder="搜尋目標貓咪"
+            className="workspace-search pl-11"
+          />
+        </div>
+      ) : null}
 
       {loadState === "loading" ? (
         <div className="text-sm text-muted-foreground">正在載入貓池…</div>
@@ -89,65 +104,42 @@ export function TargetCatsPicker(props: {
         <div className="text-sm text-destructive">{error}</div>
       ) : null}
 
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         {filteredGroups.length ? (
-          filteredGroups.map((group) => (
+          filteredGroups.map((group, index) => (
             <section
               key={group.tier}
-              className="border-t border-border/45 pt-3 first:border-t-0 first:pt-0"
+              className={index > 0 ? "border-t border-border/45 pt-2.5" : ""}
             >
-              <button
-                type="button"
-                onClick={() =>
-                  startTransition(() =>
-                    setOpenGroups((current) => ({
-                      ...current,
-                      [group.tier]: !(
-                        current[group.tier] ?? (normalizedQuery ? group.cats.length > 0 : false)
-                      ),
-                    })),
-                  )
-                }
-                className="flex w-full items-center justify-between gap-3 py-1 text-left"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="text-sm font-semibold text-foreground">
-                    {tierLabel(group.tier)}
-                  </div>
-                  <Badge variant="muted">{group.cats.length}</Badge>
+              <div className="sticky top-0 z-10 -mx-5 mb-1 flex items-center gap-2 border-b border-border/45 bg-card/95 px-5 py-2 backdrop-blur supports-[backdrop-filter]:bg-card/85">
+                <span className="text-sm font-semibold text-foreground">
+                  {tierLabel(group.tier)}
+                </span>
+                <Badge variant="muted">{group.cats.length}</Badge>
+              </div>
+              <div className="pt-0.5">
+                <div
+                  className="grid gap-1"
+                  style={{
+                    gridTemplateColumns: `repeat(auto-fill, minmax(${minColWidth}px, ${minColWidth}px))`,
+                    justifyContent: "start",
+                  }}
+                >
+                  {group.cats.map((cat) => (
+                    <CatSelectableItem
+                      key={cat.id}
+                      catId={cat.id}
+                      name={cat.name}
+                      checked={selectedSet.has(cat.id)}
+                      onToggle={(checked) => toggle(cat.id, checked)}
+                      imageUrl={getCatImageUrl?.(cat.id)}
+                      href={getCatHref?.(cat.id)}
+                      dense={dense}
+                      secondary={renderCatSecondary?.(cat.id)}
+                    />
+                  ))}
                 </div>
-                <ChevronDown
-                  className={cn(
-                    "size-4 text-muted-foreground transition-transform",
-                    (openGroups[group.tier] ?? (normalizedQuery ? group.cats.length > 0 : false)) &&
-                      "rotate-180",
-                  )}
-                />
-              </button>
-              {openGroups[group.tier] ?? (normalizedQuery ? group.cats.length > 0 : false) ? (
-                <div className="pt-2">
-                  <div
-                    className="grid gap-1.5"
-                    style={{
-                      gridTemplateColumns: `repeat(auto-fit, minmax(${minColWidth}px, 1fr))`,
-                    }}
-                  >
-                    {group.cats.map((cat) => (
-                      <CatSelectableItem
-                        key={cat.id}
-                        catId={cat.id}
-                        name={cat.name}
-                        checked={selectedSet.has(cat.id)}
-                        onToggle={(checked) => toggle(cat.id, checked)}
-                        imageUrl={getCatImageUrl?.(cat.id)}
-                        href={getCatHref?.(cat.id)}
-                        dense={dense}
-                        secondary={renderCatSecondary?.(cat.id)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : null}
+              </div>
             </section>
           ))
         ) : (

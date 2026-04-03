@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function CatSelectableItem(props: {
@@ -26,43 +25,43 @@ export function CatSelectableItem(props: {
   const showImage = !!imageUrl && !imageFailed;
 
   return (
-    <div
+    <button
+      type="button"
+      onClick={() => onToggle(!checked)}
       className={cn(
-        "group flex items-start gap-1.5 px-1 py-1 transition-colors",
-        checked ? "bg-primary/5" : "hover:bg-muted/25",
+        "group flex h-full w-full items-start rounded-lg border px-2 py-2 text-left transition-colors",
+        checked
+          ? "border-primary bg-primary/10 ring-2 ring-primary/20 shadow-[0_10px_24px_-18px_rgba(37,99,235,0.75)]"
+          : "border-transparent hover:border-border/60 hover:bg-muted/20",
       )}
     >
-      <button
-        type="button"
-        onClick={() => onToggle(!checked)}
+      <div
         className={cn(
-          "flex min-w-0 flex-1 items-start gap-2.5 px-1.5 py-1 text-left transition-colors",
-          dense ? "min-h-[48px]" : "min-h-[72px]",
+          "flex min-w-0 flex-1 items-start gap-1.5",
+          dense ? "min-h-[54px]" : "min-h-[70px]",
         )}
       >
-        <div
-          className={cn(
-            "mt-0.5 inline-flex size-[18px] shrink-0 items-center justify-center rounded-md border text-[10px] font-semibold transition-colors",
-            checked
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-border/80 bg-background text-transparent group-hover:border-primary/40",
-          )}
-        >
-          ✓
-        </div>
         {showImage ? (
           <img
             src={imageUrl}
             alt=""
-            width={32}
-            height={32}
+            width={34}
+            height={34}
             loading="lazy"
             onError={() => setImageFailed(true)}
-            className="size-8 shrink-0 rounded-md object-cover ring-1 ring-border/20"
+            className={cn(
+              "size-[34px] shrink-0 rounded-md object-cover ring-1 ring-border/20",
+              checked && "ring-primary/35",
+            )}
           />
         ) : null}
-        <div className="min-w-0 space-y-1">
-          <div className="line-clamp-2 text-sm font-semibold leading-5 text-foreground">
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <div
+            className={cn(
+              "line-clamp-2 break-keep text-sm font-semibold leading-5 text-foreground",
+              checked && "text-primary",
+            )}
+          >
             {name}
           </div>
           {secondary ? (
@@ -71,18 +70,7 @@ export function CatSelectableItem(props: {
             <div className="text-xs text-muted-foreground">#{catId}</div>
           )}
         </div>
-      </button>
-      {href ? (
-        <a
-          href={href}
-          target="_blank"
-          rel="noreferrer"
-          aria-label={`查看 ${name} 資料`}
-          className="mt-1.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
-        >
-          <ArrowUpRight className="size-4" />
-        </a>
-      ) : null}
-    </div>
+      </div>
+    </button>
   );
 }

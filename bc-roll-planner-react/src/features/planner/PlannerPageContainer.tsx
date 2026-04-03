@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { ChevronDown, PencilLine } from "lucide-react";
+import { PencilLine, Search } from "lucide-react";
 import type { Event, TrackGraph } from "@/types/models";
 import { ApiError, isAbortError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
@@ -22,11 +22,13 @@ import {
 } from "@/features/cats/presentation/godfat";
 import { useTrackGraphs } from "@/features/track-graph";
 import { Badge } from "@/components/ui/badge";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { ResourceImg } from "./components/ResourceImg";
 import type { ActionLabel } from "./logic/view-model";
 import { DisclaimerNote } from "./components/Note";
@@ -650,7 +652,7 @@ function PlannerInputSummary({ compact: _compact = false }: { compact?: boolean 
   );
 }
 
-function PlannerTargetPanel({ compact = false }: { compact?: boolean }) {
+function PlannerTargetPanel() {
   const {
     catsState,
     catsErr,
@@ -660,7 +662,8 @@ function PlannerTargetPanel({ compact = false }: { compact?: boolean }) {
     clearTargetCatIds,
   } = usePlannerScreen();
 
-  const [panelOpen, setPanelOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [catQuery, setCatQuery] = useState("");
 
   const selectedCatNames = useMemo(() => {
     const idSet = new Set(draft.targetCatIds);
@@ -689,16 +692,11 @@ function PlannerTargetPanel({ compact = false }: { compact?: boolean }) {
             </Button>
           )}
           <Button
-            variant={panelOpen ? "outline" : "ghost"}
+            variant="ghost"
             size="sm"
-            onClick={() =>
-              startTransition(() => setPanelOpen((current) => !current))
-            }
+            onClick={() => setSheetOpen(true)}
           >
-            {panelOpen ? "收合" : "展開"}
-            <ChevronDown
-              className={cn("size-4 transition-transform", panelOpen && "rotate-180")}
-            />
+            選擇
           </Button>
         </div>
       </div>
@@ -713,7 +711,43 @@ function PlannerTargetPanel({ compact = false }: { compact?: boolean }) {
         </div>
       )}
 
-      {panelOpen && (
+      <BottomSheet
+        open={sheetOpen}
+        onOpenChange={(nextOpen) => {
+          setSheetOpen(nextOpen);
+          if (!nextOpen) setCatQuery("");
+        }}
+        title={`選擇目標貓咪${draft.targetCatIds.length ? ` (${draft.targetCatIds.length})` : ""}`}
+        toolbar={(
+          <div className="flex items-center gap-2">
+            <div className="w-16 shrink-0">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={clearTargetCatIds}
+                className={cn("w-full shrink-0", draft.targetCatIds.length > 0 ? "visible" : "invisible")}
+                tabIndex={draft.targetCatIds.length > 0 ? 0 : -1}
+                aria-hidden={draft.targetCatIds.length > 0 ? undefined : true}
+              >
+                清空
+              </Button>
+            </div>
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                name="target-cat-search-header"
+                autoComplete="off"
+                autoFocus
+                value={catQuery}
+                onChange={(event) => setCatQuery(event.target.value)}
+                placeholder="搜尋目標貓咪"
+                className="workspace-search pl-11"
+              />
+            </div>
+          </div>
+        )}
+      >
         <TargetCatsSelectionContent
           loadState={catsState}
           error={catsErr}
@@ -721,6 +755,9 @@ function PlannerTargetPanel({ compact = false }: { compact?: boolean }) {
           selectedIds={draft.targetCatIds}
           onChange={setTargetCatIds}
           onClear={clearTargetCatIds}
+          query={catQuery}
+          onQueryChange={setCatQuery}
+          hideSearchInput
           getCatHref={(catId) =>
             buildGodfatCatHref(catId, {
               lang: BC_ENV.lang,
@@ -730,10 +767,9 @@ function PlannerTargetPanel({ compact = false }: { compact?: boolean }) {
           getCatImageUrl={(catId) =>
             buildGodfatCatImageUrl(catId, { lang: BC_ENV.lang })
           }
-          minColWidth={compact ? 160 : 200}
           dense
         />
-      )}
+      </BottomSheet>
     </section>
   );
 }
@@ -797,7 +833,7 @@ function PlannerInputEditor({ layout }: { layout: "immersive" | "compact" }) {
         </div>
 
         <div className="border-t border-border pt-5">
-          <PlannerTargetPanel compact={layout === "compact"} />
+          <PlannerTargetPanel />
         </div>
 
         <div className="border-t border-border pt-5">

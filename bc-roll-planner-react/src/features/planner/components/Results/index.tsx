@@ -36,7 +36,7 @@ const RESULT_FILTER_OPTIONS: Array<{
   label: string;
 }> = [
   { value: "all", label: "全部步驟" },
-  { value: "targets", label: "只看命中" },
+  { value: "targets", label: "目標步驟" },
 ];
 
 function eventLabel(row: DrawRow) {
@@ -106,10 +106,7 @@ function blockHasTarget(block: ResultRowBlock) {
   return block.summary.isTarget || block.children.some((row) => row.isTarget);
 }
 
-function getVisibleBlock(
-  block: ResultRowBlock,
-  filterMode: ResultFilterMode,
-) {
+function getVisibleBlock(block: ResultRowBlock, filterMode: ResultFilterMode) {
   if (filterMode === "all") return block;
 
   if (block.kind === "single") {
@@ -497,7 +494,9 @@ function MobileTenRollCombinedSummary(props: {
     <div
       className={cn(
         "space-y-1.5 rounded-[8px] border px-3 py-2.5",
-        isHit ? "border-success/30 bg-success/5" : "border-border/35 bg-muted/10",
+        isHit
+          ? "border-success/30 bg-success/5"
+          : "border-border/35 bg-muted/10",
       )}
     >
       <div
@@ -517,7 +516,9 @@ function MobileTenRollCombinedSummary(props: {
       <div
         className={cn(
           "pl-5 text-[15px] leading-5",
-          isHit ? "font-medium text-foreground" : "font-semibold text-muted-foreground",
+          isHit
+            ? "font-medium text-foreground"
+            : "font-semibold text-muted-foreground",
         )}
       >
         {isHit ? `命中 ${hitCount} 隻｜${namesText}` : "-"}
@@ -570,7 +571,13 @@ function ResultTrackCell(props: {
   }
 
   return (
-    <div className={cn(compact ? "space-y-1.5" : "space-y-2", trackFrameClass(row, track, compact), shouldDim ? "opacity-40" : "")}>
+    <div
+      className={cn(
+        compact ? "space-y-1.5" : "space-y-2",
+        trackFrameClass(row, track, compact),
+        shouldDim ? "opacity-40" : "",
+      )}
+    >
       <div
         className={cn(
           "flex items-center gap-2.5 font-semibold uppercase tracking-[0.1em]",
@@ -607,10 +614,7 @@ function ResultTrackCell(props: {
   );
 }
 
-function ResultActionCell(props: {
-  row: DrawRow;
-  compact?: boolean;
-}) {
+function ResultActionCell(props: { row: DrawRow; compact?: boolean }) {
   const { row, compact = false } = props;
 
   if (row.isVirtual) {
@@ -622,7 +626,9 @@ function ResultActionCell(props: {
   }
 
   return (
-    <div className={cn("flex w-full items-center", compact ? "gap-2.5" : "gap-3")}>
+    <div
+      className={cn("flex w-full items-center", compact ? "gap-2.5" : "gap-3")}
+    >
       {row.stepText !== "-" ? (
         <Badge
           variant={row.isTarget ? "success" : "muted"}
@@ -715,21 +721,13 @@ function ResultFilterToolbar(props: {
   );
 }
 
-function ResultsEmptyState({ onReset }: { onReset: () => void }) {
+function ResultsEmptyState() {
   return (
-    <div className="space-y-4 border-t border-border/35 bg-muted/[0.12] px-4 py-8 text-center sm:px-6 sm:py-10">
-      <div className="mx-auto max-w-md space-y-1.5">
-        <div className="text-sm font-semibold text-foreground">
-          目前規劃中沒有命中目標的步驟
+    <div className="border-t border-border/35 bg-muted/[0.12] px-4 py-8 text-center sm:px-6 sm:py-10">
+      <div className="mx-auto max-w-md">
+        <div className="text-sm font-medium text-muted-foreground">
+          沒有結果
         </div>
-        <p className="text-sm leading-6 text-muted-foreground">
-          切回全部步驟後，可以檢查完整路線與未命中區段。
-        </p>
-      </div>
-      <div className="flex justify-center">
-        <Button variant="outline" onClick={onReset}>
-          顯示全部步驟
-        </Button>
       </div>
     </div>
   );
@@ -741,7 +739,9 @@ function ResultsDesktopTable(props: {
 }) {
   const { groups, filterMode } = props;
   const hideNonTargetTracks = filterMode === "targets";
-  const [expandedTenRows, setExpandedTenRows] = useState<Record<string, boolean>>({});
+  const [expandedTenRows, setExpandedTenRows] = useState<
+    Record<string, boolean>
+  >({});
   const colorPicker = useMemo(
     () => makeEventColorPicker(groups.map((group) => group.eventValue)),
     [groups],
@@ -882,7 +882,9 @@ function ResultsDesktopTable(props: {
                             >
                               <td
                                 className="px-3 py-1.5"
-                                style={{ boxShadow: `inset 3px 0 0 ${accentColor}` }}
+                                style={{
+                                  boxShadow: `inset 3px 0 0 ${accentColor}`,
+                                }}
                               >
                                 <ResultActionCell row={row} />
                               </td>
@@ -921,7 +923,9 @@ function ResultsMobileCards(props: {
   filterMode: ResultFilterMode;
 }) {
   const { groups, filterMode } = props;
-  const [expandedTenRows, setExpandedTenRows] = useState<Record<string, boolean>>({});
+  const [expandedTenRows, setExpandedTenRows] = useState<
+    Record<string, boolean>
+  >({});
   const colorPicker = useMemo(
     () => makeEventColorPicker(groups.map((group) => group.eventValue)),
     [groups],
@@ -956,7 +960,9 @@ function ResultsMobileCards(props: {
             >
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline">{label.dateText}</Badge>
-                <div className="text-sm font-semibold text-foreground">{label.nameText}</div>
+                <div className="text-sm font-semibold text-foreground">
+                  {label.nameText}
+                </div>
               </div>
             </div>
 
@@ -973,7 +979,11 @@ function ResultsMobileCards(props: {
                     <div key={row.key} className="space-y-3 p-3.5">
                       <ResultActionCell row={row} compact />
                       <div className="pt-1 sm:hidden">
-                        <ResultTrackCell row={row} track={activeTrack} compact />
+                        <ResultTrackCell
+                          row={row}
+                          track={activeTrack}
+                          compact
+                        />
                       </div>
                       <div
                         className={cn(
@@ -1049,7 +1059,11 @@ function ResultsMobileCards(props: {
                             <div key={row.key} className="space-y-3">
                               <ResultActionCell row={row} compact />
                               <div className="sm:hidden">
-                                <ResultTrackCell row={row} track={activeTrack} compact />
+                                <ResultTrackCell
+                                  row={row}
+                                  track={activeTrack}
+                                  compact
+                                />
                               </div>
                               <div
                                 className={cn(
@@ -1119,11 +1133,17 @@ export function ResultTable(props: {
     () => buildVisibleEventGroups({ rows, filterMode }),
     [filterMode, rows],
   );
-  const mobileRows = useMemo(() => rows.filter((row) => !row.isVirtual), [rows]);
+  const mobileRows = useMemo(
+    () => rows.filter((row) => !row.isVirtual),
+    [rows],
+  );
   const mobileGroups = useMemo(
     () => buildVisibleEventGroups({ rows: mobileRows, filterMode }),
     [filterMode, mobileRows],
   );
+  const hasVisibleContent = desktopGroups.length > 0 || mobileGroups.length > 0;
+  const showEmptyState =
+    (filterMode === "targets" && hitSteps === 0) || !hasVisibleContent;
 
   return (
     <div className="space-y-0">
@@ -1131,8 +1151,8 @@ export function ResultTable(props: {
         filterMode={filterMode}
         onFilterModeChange={onFilterModeChange}
       />
-      {filterMode === "targets" && hitSteps === 0 ? (
-        <ResultsEmptyState onReset={() => onFilterModeChange("all")} />
+      {showEmptyState ? (
+        <ResultsEmptyState />
       ) : (
         <>
           <ResultsDesktopTable groups={desktopGroups} filterMode={filterMode} />

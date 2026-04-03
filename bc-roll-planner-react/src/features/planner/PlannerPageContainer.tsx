@@ -970,25 +970,43 @@ function PlannerInputStage() {
   );
 }
 
-function ResultSummaryStatusBadge({ success }: { success: boolean }) {
+function ResultSummaryStatusBadge({
+  success,
+  targetsHit,
+  targetsTotal,
+}: {
+  success: boolean;
+  targetsHit: number;
+  targetsTotal: number;
+}) {
+  const showZeroHitState = targetsTotal > 0 && targetsHit === 0;
+
   return (
     <Badge
-      variant={success ? "success" : "warning"}
+      variant={success ? "success" : showZeroHitState ? "destructive" : "warning"}
       className={cn(
         "rounded-full px-2.5 py-1 text-[12px] font-semibold tracking-normal",
-        success ? "bg-success/12 text-success" : "bg-warning/12 text-warning",
+        success
+          ? "bg-success/12 text-success"
+          : showZeroHitState
+            ? "bg-destructive/10 text-destructive"
+            : "bg-warning/12 text-warning",
       )}
     >
-      {success ? "已命中全部目標" : "尚未完全命中"}
+      {success
+        ? "已命中全部目標"
+        : showZeroHitState
+          ? "未命中任何目標"
+          : "尚未完全命中"}
     </Badge>
   );
 }
 
 function ResultSummaryHeader(props: {
-  success: boolean;
+  result: PlanResult;
   onReset: () => void;
 }) {
-  const { success, onReset } = props;
+  const { result, onReset } = props;
 
   return (
     <div
@@ -999,7 +1017,11 @@ function ResultSummaryHeader(props: {
     >
       <div className="min-w-0 flex flex-1 flex-wrap items-center gap-2.5">
         <div className="text-sm font-semibold text-foreground">結果摘要</div>
-        <ResultSummaryStatusBadge success={success} />
+        <ResultSummaryStatusBadge
+          success={result.success}
+          targetsHit={result.targets_hit}
+          targetsTotal={result.targets_total}
+        />
       </div>
 
       <Button
@@ -1023,7 +1045,7 @@ function PlannerSidebarRail() {
   return (
     <Card className="workspace-pane sticky top-0 self-start border-border/55">
       <ResultSummaryHeader
-        success={appliedSession.result.success}
+        result={appliedSession.result}
         onReset={goToInputStage}
       />
       <CardContent className="subtle-scrollbar max-h-[calc(100vh-3rem)] overflow-y-auto">
@@ -1074,7 +1096,7 @@ function PlannerResultsStage() {
       <div className="lg:hidden">
         <Card className="workspace-pane border-border/55">
           <ResultSummaryHeader
-            success={appliedSession.result.success}
+            result={appliedSession.result}
             onReset={goToInputStage}
           />
           <CardContent className="space-y-3">

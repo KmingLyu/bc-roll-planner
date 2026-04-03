@@ -167,21 +167,19 @@ export function ResultStatsSidebar(props: {
         </div>
       </section>
 
-      <section className="space-y-3 border-t border-border/45 pt-3.5">
-        <div className="text-sm font-semibold text-foreground">命中</div>
-        <div className="flex flex-wrap gap-2">
-          {stats.hitTargets.length ? (
-            stats.hitTargets.map((target) => (
+      {stats.hitTargets.length > 0 ? (
+        <section className="space-y-3 border-t border-border/45 pt-3.5">
+          <div className="text-sm font-semibold text-foreground">命中</div>
+          <div className="flex flex-wrap gap-2">
+            {stats.hitTargets.map((target) => (
               <Badge key={target.id} variant="success" className="gap-1.5">
                 {target.name}
                 {target.count > 1 ? ` × ${target.count}` : ""}
               </Badge>
-            ))
-          ) : (
-            <Badge variant="muted">尚未命中任何目標</Badge>
-          )}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {stats.missingTargets.length > 0 && (
         <section className="space-y-3 border-t border-border/45 pt-3.5">

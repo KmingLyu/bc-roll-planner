@@ -51,7 +51,7 @@ export function SeedCountForm(props: {
             size="sm"
             onClick={onToggleManualCount}
           >
-            {manualCountExpanded ? "改回自動" : "手動覆寫"}
+            {manualCountExpanded ? "改回自動" : "手動填入"}
           </Button>
         </div>
 
@@ -75,13 +75,19 @@ export function SeedCountForm(props: {
               placeholder="輸入正整數"
             />
             {manualCount != null ? (
-              <p className="text-sm text-muted-foreground">手動 count：{manualCount}</p>
+              <p className="text-sm text-muted-foreground">
+                手動 count：{manualCount}
+              </p>
             ) : null}
           </div>
         ) : null}
       </div>
 
-      {countError ? <Alert variant="error" className="lg:col-span-2">{countError}</Alert> : null}
+      {countError ? (
+        <Alert variant="error" className="lg:col-span-2">
+          {countError}
+        </Alert>
+      ) : null}
     </section>
   );
 }

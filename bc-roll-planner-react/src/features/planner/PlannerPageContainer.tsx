@@ -7,18 +7,12 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  PencilLine,
-  Search,
-} from "lucide-react";
+import { PencilLine, Search } from "lucide-react";
 import type { Event, TrackGraph } from "@/types/models";
 import { ApiError, isAbortError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { EventsPicker, useEvents } from "@/features/events";
-import {
-  TargetCatsSelectionContent,
-  useEventCats,
-} from "@/features/cats";
+import { TargetCatsSelectionContent, useEventCats } from "@/features/cats";
 import {
   buildGodfatCatHref,
   buildGodfatCatImageUrl,
@@ -27,10 +21,7 @@ import { useTrackGraphs } from "@/features/track-graph";
 import { Badge } from "@/components/ui/badge";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ResourceImg } from "./components/ResourceImg";
 import type { ActionLabel } from "./logic/view-model";
@@ -53,6 +44,9 @@ import { parsePosId } from "@/utils/cursor";
 import { BC_ENV } from "@/config/bcEnv";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
+
+const MAX_SELECTED_EVENTS = 5;
+const MAX_SELECTED_TARGET_CATS = 20;
 
 type AppliedPlannerSession = {
   signature: string;
@@ -101,10 +95,13 @@ type PlannerScreenContextValue = {
   runPlannerFlow: () => Promise<void>;
 };
 
-const PlannerScreenContext = createContext<PlannerScreenContextValue | null>(null);
+const PlannerScreenContext = createContext<PlannerScreenContextValue | null>(
+  null,
+);
 
 function safeErrText(error: unknown): string {
-  if (error instanceof ApiError) return `${error.message} (HTTP ${error.status})`;
+  if (error instanceof ApiError)
+    return `${error.message} (HTTP ${error.status})`;
   if (error && typeof error === "object" && "message" in error) {
     return String((error as { message?: unknown }).message);
   }
@@ -113,6 +110,10 @@ function safeErrText(error: unknown): string {
 
 function clampNonNegativeInt(value: number): number {
   return Math.max(0, Math.floor(value || 0));
+}
+
+function clampSelection<T>(values: T[], limit: number) {
+  return [...new Set(values)].slice(0, limit);
 }
 
 function getStartPosOffset(startPosId: string): number {
@@ -224,17 +225,12 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
     [draft.countInput],
   );
 
-  const {
-    eventsState,
-    eventsErr,
-    events,
-    upcomingEvents,
-    pastEvents,
-  } = useEvents({
-    pastLimit: BC_ENV.pastEventLimit,
-    lang: BC_ENV.lang,
-    ui: BC_ENV.ui,
-  });
+  const { eventsState, eventsErr, events, upcomingEvents, pastEvents } =
+    useEvents({
+      pastLimit: BC_ENV.pastEventLimit,
+      lang: BC_ENV.lang,
+      ui: BC_ENV.ui,
+    });
 
   const eventsByValue = useMemo(() => {
     const next = new Map<string, Event>();
@@ -257,7 +253,12 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
         resources: draft.resources,
         startPosId: draft.cfg.start_pos_id,
       }),
-    [draft.cfg.start_pos_id, draft.resources, draft.selectedEventValues, eventsByValue],
+    [
+      draft.cfg.start_pos_id,
+      draft.resources,
+      draft.selectedEventValues,
+      eventsByValue,
+    ],
   );
 
   const resolvedCount = manualCount ?? autoCount;
@@ -301,7 +302,10 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
     cancelPlanner,
   } = usePlannerWorker();
 
-  const draftSignature = useMemo(() => buildDraftSignature(viewDraft), [viewDraft]);
+  const draftSignature = useMemo(
+    () => buildDraftSignature(viewDraft),
+    [viewDraft],
+  );
   const resultsStale = appliedSession
     ? draftSignature !== appliedSession.signature
     : false;
@@ -375,7 +379,8 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
   }, [planState]);
 
   useEffect(() => {
-    if (session.stage !== "results" || hasSyntheticResultsHistoryRef.current) return;
+    if (session.stage !== "results" || hasSyntheticResultsHistoryRef.current)
+      return;
 
     window.history.pushState(
       {
@@ -454,7 +459,11 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
         signal: controller.signal,
       });
     } catch (error) {
-      if (isAbortError(error) || controller.signal.aborted || !isCurrentRun(token)) {
+      if (
+        isAbortError(error) ||
+        controller.signal.aborted ||
+        !isCurrentRun(token)
+      ) {
         return;
       }
 
@@ -525,64 +534,69 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
   }
 
   const value: PlannerScreenContextValue = {
-      draft: viewDraft,
-      session,
-      appliedSession,
-      planState,
-      planErr,
-      countError,
-      manualCount,
-      autoCount,
-      resolvedCount,
-      resultsStale,
-      runDisabled,
-      runHint,
-      runOverlayOpen,
-      eventsState,
-      eventsErr,
-      upcomingEvents,
-      pastEvents,
-      catsState,
-      catsErr,
-      tierGroups,
-      catNameById,
-      setSeed: (value) =>
-        setDraft((current) => ({ ...current, seed: value })),
-      setCountInput: (value) =>
-        setDraft((current) => ({ ...current, countInput: value })),
-      setResources: (next) =>
-        setDraft((current) => ({ ...current, resources: next })),
-      setSelectedEventValues: (next) =>
-        setDraft((current) => ({ ...current, selectedEventValues: next })),
-      setPrimaryEventValue: (value) =>
-        setDraft((current) => ({ ...current, primaryEventValue: value })),
-      setTargetCatIds: (next) =>
-        setDraft((current) => ({ ...current, targetCatIds: next })),
-      clearTargetCatIds: () =>
-        setDraft((current) => ({ ...current, targetCatIds: [] })),
-      toggleManualCount: () =>
-        startTransition(() =>
-          setSession((current) => ({
-            ...current,
-            manualCountExpanded: !current.manualCountExpanded,
-          })),
-        ),
-      goToInputStage: () => {
-        if (hasSyntheticResultsHistoryRef.current) {
-          window.history.back();
-          return;
-        }
+    draft: viewDraft,
+    session,
+    appliedSession,
+    planState,
+    planErr,
+    countError,
+    manualCount,
+    autoCount,
+    resolvedCount,
+    resultsStale,
+    runDisabled,
+    runHint,
+    runOverlayOpen,
+    eventsState,
+    eventsErr,
+    upcomingEvents,
+    pastEvents,
+    catsState,
+    catsErr,
+    tierGroups,
+    catNameById,
+    setSeed: (value) => setDraft((current) => ({ ...current, seed: value })),
+    setCountInput: (value) =>
+      setDraft((current) => ({ ...current, countInput: value })),
+    setResources: (next) =>
+      setDraft((current) => ({ ...current, resources: next })),
+    setSelectedEventValues: (next) =>
+      setDraft((current) => ({
+        ...current,
+        selectedEventValues: clampSelection(next, MAX_SELECTED_EVENTS),
+      })),
+    setPrimaryEventValue: (value) =>
+      setDraft((current) => ({ ...current, primaryEventValue: value })),
+    setTargetCatIds: (next) =>
+      setDraft((current) => ({
+        ...current,
+        targetCatIds: clampSelection(next, MAX_SELECTED_TARGET_CATS),
+      })),
+    clearTargetCatIds: () =>
+      setDraft((current) => ({ ...current, targetCatIds: [] })),
+    toggleManualCount: () =>
+      startTransition(() =>
+        setSession((current) => ({
+          ...current,
+          manualCountExpanded: !current.manualCountExpanded,
+        })),
+      ),
+    goToInputStage: () => {
+      if (hasSyntheticResultsHistoryRef.current) {
+        window.history.back();
+        return;
+      }
 
-        startTransition(() =>
-          setSession((current) => ({
-            ...current,
-            stage: "input",
-          })),
-        );
-      },
-      cancelPlannerFlow,
-      runPlannerFlow,
-    };
+      startTransition(() =>
+        setSession((current) => ({
+          ...current,
+          stage: "input",
+        })),
+      );
+    },
+    cancelPlannerFlow,
+    runPlannerFlow,
+  };
 
   return (
     <PlannerScreenContext.Provider value={value}>
@@ -612,7 +626,11 @@ function PlannerHeader() {
   );
 }
 
-function PlannerInputSummary({ compact: _compact = false }: { compact?: boolean }) {
+function PlannerInputSummary({
+  compact: _compact = false,
+}: {
+  compact?: boolean;
+}) {
   const { draft, resolvedCount, manualCount } = usePlannerScreen();
 
   const nonZeroResources = (
@@ -628,7 +646,9 @@ function PlannerInputSummary({ compact: _compact = false }: { compact?: boolean 
     <div className="space-y-3">
       <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
         <span className="text-muted-foreground">種子碼</span>
-        <span className="font-mono font-medium">{draft.seed.trim() || "–"}</span>
+        <span className="font-mono font-medium">
+          {draft.seed.trim() || "–"}
+        </span>
         <span className="text-muted-foreground">Count</span>
         <span className="font-medium">
           {resolvedCount}
@@ -644,7 +664,10 @@ function PlannerInputSummary({ compact: _compact = false }: { compact?: boolean 
       {nonZeroResources.length > 0 && (
         <div className="flex flex-wrap gap-x-3 gap-y-1.5">
           {nonZeroResources.map(([label, value]) => (
-            <div key={label} className="inline-flex items-center gap-1.5 text-sm">
+            <div
+              key={label}
+              className="inline-flex items-center gap-1.5 text-sm"
+            >
               <ResourceImg label={label} height={16} showCount={false} />
               <span className="font-medium">{value}</span>
             </div>
@@ -709,17 +732,29 @@ function PlannerTargetPanel() {
         `貓咪 #${catId}`,
     }));
   }, [catNameById, draft.targetCatIds, tierGroups]);
-  const visibleSelectedCats = selectedCats.slice(0, 8);
-  const hiddenSelectedCatCount = Math.max(0, selectedCats.length - visibleSelectedCats.length);
+  const visibleSelectedCats = selectedCats.slice(0, MAX_SELECTED_TARGET_CATS);
+  const hiddenSelectedCatCount = Math.max(
+    0,
+    selectedCats.length - visibleSelectedCats.length,
+  );
+  const atSelectionLimit =
+    draft.targetCatIds.length >= MAX_SELECTED_TARGET_CATS;
+  const selectionSummary = atSelectionLimit
+    ? `已達上限 ${MAX_SELECTED_TARGET_CATS} 隻，取消已選貓咪後才能更換。`
+    : draft.targetCatIds.length === 0
+      ? `最多可選 ${MAX_SELECTED_TARGET_CATS} 隻目標貓咪。`
+      : `還可再選 ${MAX_SELECTED_TARGET_CATS - draft.targetCatIds.length} 隻目標貓咪。`;
 
   return (
     <section className="space-y-2.5">
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-2">
-          <div className="text-sm font-semibold text-foreground">選擇目標貓咪</div>
-          {draft.targetCatIds.length > 0 && (
-            <Badge variant="muted">{draft.targetCatIds.length}</Badge>
-          )}
+          <div className="text-sm font-semibold text-foreground">
+            選擇目標貓咪
+          </div>
+          <Badge variant={atSelectionLimit ? "warning" : "muted"}>
+            {draft.targetCatIds.length}/{MAX_SELECTED_TARGET_CATS}
+          </Badge>
           {draft.targetCatIds.length > 0 && (
             <Button
               variant="ghost"
@@ -759,6 +794,16 @@ function PlannerTargetPanel() {
           </div>
         )}
       </button>
+      <div
+        className={cn(
+          "px-1 text-xs",
+          atSelectionLimit
+            ? "font-medium text-warning"
+            : "text-muted-foreground",
+        )}
+      >
+        {selectionSummary}
+      </div>
 
       <BottomSheet
         open={sheetOpen}
@@ -766,8 +811,8 @@ function PlannerTargetPanel() {
           setSheetOpen(nextOpen);
           if (!nextOpen) setCatQuery("");
         }}
-        title={`選擇目標貓咪${draft.targetCatIds.length ? ` (${draft.targetCatIds.length})` : ""}`}
-        toolbar={(
+        title={`選擇目標貓咪 (${draft.targetCatIds.length}/${MAX_SELECTED_TARGET_CATS})`}
+        toolbar={
           <div className="flex items-center gap-4">
             <div className="w-20 shrink-0">
               <Button
@@ -798,13 +843,14 @@ function PlannerTargetPanel() {
               />
             </div>
           </div>
-        )}
+        }
       >
         <TargetCatsSelectionContent
           loadState={catsState}
           error={catsErr}
           groups={tierGroups}
           selectedIds={draft.targetCatIds}
+          maxSelection={MAX_SELECTED_TARGET_CATS}
           onChange={setTargetCatIds}
           onClear={clearTargetCatIds}
           query={catQuery}
@@ -867,10 +913,7 @@ function PlannerInputEditor({ layout }: { layout: "immersive" | "compact" }) {
         />
 
         <div className="workspace-divider pt-3.5">
-          <ResourceForm
-            value={draft.resources}
-            onChange={setResources}
-          />
+          <ResourceForm value={draft.resources} onChange={setResources} />
         </div>
 
         <div className="grid gap-5 lg:grid-cols-[minmax(280px,0.9fr)_minmax(0,1.35fr)]">
@@ -881,6 +924,7 @@ function PlannerInputEditor({ layout }: { layout: "immersive" | "compact" }) {
               upcomingEvents={upcomingEvents}
               pastEvents={pastEvents}
               value={draft.selectedEventValues}
+              maxSelection={MAX_SELECTED_EVENTS}
               onChange={setSelectedEventValues}
             />
           </div>
@@ -931,11 +975,7 @@ function PlannerInputStage() {
 }
 
 function PlannerSidebarRail() {
-  const {
-    appliedSession,
-    catNameById,
-    goToInputStage,
-  } = usePlannerScreen();
+  const { appliedSession, catNameById, goToInputStage } = usePlannerScreen();
 
   if (!appliedSession) return null;
 
@@ -991,11 +1031,7 @@ function PlannerResultsView() {
 }
 
 function PlannerResultsStage() {
-  const {
-    appliedSession,
-    catNameById,
-    goToInputStage,
-  } = usePlannerScreen();
+  const { appliedSession, catNameById, goToInputStage } = usePlannerScreen();
 
   if (!appliedSession) {
     return <PlannerInputStage />;
@@ -1008,9 +1044,13 @@ function PlannerResultsStage() {
           <CardContent className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
-                <div className="text-sm font-semibold text-foreground">結果摘要</div>
+                <div className="text-sm font-semibold text-foreground">
+                  結果摘要
+                </div>
                 <Badge
-                  variant={appliedSession.result.success ? "success" : "warning"}
+                  variant={
+                    appliedSession.result.success ? "success" : "warning"
+                  }
                   className={cn(
                     "rounded-full px-2.5 py-1 text-[12px] font-semibold tracking-normal",
                     appliedSession.result.success
@@ -1018,7 +1058,9 @@ function PlannerResultsStage() {
                       : "bg-warning/12 text-warning",
                   )}
                 >
-                  {appliedSession.result.success ? "已命中全部目標" : "尚未完全命中"}
+                  {appliedSession.result.success
+                    ? "已命中全部目標"
+                    : "尚未完全命中"}
                 </Badge>
               </div>
             </div>
@@ -1101,11 +1143,7 @@ function PlannerScreen() {
       >
         <div ref={topRef} />
         <PlannerHeader />
-        {isResultsStage ? (
-          <PlannerResultsStage />
-        ) : (
-          <PlannerInputStage />
-        )}
+        {isResultsStage ? <PlannerResultsStage /> : <PlannerInputStage />}
       </div>
       <RunBlockingOverlay open={runOverlayOpen} onCancel={cancelPlannerFlow} />
     </>

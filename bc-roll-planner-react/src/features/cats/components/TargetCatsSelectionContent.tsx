@@ -16,6 +16,7 @@ export function TargetCatsSelectionContent(props: {
   error: string;
   groups: TierGroup[];
   selectedIds: number[];
+  maxSelection: number;
   onChange: (next: number[]) => void;
   onClear: () => void;
   getCatHref?: (catId: number) => string | undefined;
@@ -31,6 +32,7 @@ export function TargetCatsSelectionContent(props: {
     error,
     groups,
     selectedIds,
+    maxSelection,
     onChange,
     onClear,
     getCatHref,
@@ -54,6 +56,7 @@ export function TargetCatsSelectionContent(props: {
       error={error}
       groups={sortedGroups}
       selectedIds={selectedIds}
+      maxSelection={maxSelection}
       onChange={onChange}
       onClear={onClear}
       getCatHref={getCatHref}

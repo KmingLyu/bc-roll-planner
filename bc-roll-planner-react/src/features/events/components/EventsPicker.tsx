@@ -20,13 +20,32 @@ import { cn } from "@/lib/utils";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
 
+function describeSelectionCapacity(params: {
+  count: number;
+  limit: number;
+  unit: string;
+}) {
+  const { count, limit, unit } = params;
+  const remaining = Math.max(0, limit - count);
+
+  if (count >= limit) {
+    return `已達上限 ${limit} 個${unit}，取消已選項目後才能更換。`;
+  }
+  if (count === 0) {
+    return `最多可選 ${limit} 個${unit}。`;
+  }
+  return `還可再選 ${remaining} 個${unit}。`;
+}
+
 function EventOption({
   event,
   checked,
+  disabled = false,
   onToggle,
 }: {
   event: Event;
   checked: boolean;
+  disabled?: boolean;
   onToggle: () => void;
 }) {
   const { dateText, nameText, titleText } = getEventDisplayLines(event);
@@ -34,14 +53,18 @@ function EventOption({
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={onToggle}
       className={cn(
-        "flex w-full items-start rounded-lg border px-2 py-2 text-left transition-colors",
+        "flex w-full items-start rounded-lg border px-2 py-2 text-left transition-colors disabled:cursor-not-allowed",
         checked
           ? "border-primary/45 bg-primary/[0.06] shadow-[inset_0_0_0_1px_rgba(59,130,246,0.12)]"
-          : "border-transparent hover:border-border/60 hover:bg-muted/20",
+          : disabled
+            ? "border-transparent opacity-45"
+            : "border-transparent hover:border-border/60 hover:bg-muted/20",
       )}
       title={titleText}
+      aria-disabled={disabled}
     >
       <div className="min-w-0 flex-1 space-y-0.5">
         <div
@@ -85,6 +108,7 @@ export function EventsPicker(props: {
   upcomingEvents: Event[];
   pastEvents: Event[];
   value: string[];
+  maxSelection: number;
   onChange: (next: string[]) => void;
 }) {
   const {
@@ -93,6 +117,7 @@ export function EventsPicker(props: {
     upcomingEvents,
     pastEvents,
     value,
+    maxSelection,
     onChange,
   } = props;
 
@@ -147,12 +172,21 @@ export function EventsPicker(props: {
       titleText,
     };
   });
-  const visibleSelectedEvents = selectedEventSummaries.slice(0, 3);
+  const visibleSelectedEvents = selectedEventSummaries.slice(0, maxSelection);
   const hiddenSelectedEventCount = Math.max(0, selectedEventSummaries.length - visibleSelectedEvents.length);
+  const atSelectionLimit = value.length >= maxSelection;
+  const selectionSummary = describeSelectionCapacity({
+    count: value.length,
+    limit: maxSelection,
+    unit: "卡池",
+  });
 
   const toggleEvent = (eventValue: string) => {
     if (selectedSet.has(eventValue)) {
       onChange(value.filter((entry) => entry !== eventValue));
+      return;
+    }
+    if (value.length >= maxSelection) {
       return;
     }
     onChange([...value, eventValue]);
@@ -163,7 +197,9 @@ export function EventsPicker(props: {
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-2">
           <div className="text-sm font-semibold text-foreground">選擇卡池</div>
-          {value.length > 0 && <Badge variant="muted">{value.length}</Badge>}
+          <Badge variant={atSelectionLimit ? "warning" : "muted"}>
+            {value.length}/{maxSelection}
+          </Badge>
           {value.length ? (
             <Button
               variant="ghost"
@@ -204,6 +240,14 @@ export function EventsPicker(props: {
           </div>
         )}
       </button>
+      <div
+        className={cn(
+          "px-1 text-xs",
+          atSelectionLimit ? "font-medium text-warning" : "text-muted-foreground",
+        )}
+      >
+        {selectionSummary}
+      </div>
 
       <BottomSheet
         open={sheetOpen}
@@ -211,7 +255,7 @@ export function EventsPicker(props: {
           setSheetOpen(nextOpen);
           if (!nextOpen) setQuery("");
         }}
-        title={`選擇卡池${value.length ? ` (${value.length})` : ""}`}
+        title={`選擇卡池 (${value.length}/${maxSelection})`}
         toolbar={(
           <div className="flex items-center gap-4">
             <div className="w-20 shrink-0">
@@ -246,6 +290,15 @@ export function EventsPicker(props: {
         )}
       >
         <div className="space-y-3">
+          {atSelectionLimit ? (
+            <Alert variant="warning">
+              已選滿 {maxSelection} 個卡池，先取消既有卡池才能再新增。
+            </Alert>
+          ) : (
+            <div className="px-1 text-xs text-muted-foreground">
+              已選 {value.length} / {maxSelection} 個卡池，還可再選 {maxSelection - value.length} 個。
+            </div>
+          )}
           {loadState === "loading" ? <Alert variant="info">正在載入卡池…</Alert> : null}
           {loadState === "error" ? <Alert variant="error">{error}</Alert> : null}
 
@@ -262,6 +315,7 @@ export function EventsPicker(props: {
                       key={event.value}
                       event={event}
                       checked={selectedSet.has(event.value)}
+                      disabled={atSelectionLimit && !selectedSet.has(event.value)}
                       onToggle={() => toggleEvent(event.value)}
                     />
                   ))}
@@ -281,6 +335,7 @@ export function EventsPicker(props: {
                       key={event.value}
                       event={event}
                       checked={selectedSet.has(event.value)}
+                      disabled={atSelectionLimit && !selectedSet.has(event.value)}
                       onToggle={() => toggleEvent(event.value)}
                     />
                   ))}

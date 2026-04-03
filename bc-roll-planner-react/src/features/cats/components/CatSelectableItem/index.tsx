@@ -5,6 +5,7 @@ export function CatSelectableItem(props: {
   catId: number;
   name: string;
   checked: boolean;
+  disabled?: boolean;
   onToggle: (next: boolean) => void;
   imageUrl?: string;
   href?: string;
@@ -15,6 +16,7 @@ export function CatSelectableItem(props: {
     catId,
     name,
     checked,
+    disabled = false,
     onToggle,
     imageUrl,
     href,
@@ -27,13 +29,17 @@ export function CatSelectableItem(props: {
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={() => onToggle(!checked)}
       className={cn(
-        "group flex h-full w-full items-start rounded-lg border px-2 py-2 text-left transition-colors",
+        "group flex h-full w-full items-start rounded-lg border px-2 py-2 text-left transition-colors disabled:cursor-not-allowed",
         checked
           ? "border-primary/45 bg-primary/[0.06] shadow-[inset_0_0_0_1px_rgba(59,130,246,0.12)]"
-          : "border-transparent hover:border-border/60 hover:bg-muted/20",
+          : disabled
+            ? "border-transparent opacity-45"
+            : "border-transparent hover:border-border/60 hover:bg-muted/20",
       )}
+      aria-disabled={disabled}
     >
       <div
         className={cn(

@@ -1,11 +1,29 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { Search } from "lucide-react";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import type { TierGroup } from "@/features/cats/types";
 import { CatSelectableItem } from "./CatSelectableItem";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
+
+function describeSelectionCapacity(params: {
+  count: number;
+  limit: number;
+  unit: string;
+}) {
+  const { count, limit, unit } = params;
+  const remaining = Math.max(0, limit - count);
+
+  if (count >= limit) {
+    return `已達上限 ${limit} 隻${unit}，取消已選項目後才能更換。`;
+  }
+  if (count === 0) {
+    return `最多可選 ${limit} 隻${unit}。`;
+  }
+  return `還可再選 ${remaining} 隻${unit}。`;
+}
 
 function tierLabel(tier: TierGroup["tier"]) {
   if (tier === "rare") return "Rare";
@@ -19,6 +37,7 @@ export function TargetCatsPicker(props: {
   error: string;
   groups: TierGroup[];
   selectedIds: number[];
+  maxSelection: number;
   onChange: (next: number[]) => void;
   onClear: () => void;
   query?: string;
@@ -35,6 +54,7 @@ export function TargetCatsPicker(props: {
     error,
     groups,
     selectedIds,
+    maxSelection,
     onChange,
     onClear: _onClear,
     query,
@@ -52,6 +72,12 @@ export function TargetCatsPicker(props: {
   const queryValue = query ?? internalQuery;
   const deferredQuery = useDeferredValue(queryValue);
   const normalizedQuery = deferredQuery.trim().toLowerCase();
+  const atSelectionLimit = selectedIds.length >= maxSelection;
+  const selectionSummary = describeSelectionCapacity({
+    count: selectedIds.length,
+    limit: maxSelection,
+    unit: "目標貓咪",
+  });
 
   const filteredGroups = useMemo(() => {
     if (!normalizedQuery) return groups;
@@ -67,7 +93,14 @@ export function TargetCatsPicker(props: {
 
   function toggle(id: number, checked: boolean) {
     if (checked) {
-      onChange(selectedIds.includes(id) ? selectedIds : [...selectedIds, id]);
+      if (selectedIds.includes(id)) {
+        onChange(selectedIds);
+        return;
+      }
+      if (selectedIds.length >= maxSelection) {
+        return;
+      }
+      onChange([...selectedIds, id]);
       return;
     }
     onChange(selectedIds.filter((value) => value !== id));
@@ -103,6 +136,15 @@ export function TargetCatsPicker(props: {
       {loadState === "error" ? (
         <div className="text-sm text-destructive">{error}</div>
       ) : null}
+      {atSelectionLimit ? (
+        <Alert variant="warning">
+          已選滿 {maxSelection} 隻目標貓咪，先取消既有目標後才能再新增。
+        </Alert>
+      ) : (
+        <div className="px-1 text-xs text-muted-foreground">
+          {selectionSummary}
+        </div>
+      )}
 
       <div className="space-y-0.5">
         {filteredGroups.length ? (
@@ -131,6 +173,7 @@ export function TargetCatsPicker(props: {
                       catId={cat.id}
                       name={cat.name}
                       checked={selectedSet.has(cat.id)}
+                      disabled={atSelectionLimit && !selectedSet.has(cat.id)}
                       onToggle={(checked) => toggle(cat.id, checked)}
                       imageUrl={getCatImageUrl?.(cat.id)}
                       href={getCatHref?.(cat.id)}
@@ -144,8 +187,15 @@ export function TargetCatsPicker(props: {
           ))
         ) : (
           groups.length ? (
-            <div className="py-2 text-sm text-muted-foreground">
-              沒有符合搜尋條件的貓咪。
+            <div className="space-y-1 py-2">
+              <div className="text-sm text-muted-foreground">
+                沒有符合搜尋條件的貓咪。
+              </div>
+              {atSelectionLimit ? (
+                <div className="text-xs font-medium text-warning">
+                  已達上限時，仍可搜尋並取消目前已選的目標貓咪。
+                </div>
+              ) : null}
             </div>
           ) : null
         )}

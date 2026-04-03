@@ -27,6 +27,8 @@ import {
   Card,
   CardContent,
 } from "@/components/ui/card";
+import { ResourceImg } from "./components/ResourceImg";
+import type { ActionLabel } from "./logic/view-model";
 import { DisclaimerNote } from "./components/Note";
 import { ResourceForm } from "./components/ResourceForm";
 import { RunBlockingOverlay } from "./components/RunBlockingOverlay";
@@ -605,34 +607,45 @@ function PlannerHeader() {
   );
 }
 
-function PlannerInputSummary({ compact = false }: { compact?: boolean }) {
+function PlannerInputSummary({ compact: _compact = false }: { compact?: boolean }) {
   const { draft, resolvedCount, manualCount } = usePlannerScreen();
 
-  const resourceSummary = [
-    ["稀有券", draft.resources.tickets],
-    ["白金券", draft.resources.platinum_tickets],
-    ["傳說券", draft.resources.legend_tickets],
-    ["罐頭", draft.resources.food],
-  ];
+  const nonZeroResources = (
+    [
+      ["稀有券", draft.resources.tickets],
+      ["白金券", draft.resources.platinum_tickets],
+      ["傳說券", draft.resources.legend_tickets],
+      ["罐頭", draft.resources.food],
+    ] as [ActionLabel, number][]
+  ).filter(([, value]) => value > 0);
 
   return (
-    <div className={compact ? "space-y-3" : "space-y-3"}>
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="outline">種子碼 {draft.seed.trim() || "-"}</Badge>
-        <Badge variant={manualCount != null ? "default" : "muted"}>
-          {manualCount != null ? "手動 count" : "自動 count"} {resolvedCount}
-        </Badge>
-        <Badge variant="muted">卡池 {draft.selectedEventValues.length}</Badge>
-        <Badge variant="muted">目標 {draft.targetCatIds.length}</Badge>
+    <div className="space-y-3">
+      <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+        <span className="text-muted-foreground">種子碼</span>
+        <span className="font-mono font-medium">{draft.seed.trim() || "–"}</span>
+        <span className="text-muted-foreground">Count</span>
+        <span className="font-medium">
+          {resolvedCount}
+          <span className="ml-1.5 text-xs text-muted-foreground">
+            （{manualCount != null ? "手動" : "自動"}）
+          </span>
+        </span>
+        <span className="text-muted-foreground">卡池</span>
+        <span className="font-medium">{draft.selectedEventValues.length}</span>
+        <span className="text-muted-foreground">目標</span>
+        <span className="font-medium">{draft.targetCatIds.length}</span>
       </div>
-
-      <div className="flex flex-wrap gap-2">
-        {resourceSummary.map(([label, value]) => (
-          <Badge key={label} variant="outline">
-            {label} {value}
-          </Badge>
-        ))}
-      </div>
+      {nonZeroResources.length > 0 && (
+        <div className="flex flex-wrap gap-x-3 gap-y-1.5">
+          {nonZeroResources.map(([label, value]) => (
+            <div key={label} className="inline-flex items-center gap-1.5 text-sm">
+              <ResourceImg label={label} height={16} showCount={false} />
+              <span className="font-medium">{value}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -839,23 +852,31 @@ function PlannerSidebarRail() {
   return (
     <Card className="workspace-pane sticky top-0 self-start border-border/55">
       <div className="workspace-toolbar">
-        <div className="text-sm font-semibold text-foreground">目前條件</div>
+        <div className="flex items-center gap-2.5">
+          <div className="text-sm font-semibold text-foreground">結果摘要</div>
+          <Badge
+            variant={appliedSession.result.success ? "success" : "warning"}
+            className={cn(
+              "rounded-full px-2.5 py-1 text-[12px] font-semibold tracking-normal",
+              appliedSession.result.success
+                ? "bg-success/12 text-success"
+                : "bg-warning/12 text-warning",
+            )}
+          >
+            {appliedSession.result.success ? "已命中全部目標" : "尚未完全命中"}
+          </Badge>
+        </div>
         <Button variant="ghost" size="sm" onClick={goToInputStage}>
           <PencilLine className="size-4" />
           重新輸入
         </Button>
       </div>
-      <CardContent className="subtle-scrollbar max-h-[calc(100vh-3rem)] space-y-4 overflow-y-auto">
-        <PlannerInputSummary compact />
-
-        <div className="workspace-divider pt-4">
-          <ResultStatsSidebar
-            result={appliedSession.result}
-            graphsByEvent={appliedSession.graphsByEvent}
-            catNameById={catNameById}
-          />
-        </div>
-
+      <CardContent className="subtle-scrollbar max-h-[calc(100vh-3rem)] overflow-y-auto">
+        <ResultStatsSidebar
+          result={appliedSession.result}
+          graphsByEvent={appliedSession.graphsByEvent}
+          catNameById={catNameById}
+        />
       </CardContent>
     </Card>
   );
@@ -896,17 +917,27 @@ function PlannerResultsStage() {
         <Card className="workspace-pane border-border/55">
           <CardContent className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="text-sm font-semibold text-foreground">目前條件</div>
+              <div className="flex items-center gap-2.5">
+                <div className="text-sm font-semibold text-foreground">結果摘要</div>
+                <Badge
+                  variant={appliedSession.result.success ? "success" : "warning"}
+                  className={cn(
+                    "rounded-full px-2.5 py-1 text-[12px] font-semibold tracking-normal",
+                    appliedSession.result.success
+                      ? "bg-success/12 text-success"
+                      : "bg-warning/12 text-warning",
+                  )}
+                >
+                  {appliedSession.result.success ? "已命中全部目標" : "尚未完全命中"}
+                </Badge>
+              </div>
             </div>
-            <PlannerInputSummary compact />
-            <div className="workspace-divider pt-3">
-              <ResultStatsSidebar
-                result={appliedSession.result}
-                graphsByEvent={appliedSession.graphsByEvent}
-                catNameById={catNameById}
-                compact
-              />
-            </div>
+            <ResultStatsSidebar
+              result={appliedSession.result}
+              graphsByEvent={appliedSession.graphsByEvent}
+              catNameById={catNameById}
+              compact
+            />
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" onClick={goToInputStage}>
                 <PencilLine className="size-4" />

@@ -1,5 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import type { PlanResult } from "@/features/planner/logic/core";
 import type { TrackGraph } from "@/types/models";
 import { getEventDisplayLines } from "@/utils/event-display";
@@ -96,13 +98,30 @@ function useResultStatsModel(params: {
   }, [catNameById, graphsByEvent, result]);
 }
 
-function StatItem({ label, value }: { label: string; value: React.ReactNode }) {
+function StatItem({
+  label,
+  value,
+  labelClassName,
+  valueClassName,
+}: {
+  label: string;
+  value: React.ReactNode;
+  labelClassName?: string;
+  valueClassName?: string;
+}) {
   return (
-    <div className="space-y-1.5">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+    <div className="space-y-1">
+      <div className={cn("text-[13px] font-medium text-muted-foreground", labelClassName)}>
         {label}
       </div>
-      <div className="text-[28px] font-semibold tracking-tight text-foreground">{value}</div>
+      <div
+        className={cn(
+          "text-[30px] font-semibold leading-none tracking-tight text-foreground",
+          valueClassName,
+        )}
+      >
+        {value}
+      </div>
     </div>
   );
 }
@@ -115,6 +134,7 @@ export function ResultStatsSidebar(props: {
 }) {
   const { result, graphsByEvent, catNameById, compact = false } = props;
   const stats = useResultStatsModel({ result, graphsByEvent, catNameById });
+  const [eventOpen, setEventOpen] = useState(false);
   const resourceUsage = useMemo<ResourceUsageItem[]>(() => {
     const singleFood = stats.byAction.get("罐頭") || 0;
     const tenFood = stats.byAction.get("10連抽") || 0;
@@ -137,20 +157,15 @@ export function ResultStatsSidebar(props: {
       return items;
     }, []);
   }, [stats.byAction]);
-
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        <Badge variant={result.success ? "success" : "warning"}>
-          {result.success ? "已命中全部目標" : "尚未完全命中"}
-        </Badge>
-      </div>
-
-      <div className={compact ? "grid gap-4 sm:grid-cols-2" : "grid gap-4 sm:grid-cols-2"}>
-        <StatItem label="命中目標" value={`${result.targets_hit}/${result.targets_total}`} />
-        <StatItem label="終點位置" value={result.final_cursor_id} />
-        <StatItem label="抽卡步驟" value={result.plan?.length ?? 0} />
-        <StatItem label="獲得貓咪" value={result.all_draws?.length ?? 0} />
+      <div className="rounded-xl">
+        <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+          <StatItem label="命中目標" value={`${result.targets_hit}/${result.targets_total}`} />
+          <StatItem label="終點位置" value={result.final_cursor_id} />
+          <StatItem label="抽卡步驟" value={result.plan?.length ?? 0} />
+          <StatItem label="獲得貓咪" value={result.all_draws?.length ?? 0} />
+        </div>
       </div>
 
       <section className="space-y-3 border-t border-border/45 pt-3.5">
@@ -172,7 +187,7 @@ export function ResultStatsSidebar(props: {
       </section>
 
       <section className="space-y-3 border-t border-border/45 pt-3.5">
-        <div className="text-sm font-semibold text-foreground">命中目標</div>
+        <div className="text-sm font-semibold text-foreground">命中</div>
         <div className="flex flex-wrap gap-2">
           {stats.hitTargets.length ? (
             stats.hitTargets.map((target) => (
@@ -184,30 +199,47 @@ export function ResultStatsSidebar(props: {
           ) : (
             <Badge variant="muted">尚未命中任何目標</Badge>
           )}
-          {stats.missingTargets.map((target) => (
-            <Badge key={target.id} variant="outline">
-              未命中：{target.name}
-            </Badge>
-          ))}
         </div>
       </section>
 
-      <section className="space-y-3 border-t border-border/45 pt-3.5">
-        <div className="text-sm font-semibold text-foreground">event 分布</div>
-        {stats.byEvent.length ? (
-          <div className="space-y-3">
-            {stats.byEvent.map((event) => (
-              <div key={event.eventValue} className="space-y-1 border-b border-border/40 pb-3 last:border-b-0 last:pb-0">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  {event.dateText}
-                </div>
-                <div className="text-sm font-medium text-foreground">{event.nameText}</div>
-                <div className="text-sm text-muted-foreground">{event.drawCount} 抽</div>
-              </div>
+      {stats.missingTargets.length > 0 && (
+        <section className="space-y-3 border-t border-border/45 pt-3.5">
+          <div className="text-sm font-semibold text-foreground">未命中</div>
+          <div className="flex flex-wrap gap-2">
+            {stats.missingTargets.map((target) => (
+              <Badge key={target.id} variant="outline" className="border-transparent text-red-500 shadow-none dark:text-red-400">
+                {target.name}
+              </Badge>
             ))}
           </div>
-        ) : (
-          <div className="text-sm text-muted-foreground">沒有 event 資料</div>
+        </section>
+      )}
+
+      <section className="space-y-3 border-t border-border/45 pt-3.5">
+        <button
+          type="button"
+          onClick={() => setEventOpen((v) => !v)}
+          className="flex w-full items-center justify-between text-sm font-semibold text-foreground"
+        >
+          <span>卡池分布</span>
+          <ChevronDown className={cn("size-4 text-muted-foreground transition-transform", eventOpen && "rotate-180")} />
+        </button>
+        {eventOpen && (
+          stats.byEvent.length ? (
+            <div className="space-y-3">
+              {stats.byEvent.map((event) => (
+                <div key={event.eventValue} className="space-y-1 border-b border-border/40 pb-3 last:border-b-0 last:pb-0">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    {event.dateText}
+                  </div>
+                  <div className="text-sm font-medium text-foreground">{event.nameText}</div>
+                  <div className="text-sm text-muted-foreground">{event.drawCount} 抽</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-sm text-muted-foreground">沒有 event 資料</div>
+          )
         )}
       </section>
     </div>

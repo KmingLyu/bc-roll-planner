@@ -1,6 +1,7 @@
 import { Fragment, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ResourceImg } from "@/features/planner/components/ResourceImg";
 import type { PlanResult } from "@/features/planner/logic/core";
 import {
@@ -20,6 +21,23 @@ import { cn } from "@/lib/utils";
 type ResultRowBlock =
   | { key: string; kind: "single"; row: DrawRow }
   | { key: string; kind: "ten"; summary: DrawRow; children: DrawRow[] };
+
+type ResultFilterMode = "all" | "targets";
+export type { ResultFilterMode };
+
+type ResultEventGroup = {
+  eventValue: string;
+  anchorRow: DrawRow;
+  blocks: ResultRowBlock[];
+};
+
+const RESULT_FILTER_OPTIONS: Array<{
+  value: ResultFilterMode;
+  label: string;
+}> = [
+  { value: "all", label: "全部步驟" },
+  { value: "targets", label: "只看命中" },
+];
 
 function eventLabel(row: DrawRow) {
   return getEventDisplayLines({
@@ -81,6 +99,96 @@ function groupRowsByStep(rows: DrawRow[]): ResultRowBlock[] {
   }
 
   return blocks;
+}
+
+function blockHasTarget(block: ResultRowBlock) {
+  if (block.kind === "single") return block.row.isTarget;
+  return block.summary.isTarget || block.children.some((row) => row.isTarget);
+}
+
+function getVisibleBlock(
+  block: ResultRowBlock,
+  filterMode: ResultFilterMode,
+) {
+  if (filterMode === "all") return block;
+
+  if (block.kind === "single") {
+    return block.row.isTarget ? block : null;
+  }
+
+  if (!blockHasTarget(block)) return null;
+
+  return {
+    ...block,
+    children: block.children.filter((row) => row.isTarget),
+  };
+}
+
+function filterResultBlocks(
+  blocks: ResultRowBlock[],
+  filterMode: ResultFilterMode,
+) {
+  return blocks.reduce<ResultRowBlock[]>((visibleBlocks, block) => {
+    const visibleBlock = getVisibleBlock(block, filterMode);
+    if (visibleBlock) visibleBlocks.push(visibleBlock);
+    return visibleBlocks;
+  }, []);
+}
+
+function buildVisibleEventGroups(params: {
+  rows: DrawRow[];
+  filterMode: ResultFilterMode;
+}) {
+  const { rows, filterMode } = params;
+
+  return groupRowsByEvent(rows).reduce<ResultEventGroup[]>((groups, group) => {
+    const blocks = filterResultBlocks(groupRowsByStep(group.rows), filterMode);
+    if (!blocks.length) return groups;
+
+    groups.push({
+      eventValue: group.eventValue,
+      anchorRow: group.rows[0],
+      blocks,
+    });
+    return groups;
+  }, []);
+}
+
+function buildHitStepStats(params: {
+  result: PlanResult;
+  targetCatIds: number[];
+}) {
+  const { result, targetCatIds } = params;
+  const targetIdSet = new Set(targetCatIds);
+  const plan = result.plan || [];
+  let hitSteps = 0;
+
+  for (const step of plan) {
+    const hasHit = (step.draws || []).some(
+      (draw) => draw.cat_id != null && targetIdSet.has(draw.cat_id),
+    );
+
+    if (hasHit) hitSteps += 1;
+  }
+
+  return {
+    hitSteps,
+    totalSteps: plan.length,
+  };
+}
+
+function getVisibleTracksForRow(
+  row: Pick<DrawRow, "isTargetA" | "isTargetB">,
+  filterMode: ResultFilterMode,
+) {
+  if (filterMode === "all") return ["A", "B"] as const;
+
+  const tracks = ([
+    row.isTargetA ? "A" : null,
+    row.isTargetB ? "B" : null,
+  ].filter(Boolean) || []) as Array<"A" | "B">;
+
+  return tracks.length ? tracks : (["A", "B"] as const);
 }
 
 function trackPositionLabel(row: DrawRow, track: "A" | "B") {
@@ -422,16 +530,31 @@ function ResultTrackCell(props: {
   row: DrawRow;
   track: "A" | "B";
   compact?: boolean;
+  hideWhenNotTarget?: boolean;
 }) {
-  const { row, track, compact = false } = props;
+  const { row, track, compact = false, hideWhenNotTarget = false } = props;
   const value = track === "A" ? row.A : row.B;
   const catId = track === "A" ? row.catIdA : row.catIdB;
   const thisStatus = track === "A" ? row.statusA : row.statusB;
   const otherStatus = track === "A" ? row.statusB : row.statusA;
+  const isTrackTarget = track === "A" ? row.isTargetA : row.isTargetB;
   const shouldDim =
     row.isVirtual || (thisStatus === "normal" && otherStatus !== "normal");
   const isGuaranteedOtherTrack =
     row.isGuaranteedRow && row.track != null && row.track !== track;
+
+  if (hideWhenNotTarget && !isTrackTarget) {
+    return (
+      <div
+        className={cn(
+          "flex h-full items-start px-3.5 py-2.5 text-xl font-semibold text-muted-foreground",
+          compact ? "px-3 py-2 text-lg" : "",
+        )}
+      >
+        <span>-</span>
+      </div>
+    );
+  }
 
   if (isGuaranteedOtherTrack) {
     return (
@@ -545,9 +668,80 @@ function ResultTenRollToggle(props: {
   );
 }
 
-function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
+function ResultFilterToolbar(props: {
+  filterMode: ResultFilterMode;
+  onFilterModeChange: (next: ResultFilterMode) => void;
+}) {
+  const { filterMode, onFilterModeChange } = props;
+
+  return (
+    <div className="workspace-toolbar flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="text-sm font-semibold text-foreground">規劃結果</div>
+
+      <div
+        className="flex w-full items-center rounded-[6px] border border-border/60 bg-muted/35 p-1 sm:w-auto"
+        role="group"
+        aria-label="結果篩選"
+      >
+        {RESULT_FILTER_OPTIONS.map((option) => {
+          const active = option.value === filterMode;
+
+          return (
+            <Button
+              key={option.value}
+              variant="ghost"
+              size="sm"
+              aria-pressed={active}
+              onClick={() => onFilterModeChange(option.value)}
+              className={cn(
+                "h-8 flex-1 rounded-[4px] border px-3 text-[13px] font-semibold shadow-none sm:flex-none",
+                active && option.value === "targets"
+                  ? "border-success/35 bg-success/12 text-success hover:bg-success/16"
+                  : null,
+                active && option.value === "all"
+                  ? "border-border/70 bg-background text-foreground hover:bg-background"
+                  : null,
+                !active
+                  ? "border-transparent text-muted-foreground hover:border-border/45 hover:bg-background/80 hover:text-foreground"
+                  : null,
+              )}
+            >
+              {option.label}
+            </Button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ResultsEmptyState({ onReset }: { onReset: () => void }) {
+  return (
+    <div className="space-y-4 border-t border-border/35 bg-muted/[0.12] px-4 py-8 text-center sm:px-6 sm:py-10">
+      <div className="mx-auto max-w-md space-y-1.5">
+        <div className="text-sm font-semibold text-foreground">
+          目前規劃中沒有命中目標的步驟
+        </div>
+        <p className="text-sm leading-6 text-muted-foreground">
+          切回全部步驟後，可以檢查完整路線與未命中區段。
+        </p>
+      </div>
+      <div className="flex justify-center">
+        <Button variant="outline" onClick={onReset}>
+          顯示全部步驟
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ResultsDesktopTable(props: {
+  groups: ResultEventGroup[];
+  filterMode: ResultFilterMode;
+}) {
+  const { groups, filterMode } = props;
+  const hideNonTargetTracks = filterMode === "targets";
   const [expandedTenRows, setExpandedTenRows] = useState<Record<string, boolean>>({});
-  const groups = useMemo(() => groupRowsByEvent(rows), [rows]);
   const colorPicker = useMemo(
     () => makeEventColorPicker(groups.map((group) => group.eventValue)),
     [groups],
@@ -586,10 +780,9 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
         </thead>
         <tbody>
           {groups.map((group) => {
-            const label = eventLabel(group.rows[0]);
+            const label = eventLabel(group.anchorRow);
             const accentColor = colorPicker.colorOf(group.eventValue);
             const accentTint = colorPicker.tintOf(group.eventValue);
-            const blocks = groupRowsByStep(group.rows);
 
             return (
               <Fragment key={group.eventValue}>
@@ -612,7 +805,10 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
                   </th>
                 </tr>
 
-                {blocks.map((block) => {
+                {group.blocks.map((rawBlock) => {
+                  const block = getVisibleBlock(rawBlock, filterMode);
+                  if (!block) return null;
+
                   if (block.kind === "single") {
                     const row = block.row;
                     return (
@@ -627,10 +823,18 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
                           <ResultActionCell row={row} />
                         </td>
                         <td className="px-3 py-1.5">
-                          <ResultTrackCell row={row} track="A" />
+                          <ResultTrackCell
+                            row={row}
+                            track="A"
+                            hideWhenNotTarget={hideNonTargetTracks}
+                          />
                         </td>
                         <td className="px-3 py-1.5">
-                          <ResultTrackCell row={row} track="B" />
+                          <ResultTrackCell
+                            row={row}
+                            track="B"
+                            hideWhenNotTarget={hideNonTargetTracks}
+                          />
                         </td>
                         <td className="px-3 py-1.5" />
                       </tr>
@@ -683,10 +887,18 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
                                 <ResultActionCell row={row} />
                               </td>
                               <td className="px-3 py-1.5">
-                                <ResultTrackCell row={row} track="A" />
+                                <ResultTrackCell
+                                  row={row}
+                                  track="A"
+                                  hideWhenNotTarget={hideNonTargetTracks}
+                                />
                               </td>
                               <td className="px-3 py-1.5">
-                                <ResultTrackCell row={row} track="B" />
+                                <ResultTrackCell
+                                  row={row}
+                                  track="B"
+                                  hideWhenNotTarget={hideNonTargetTracks}
+                                />
                               </td>
                               <td className="px-3 py-1.5" />
                             </tr>
@@ -704,13 +916,12 @@ function ResultsDesktopTable({ rows }: { rows: DrawRow[] }) {
   );
 }
 
-function ResultsMobileCards({ rows }: { rows: DrawRow[] }) {
+function ResultsMobileCards(props: {
+  groups: ResultEventGroup[];
+  filterMode: ResultFilterMode;
+}) {
+  const { groups, filterMode } = props;
   const [expandedTenRows, setExpandedTenRows] = useState<Record<string, boolean>>({});
-  const mobileRows = useMemo(
-    () => rows.filter((row) => !row.isVirtual),
-    [rows],
-  );
-  const groups = useMemo(() => groupRowsByEvent(mobileRows), [mobileRows]);
   const colorPicker = useMemo(
     () => makeEventColorPicker(groups.map((group) => group.eventValue)),
     [groups],
@@ -727,8 +938,7 @@ function ResultsMobileCards({ rows }: { rows: DrawRow[] }) {
       {groups.map((group) => {
         const accentColor = colorPicker.colorOf(group.eventValue);
         const accentTint = colorPicker.tintOf(group.eventValue);
-        const label = eventLabel(group.rows[0]);
-        const blocks = groupRowsByStep(group.rows);
+        const label = eventLabel(group.anchorRow);
 
         return (
           <div
@@ -751,25 +961,46 @@ function ResultsMobileCards({ rows }: { rows: DrawRow[] }) {
             </div>
 
             <div className="divide-y divide-border/35">
-              {blocks.map((block) => {
+              {group.blocks.map((rawBlock) => {
+                const block = getVisibleBlock(rawBlock, filterMode);
+                if (!block) return null;
+
                 if (block.kind === "single") {
                   const row = block.row;
                   const activeTrack = resolveActiveTrack(row);
+                  const visibleTracks = getVisibleTracksForRow(row, filterMode);
                   return (
                     <div key={row.key} className="space-y-3 p-3.5">
                       <ResultActionCell row={row} compact />
                       <div className="pt-1 sm:hidden">
                         <ResultTrackCell row={row} track={activeTrack} compact />
                       </div>
-                      <div className="hidden gap-4 pt-1 sm:grid sm:grid-cols-2">
-                        <ResultTrackCell row={row} track="A" compact />
-                        <ResultTrackCell row={row} track="B" compact />
+                      <div
+                        className={cn(
+                          "hidden gap-4 pt-1 sm:grid",
+                          visibleTracks.length > 1
+                            ? "sm:grid-cols-2"
+                            : "sm:grid-cols-1",
+                        )}
+                      >
+                        {visibleTracks.map((track) => (
+                          <ResultTrackCell
+                            key={`${row.key}-${track}`}
+                            row={row}
+                            track={track}
+                            compact
+                          />
+                        ))}
                       </div>
                     </div>
                   );
                 }
 
                 const isExpanded = !!expandedTenRows[block.summary.key];
+                const visibleTracks = getVisibleTracksForRow(
+                  block.summary,
+                  filterMode,
+                );
 
                 return (
                   <div key={block.key} className="space-y-3 p-3.5">
@@ -787,37 +1018,59 @@ function ResultsMobileCards({ rows }: { rows: DrawRow[] }) {
                         children={block.children}
                       />
                     </div>
-                    <div className="hidden gap-4 pt-1 sm:grid sm:grid-cols-2">
-                      <TenRollSummaryCell
-                        row={block.summary}
-                        track="A"
-                        children={block.children}
-                        compact
-                      />
-                      <TenRollSummaryCell
-                        row={block.summary}
-                        track="B"
-                        children={block.children}
-                        compact
-                      />
+                    <div
+                      className={cn(
+                        "hidden gap-4 pt-1 sm:grid",
+                        visibleTracks.length > 1
+                          ? "sm:grid-cols-2"
+                          : "sm:grid-cols-1",
+                      )}
+                    >
+                      {visibleTracks.map((track) => (
+                        <TenRollSummaryCell
+                          key={`${block.summary.key}-${track}`}
+                          row={block.summary}
+                          track={track}
+                          children={block.children}
+                          compact
+                        />
+                      ))}
                     </div>
 
                     {isExpanded ? (
                       <div className="space-y-3 border-t border-border/35 pt-3">
                         {block.children.map((row) => {
                           const activeTrack = resolveActiveTrack(row);
+                          const childVisibleTracks = getVisibleTracksForRow(
+                            row,
+                            filterMode,
+                          );
                           return (
-                          <div key={row.key} className="space-y-3">
-                            <ResultActionCell row={row} compact />
-                            <div className="sm:hidden">
-                              <ResultTrackCell row={row} track={activeTrack} compact />
+                            <div key={row.key} className="space-y-3">
+                              <ResultActionCell row={row} compact />
+                              <div className="sm:hidden">
+                                <ResultTrackCell row={row} track={activeTrack} compact />
+                              </div>
+                              <div
+                                className={cn(
+                                  "hidden gap-4 sm:grid",
+                                  childVisibleTracks.length > 1
+                                    ? "sm:grid-cols-2"
+                                    : "sm:grid-cols-1",
+                                )}
+                              >
+                                {childVisibleTracks.map((track) => (
+                                  <ResultTrackCell
+                                    key={`${row.key}-${track}`}
+                                    row={row}
+                                    track={track}
+                                    compact
+                                  />
+                                ))}
+                              </div>
                             </div>
-                            <div className="hidden gap-4 sm:grid sm:grid-cols-2">
-                              <ResultTrackCell row={row} track="A" compact />
-                              <ResultTrackCell row={row} track="B" compact />
-                            </div>
-                          </div>
-                        )})}
+                          );
+                        })}
                       </div>
                     ) : null}
                   </div>
@@ -836,10 +1089,17 @@ export function ResultTable(props: {
   graphsByEvent: Record<string, TrackGraph>;
   targetCatIds: number[];
   catNameById: Map<number, string>;
-  showTitle?: boolean;
+  filterMode: ResultFilterMode;
+  onFilterModeChange: (next: ResultFilterMode) => void;
 }) {
-  const { result, graphsByEvent, targetCatIds, catNameById, showTitle = false } =
-    props;
+  const {
+    result,
+    graphsByEvent,
+    targetCatIds,
+    catNameById,
+    filterMode,
+    onFilterModeChange,
+  } = props;
 
   const rows = useMemo(
     () =>
@@ -851,14 +1111,34 @@ export function ResultTable(props: {
       }),
     [catNameById, graphsByEvent, result, targetCatIds],
   );
+  const { hitSteps } = useMemo(
+    () => buildHitStepStats({ result, targetCatIds }),
+    [result, targetCatIds],
+  );
+  const desktopGroups = useMemo(
+    () => buildVisibleEventGroups({ rows, filterMode }),
+    [filterMode, rows],
+  );
+  const mobileRows = useMemo(() => rows.filter((row) => !row.isVirtual), [rows]);
+  const mobileGroups = useMemo(
+    () => buildVisibleEventGroups({ rows: mobileRows, filterMode }),
+    [filterMode, mobileRows],
+  );
 
   return (
     <div className="space-y-0">
-      {showTitle ? (
-        <div className="workspace-toolbar text-sm font-semibold text-foreground">規劃結果</div>
-      ) : null}
-      <ResultsDesktopTable rows={rows} />
-      <ResultsMobileCards rows={rows} />
+      <ResultFilterToolbar
+        filterMode={filterMode}
+        onFilterModeChange={onFilterModeChange}
+      />
+      {filterMode === "targets" && hitSteps === 0 ? (
+        <ResultsEmptyState onReset={() => onFilterModeChange("all")} />
+      ) : (
+        <>
+          <ResultsDesktopTable groups={desktopGroups} filterMode={filterMode} />
+          <ResultsMobileCards groups={mobileGroups} filterMode={filterMode} />
+        </>
+      )}
     </div>
   );
 }

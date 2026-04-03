@@ -1,22 +1,14 @@
-import { useMemo, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { PlanResult } from "@/features/planner/logic/core";
 import type { TrackGraph } from "@/types/models";
-import { getEventDisplayLines } from "@/utils/event-display";
 import { ACTIONS, actionLabelFromStep } from "../logic/view-model";
 import type { ActionLabel } from "../logic/view-model";
 import { ResourceImg } from "./ResourceImg";
 
 type ResultStatsModel = {
   byAction: Map<ActionLabel, number>;
-  byEvent: Array<{
-    eventValue: string;
-    drawCount: number;
-    dateText: string;
-    nameText: string;
-  }>;
   hitTargets: Array<{
     id: number;
     name: string;
@@ -36,14 +28,12 @@ type ResourceUsageItem = {
 
 function useResultStatsModel(params: {
   result: PlanResult;
-  graphsByEvent: Record<string, TrackGraph>;
   catNameById: Map<number, string>;
 }): ResultStatsModel {
-  const { result, graphsByEvent, catNameById } = params;
+  const { result, catNameById } = params;
 
   return useMemo(() => {
     const byAction = new Map<ActionLabel, number>();
-    const byEvent = new Map<string, number>();
 
     for (const action of ACTIONS) {
       byAction.set(action, 0);
@@ -52,10 +42,6 @@ function useResultStatsModel(params: {
     for (const step of result.plan || []) {
       const action = actionLabelFromStep(step);
       byAction.set(action, (byAction.get(action) || 0) + 1);
-      byEvent.set(
-        step.event_value,
-        (byEvent.get(step.event_value) || 0) + (step.draws?.length ?? 0),
-      );
     }
 
     const hitSet = new Set(result.targets_hit_ids || []);
@@ -68,23 +54,6 @@ function useResultStatsModel(params: {
 
     return {
       byAction,
-      byEvent: Array.from(byEvent.entries())
-        .sort((a, b) => b[1] - a[1])
-        .map(([eventValue, drawCount]) => {
-          const eventMeta = graphsByEvent[eventValue]?.event ?? {
-            name: eventValue,
-            raw_name: eventValue,
-            start_date: null,
-            end_date: null,
-          };
-          const display = getEventDisplayLines(eventMeta);
-          return {
-            eventValue,
-            drawCount,
-            dateText: display.dateText,
-            nameText: display.nameText,
-          };
-        }),
       hitTargets: [...hitSet].map((id) => ({
         id,
         name: catNameById.get(id) ?? `#${id}`,
@@ -95,7 +64,7 @@ function useResultStatsModel(params: {
         name: catNameById.get(id) ?? `#${id}`,
       })),
     };
-  }, [catNameById, graphsByEvent, result]);
+  }, [catNameById, result]);
 }
 
 function StatItem({
@@ -141,9 +110,8 @@ export function ResultStatsSidebar(props: {
   catNameById: Map<number, string>;
   compact?: boolean;
 }) {
-  const { result, graphsByEvent, catNameById, compact = false } = props;
-  const stats = useResultStatsModel({ result, graphsByEvent, catNameById });
-  const [eventOpen, setEventOpen] = useState(false);
+  const { result, catNameById, compact = false } = props;
+  const stats = useResultStatsModel({ result, catNameById });
   const resourceUsage = useMemo<ResourceUsageItem[]>(() => {
     const singleFood = stats.byAction.get("罐頭") || 0;
     const tenFood = stats.byAction.get("10連抽") || 0;
@@ -228,33 +196,6 @@ export function ResultStatsSidebar(props: {
         </section>
       )}
 
-      <section className="space-y-3 border-t border-border/45 pt-3.5">
-        <button
-          type="button"
-          onClick={() => setEventOpen((v) => !v)}
-          className="flex w-full items-center justify-between text-sm font-semibold text-foreground"
-        >
-          <span>卡池分布</span>
-          <ChevronDown className={cn("size-4 text-muted-foreground transition-transform", eventOpen && "rotate-180")} />
-        </button>
-        {eventOpen && (
-          stats.byEvent.length ? (
-            <div className="space-y-3">
-              {stats.byEvent.map((event) => (
-                <div key={event.eventValue} className="space-y-1 border-b border-border/40 pb-3 last:border-b-0 last:pb-0">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    {event.dateText}
-                  </div>
-                  <div className="text-sm font-medium text-foreground">{event.nameText}</div>
-                  <div className="text-sm text-muted-foreground">{event.drawCount} 抽</div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-sm text-muted-foreground">沒有 event 資料</div>
-          )
-        )}
-      </section>
     </div>
   );
 }

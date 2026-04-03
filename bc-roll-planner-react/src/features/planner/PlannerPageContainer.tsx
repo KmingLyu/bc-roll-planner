@@ -23,15 +23,13 @@ import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ResourceImg } from "./components/ResourceImg";
-import type { ActionLabel } from "./logic/view-model";
 import { DisclaimerNote } from "./components/Note";
 import { ResourceForm } from "./components/ResourceForm";
 import { RunBlockingOverlay } from "./components/RunBlockingOverlay";
 import { RunBar } from "./components/RunBar";
 import { SeedCountForm } from "./components/SeedCountForm";
 import { ResultStatsSidebar } from "./components/ResultStats";
-import { ResultTable } from "./components/Results";
+import { ResultTable, type ResultFilterMode } from "./components/Results";
 import { usePlannerWorker } from "./hooks/usePlannerWorker";
 import type { PlanResult } from "./logic/core";
 import type {
@@ -668,58 +666,6 @@ function PlannerFooter() {
   );
 }
 
-function PlannerInputSummary({
-  compact: _compact = false,
-}: {
-  compact?: boolean;
-}) {
-  const { draft, resolvedCount, manualCount } = usePlannerScreen();
-
-  const nonZeroResources = (
-    [
-      ["稀有券", draft.resources.tickets],
-      ["白金券", draft.resources.platinum_tickets],
-      ["傳說券", draft.resources.legend_tickets],
-      ["罐頭", draft.resources.food],
-    ] as [ActionLabel, number][]
-  ).filter(([, value]) => value > 0);
-
-  return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-        <span className="text-muted-foreground">種子碼</span>
-        <span className="font-mono font-medium">
-          {draft.seed.trim() || "–"}
-        </span>
-        <span className="text-muted-foreground">Count</span>
-        <span className="font-medium">
-          {resolvedCount}
-          <span className="ml-1.5 text-xs text-muted-foreground">
-            （{manualCount != null ? "手動" : "自動"}）
-          </span>
-        </span>
-        <span className="text-muted-foreground">卡池</span>
-        <span className="font-medium">{draft.selectedEventValues.length}</span>
-        <span className="text-muted-foreground">目標</span>
-        <span className="font-medium">{draft.targetCatIds.length}</span>
-      </div>
-      {nonZeroResources.length > 0 && (
-        <div className="flex flex-wrap gap-x-3 gap-y-1.5">
-          {nonZeroResources.map(([label, value]) => (
-            <div
-              key={label}
-              className="inline-flex items-center gap-1.5 text-sm"
-            >
-              <ResourceImg label={label} height={16} showCount={false} />
-              <span className="font-medium">{value}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function SelectedCatSummaryItem({
   catId,
   name,
@@ -1054,7 +1000,11 @@ function PlannerSidebarRail() {
   );
 }
 
-function PlannerResultsView() {
+function PlannerResultsView(props: {
+  filterMode: ResultFilterMode;
+  onFilterModeChange: (next: ResultFilterMode) => void;
+}) {
+  const { filterMode, onFilterModeChange } = props;
   const { appliedSession, catNameById } = usePlannerScreen();
 
   if (!appliedSession) return null;
@@ -1066,7 +1016,8 @@ function PlannerResultsView() {
         graphsByEvent={appliedSession.graphsByEvent}
         targetCatIds={appliedSession.inputs.targetCatIds}
         catNameById={catNameById}
-        showTitle={false}
+        filterMode={filterMode}
+        onFilterModeChange={onFilterModeChange}
       />
     </div>
   );
@@ -1074,6 +1025,8 @@ function PlannerResultsView() {
 
 function PlannerResultsStage() {
   const { appliedSession, catNameById, goToInputStage } = usePlannerScreen();
+  const [resultFilterMode, setResultFilterMode] =
+    useState<ResultFilterMode>("all");
 
   if (!appliedSession) {
     return <PlannerInputStage />;
@@ -1124,11 +1077,17 @@ function PlannerResultsStage() {
 
       <div className="hidden lg:grid lg:grid-cols-[minmax(280px,320px)_minmax(0,1fr)] lg:gap-4 xl:grid-cols-[minmax(300px,320px)_minmax(0,1fr)]">
         <PlannerSidebarRail />
-        <PlannerResultsView />
+        <PlannerResultsView
+          filterMode={resultFilterMode}
+          onFilterModeChange={setResultFilterMode}
+        />
       </div>
 
       <div className="lg:hidden">
-        <PlannerResultsView />
+        <PlannerResultsView
+          filterMode={resultFilterMode}
+          onFilterModeChange={setResultFilterMode}
+        />
       </div>
     </div>
   );

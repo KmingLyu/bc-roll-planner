@@ -164,7 +164,7 @@ export function EventsPicker(props: {
       };
     }
 
-    const { dateText, nameText, titleText } = getEventDisplayLines(event);
+    const { nameText, titleText } = getEventDisplayLines(event);
     return {
       id: event.value,
       nameText,
@@ -279,7 +279,6 @@ export function EventsPicker(props: {
               <Input
                 name="event-search"
                 autoComplete="off"
-                autoFocus
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="搜尋卡池名稱或日期"

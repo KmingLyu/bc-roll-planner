@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState, type CSSProperties } from "react";
 import { Search } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -56,7 +56,6 @@ export function TargetCatsPicker(props: {
     selectedIds,
     maxSelection,
     onChange,
-    onClear: _onClear,
     query,
     onQueryChange,
     hideSearchInput = false,
@@ -151,7 +150,7 @@ export function TargetCatsPicker(props: {
           filteredGroups.map((group, index) => (
             <section
               key={group.tier}
-              className={index > 0 ? "border-t border-border/45 pt-2.5" : ""}
+              className={index > 0 ? "pt-2.5" : ""}
             >
               <div className="sticky top-0 z-10 -mx-5 mb-1 flex items-center gap-2 border-b border-border/45 bg-card/95 px-5 py-2 backdrop-blur supports-[backdrop-filter]:bg-card/85">
                 <span className="text-sm font-semibold text-foreground">
@@ -161,11 +160,13 @@ export function TargetCatsPicker(props: {
               </div>
               <div className="pt-0.5">
                 <div
-                  className="grid gap-1"
-                  style={{
-                    gridTemplateColumns: `repeat(auto-fill, minmax(${minColWidth}px, ${minColWidth}px))`,
-                    justifyContent: "start",
-                  }}
+                  className="grid grid-cols-1 gap-1 sm:[grid-template-columns:repeat(auto-fill,minmax(var(--target-cat-col-width),var(--target-cat-col-width)))]"
+                  style={
+                    {
+                      "--target-cat-col-width": `${minColWidth}px`,
+                      justifyContent: "start",
+                    } as CSSProperties
+                  }
                 >
                   {group.cats.map((cat) => (
                     <CatSelectableItem

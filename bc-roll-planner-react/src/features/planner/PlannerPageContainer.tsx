@@ -832,7 +832,6 @@ function PlannerTargetPanel() {
               <Input
                 name="target-cat-search-header"
                 autoComplete="off"
-                autoFocus
                 value={catQuery}
                 onChange={(event) => setCatQuery(event.target.value)}
                 placeholder="搜尋目標貓咪"

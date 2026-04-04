@@ -39,6 +39,7 @@ const RESULT_FILTER_OPTIONS: Array<{
   { value: "all", label: "全部步驟" },
   { value: "targets", label: "目標步驟" },
 ];
+const RESULT_GRID_TRACKS = ["A", "B"] as const;
 
 function eventLabel(row: DrawRow) {
   return getEventDisplayLines({
@@ -180,20 +181,6 @@ function buildHitStepStats(params: {
     hitSteps,
     totalSteps: plan.length,
   };
-}
-
-function getVisibleTracksForRow(
-  row: Pick<DrawRow, "isTargetA" | "isTargetB">,
-  filterMode: ResultFilterMode,
-) {
-  if (filterMode === "all") return ["A", "B"] as const;
-
-  const tracks = ([
-    row.isTargetA ? "A" : null,
-    row.isTargetB ? "B" : null,
-  ].filter(Boolean) || []) as Array<"A" | "B">;
-
-  return tracks.length ? tracks : (["A", "B"] as const);
 }
 
 function trackPositionLabel(row: DrawRow, track: "A" | "B") {
@@ -415,14 +402,51 @@ function TenRollSummaryCell(props: {
   track: "A" | "B";
   children: DrawRow[];
   compact?: boolean;
+  hideWhenNotTarget?: boolean;
 }) {
-  const { row, track, children, compact = false } = props;
+  const { row, track, children, compact = false, hideWhenNotTarget = false } =
+    props;
   const value = track === "A" ? row.A : row.B;
   const isHit = track === "A" ? row.isTargetA : row.isTargetB;
   const summary = buildTenRollSummary(value);
   const rangeLabel = buildTenRollRangeLabel(row, track, children);
 
   const otherIsHit = track === "A" ? row.isTargetB : row.isTargetA;
+
+  if (hideWhenNotTarget && !isHit) {
+    return (
+      <div
+        className={cn(
+          "px-4 py-3",
+          compact ? "space-y-1.5 px-3 py-2.5" : "space-y-2",
+        )}
+      >
+        <div
+          className={cn(
+            "flex items-center gap-2.5 text-[13px] font-semibold uppercase tracking-[0.12em] text-muted-foreground",
+            compact ? "text-[12px]" : "text-[15px]",
+          )}
+        >
+          <span
+            className={cn(
+              compact ? "size-3" : "size-3.5",
+              "rounded-full",
+              trackDotClass(row, track),
+            )}
+          />
+          <span>{rangeLabel}</span>
+        </div>
+        <div
+          className={cn(
+            "font-semibold text-muted-foreground",
+            compact ? "text-[16px] leading-5" : "text-[20px] leading-6",
+          )}
+        >
+          -
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -929,6 +953,7 @@ function ResultsMobileCards(props: {
   filterMode: ResultFilterMode;
 }) {
   const { groups, filterMode } = props;
+  const hideNonTargetTracks = filterMode === "targets";
   const [expandedTenRows, setExpandedTenRows] = useState<
     Record<string, boolean>
   >({});
@@ -980,7 +1005,6 @@ function ResultsMobileCards(props: {
                 if (block.kind === "single") {
                   const row = block.row;
                   const activeTrack = resolveActiveTrack(row);
-                  const visibleTracks = getVisibleTracksForRow(row, filterMode);
                   return (
                     <div key={row.key} className="space-y-3 p-3.5">
                       <ResultActionCell row={row} compact />
@@ -991,20 +1015,14 @@ function ResultsMobileCards(props: {
                           compact
                         />
                       </div>
-                      <div
-                        className={cn(
-                          "hidden gap-4 pt-1 sm:grid",
-                          visibleTracks.length > 1
-                            ? "sm:grid-cols-2"
-                            : "sm:grid-cols-1",
-                        )}
-                      >
-                        {visibleTracks.map((track) => (
+                      <div className="hidden gap-4 pt-1 sm:grid sm:grid-cols-2">
+                        {RESULT_GRID_TRACKS.map((track) => (
                           <ResultTrackCell
                             key={`${row.key}-${track}`}
                             row={row}
                             track={track}
                             compact
+                            hideWhenNotTarget={hideNonTargetTracks}
                           />
                         ))}
                       </div>
@@ -1013,10 +1031,6 @@ function ResultsMobileCards(props: {
                 }
 
                 const isExpanded = !!expandedTenRows[block.summary.key];
-                const visibleTracks = getVisibleTracksForRow(
-                  block.summary,
-                  filterMode,
-                );
 
                 return (
                   <div key={block.key} className="space-y-3 p-3.5">
@@ -1034,21 +1048,15 @@ function ResultsMobileCards(props: {
                         children={block.children}
                       />
                     </div>
-                    <div
-                      className={cn(
-                        "hidden gap-4 pt-1 sm:grid",
-                        visibleTracks.length > 1
-                          ? "sm:grid-cols-2"
-                          : "sm:grid-cols-1",
-                      )}
-                    >
-                      {visibleTracks.map((track) => (
+                    <div className="hidden gap-4 pt-1 sm:grid sm:grid-cols-2">
+                      {RESULT_GRID_TRACKS.map((track) => (
                         <TenRollSummaryCell
                           key={`${block.summary.key}-${track}`}
                           row={block.summary}
                           track={track}
                           children={block.children}
                           compact
+                          hideWhenNotTarget={hideNonTargetTracks}
                         />
                       ))}
                     </div>
@@ -1057,10 +1065,6 @@ function ResultsMobileCards(props: {
                       <div className="space-y-3 border-t border-border/35 pt-3">
                         {block.children.map((row) => {
                           const activeTrack = resolveActiveTrack(row);
-                          const childVisibleTracks = getVisibleTracksForRow(
-                            row,
-                            filterMode,
-                          );
                           return (
                             <div key={row.key} className="space-y-3">
                               <ResultActionCell row={row} compact />
@@ -1071,20 +1075,14 @@ function ResultsMobileCards(props: {
                                   compact
                                 />
                               </div>
-                              <div
-                                className={cn(
-                                  "hidden gap-4 sm:grid",
-                                  childVisibleTracks.length > 1
-                                    ? "sm:grid-cols-2"
-                                    : "sm:grid-cols-1",
-                                )}
-                              >
-                                {childVisibleTracks.map((track) => (
+                              <div className="hidden gap-4 sm:grid sm:grid-cols-2">
+                                {RESULT_GRID_TRACKS.map((track) => (
                                   <ResultTrackCell
                                     key={`${row.key}-${track}`}
                                     row={row}
                                     track={track}
                                     compact
+                                    hideWhenNotTarget={hideNonTargetTracks}
                                   />
                                 ))}
                               </div>

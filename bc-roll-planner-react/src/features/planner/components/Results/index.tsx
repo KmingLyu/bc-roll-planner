@@ -26,6 +26,7 @@ type ResultFilterMode = "all" | "targets";
 export type { ResultFilterMode };
 
 type ResultEventGroup = {
+  key: string;
   eventValue: string;
   anchorRow: DrawRow;
   blocks: ResultRowBlock[];
@@ -138,17 +139,24 @@ function buildVisibleEventGroups(params: {
 }) {
   const { rows, filterMode } = params;
 
-  return groupRowsByEvent(rows).reduce<ResultEventGroup[]>((groups, group) => {
-    const blocks = filterResultBlocks(groupRowsByStep(group.rows), filterMode);
-    if (!blocks.length) return groups;
+  return groupRowsByEvent(rows).reduce<ResultEventGroup[]>(
+    (groups, group, gi) => {
+      const blocks = filterResultBlocks(
+        groupRowsByStep(group.rows),
+        filterMode,
+      );
+      if (!blocks.length) return groups;
 
-    groups.push({
-      eventValue: group.eventValue,
-      anchorRow: group.rows[0],
-      blocks,
-    });
-    return groups;
-  }, []);
+      groups.push({
+        key: `${group.eventValue}__${gi}`,
+        eventValue: group.eventValue,
+        anchorRow: group.rows[0],
+        blocks,
+      });
+      return groups;
+    },
+    [],
+  );
 }
 
 function buildHitStepStats(params: {
@@ -785,7 +793,7 @@ function ResultsDesktopTable(props: {
             const accentTint = colorPicker.tintOf(group.eventValue);
 
             return (
-              <Fragment key={group.eventValue}>
+              <Fragment key={group.key}>
                 <tr className="border-b border-border/35">
                   <th
                     colSpan={4}
@@ -946,7 +954,7 @@ function ResultsMobileCards(props: {
 
         return (
           <div
-            key={group.eventValue}
+            key={group.key}
             className="workspace-pane"
             style={{ boxShadow: `inset 3px 0 0 ${accentColor}` }}
           >

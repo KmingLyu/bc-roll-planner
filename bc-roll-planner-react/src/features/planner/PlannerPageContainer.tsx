@@ -136,9 +136,13 @@ function estimateAutoCount(params: {
     poolTypes.add(eventsByValue.get(eventValue)?.pool_type ?? "normal");
   }
 
+  const normalizedFood = clampNonNegativeInt(resources.food);
+  const fullTenRollBundles = Math.floor(normalizedFood / 1500);
+  const remainingFood = normalizedFood % 1500;
   const normalDepth = poolTypes.has("normal")
     ? clampNonNegativeInt(resources.tickets) +
-      Math.floor(clampNonNegativeInt(resources.food) / 150)
+      fullTenRollBundles * 11 +
+      Math.floor(remainingFood / 150)
     : 0;
   const platinumDepth = poolTypes.has("platinum")
     ? clampNonNegativeInt(resources.platinum_tickets)

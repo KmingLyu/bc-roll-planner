@@ -693,7 +693,7 @@ function ResultFilterToolbar(props: {
       <div className="text-sm font-semibold text-foreground">規劃結果</div>
 
       <div
-        className="flex w-full items-center rounded-[6px] border border-border/60 bg-muted/35 p-1 sm:w-auto"
+        className="flex w-full items-stretch gap-1 rounded-[10px] bg-muted/50 p-1 sm:w-auto"
         role="group"
         aria-label="結果篩選"
       >
@@ -708,16 +708,14 @@ function ResultFilterToolbar(props: {
               aria-pressed={active}
               onClick={() => onFilterModeChange(option.value)}
               className={cn(
-                "h-8 flex-1 rounded-[4px] border px-3 text-[13px] font-semibold shadow-none sm:flex-none",
-                active && option.value === "targets"
-                  ? "border-success/35 bg-success/12 text-success hover:bg-success/16"
-                  : null,
+                "h-9 flex-1 rounded-[7px] px-4 text-[13px] font-semibold shadow-none transition-all sm:h-8 sm:flex-none",
                 active && option.value === "all"
-                  ? "border-border/70 bg-background text-foreground hover:bg-background"
-                  : null,
-                !active
-                  ? "border-transparent text-muted-foreground hover:border-border/45 hover:bg-background/80 hover:text-foreground"
-                  : null,
+                  ? "!bg-background !text-foreground shadow-sm ring-1 ring-border/50"
+                  : active && option.value === "targets"
+                    ? "!bg-emerald-50 !text-emerald-700 shadow-sm ring-1 ring-emerald-200/60"
+                    : option.value === "targets"
+                      ? "text-muted-foreground hover:!bg-emerald-50/50 hover:!text-emerald-600"
+                      : "text-muted-foreground hover:bg-background/60",
               )}
             >
               {option.label}

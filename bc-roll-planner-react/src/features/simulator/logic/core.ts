@@ -259,14 +259,14 @@ export function parseActions(raw: unknown): SimAction[] {
 }
 
 /**
- * v1 估算：single=1, ten=10（不算保底第11隻）
+ * v1 估算：single=1, ten=11（保底第11隻也算入覆蓋深度）
  * +20 buffer
  */
 export function estimateRequiredCounts(actions: SimAction[]): number {
   let count = 0;
   for (const a of actions) {
     if (a.method === "single") count += 1;
-    else if (a.method === "ten") count += 10;
+    else if (a.method === "ten") count += 11;
     else
       throw new SimulationError(
         `未支援 method=${String((a as any).method)} 的估算`

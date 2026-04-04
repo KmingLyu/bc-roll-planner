@@ -323,7 +323,7 @@ function ActionVisual({
     <div
       className={cn(
         "flex shrink-0 items-center",
-        compact ? "w-[94px]" : "w-[118px]",
+        compact ? "w-[94px]" : "w-[102px] xl:w-[118px]",
       )}
     >
       <ResourceImg
@@ -333,7 +333,7 @@ function ActionVisual({
           "justify-start",
           compact
             ? "[&_span]:text-[13px] [&_span]:font-bold"
-            : "[&_span]:text-[16px] [&_span]:font-bold",
+            : "[&_span]:text-[15px] xl:[&_span]:text-[16px] [&_span]:font-bold",
         )}
       />
     </div>
@@ -366,7 +366,7 @@ function ResultCatPreview({
       rel="noreferrer"
       className={cn(
         "relative inline-flex shrink-0 items-start justify-center overflow-hidden transition-opacity hover:opacity-85",
-        compact ? "size-[60px]" : "size-[72px]",
+        compact ? "size-[60px]" : "size-[60px] xl:size-[72px]",
       )}
       aria-label={`查看貓咪 #${catId}`}
     >
@@ -380,7 +380,9 @@ function ResultCatPreview({
           onError={() => setImageFailed(true)}
           className={cn(
             "pointer-events-none select-none object-contain object-top",
-            compact ? "mt-[-2px] size-[66px]" : "mt-[-4px] size-[80px]",
+            compact
+              ? "mt-[-2px] size-[66px]"
+              : "mt-[-3px] size-[68px] xl:mt-[-4px] xl:size-[80px]",
           )}
         />
       ) : (
@@ -629,13 +631,20 @@ function ResultTrackCell(props: {
         <span>{trackPositionLabel(row, track)}</span>
       </div>
 
-      <div className={cn("flex items-start", compact ? "gap-3" : "gap-3.5")}>
+      <div
+        className={cn(
+          "flex items-start",
+          compact ? "gap-3" : "gap-2.5 xl:gap-3.5",
+        )}
+      >
         <ResultCatPreview catId={catId} compact={compact} />
         <div className="min-w-0">
           <div
             className={cn(
               "font-semibold text-foreground",
-              compact ? "text-[18px] leading-5" : "text-[22px] leading-7",
+              compact
+                ? "text-[18px] leading-5"
+                : "whitespace-nowrap text-[18px] leading-[1.15] xl:text-[22px] xl:leading-7",
             )}
           >
             {value}
@@ -659,7 +668,10 @@ function ResultActionCell(props: { row: DrawRow; compact?: boolean }) {
 
   return (
     <div
-      className={cn("flex w-full items-center", compact ? "gap-2.5" : "gap-3")}
+      className={cn(
+        "flex w-full items-center",
+        compact ? "gap-2.5" : "gap-2.5 xl:gap-3",
+      )}
     >
       {row.stepText !== "-" ? (
         <Badge
@@ -667,7 +679,7 @@ function ResultActionCell(props: { row: DrawRow; compact?: boolean }) {
           className={cn(
             compact
               ? "px-2.5 py-0.5 text-[13px] font-semibold"
-              : "px-3 py-1 text-[15px] font-semibold",
+              : "whitespace-nowrap px-2.5 py-1 text-[14px] font-semibold xl:px-3 xl:text-[15px]",
           )}
         >
           {row.stepText}

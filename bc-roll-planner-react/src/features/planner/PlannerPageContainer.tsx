@@ -7,7 +7,13 @@ import {
   useRef,
   useState,
 } from "react";
-import { ArrowUp, GitBranch, Mail, PencilLine, Search } from "lucide-react";
+import {
+  ArrowUp,
+  GitBranch,
+  Mail,
+  PencilLine,
+  Search,
+} from "lucide-react";
 import type { Event, TrackGraph } from "@/types/models";
 import { ApiError, isAbortError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
@@ -45,6 +51,7 @@ type LoadState = "idle" | "loading" | "ok" | "error";
 
 const MAX_SELECTED_EVENTS = 5;
 const MAX_SELECTED_TARGET_CATS = 20;
+const AUTO_COUNT_PER_TEN_ROLL = 13;
 
 type AppliedPlannerSession = {
   signature: string;
@@ -141,7 +148,7 @@ function estimateAutoCount(params: {
   const remainingFood = normalizedFood % 1500;
   const normalDepth = poolTypes.has("normal")
     ? clampNonNegativeInt(resources.tickets) +
-      fullTenRollBundles * 11 +
+      fullTenRollBundles * AUTO_COUNT_PER_TEN_ROLL +
       Math.floor(remainingFood / 150)
     : 0;
   const platinumDepth = poolTypes.has("platinum")
@@ -957,43 +964,10 @@ function PlannerInputStage() {
   );
 }
 
-function ResultSummaryStatusBadge({
-  success,
-  targetsHit,
-  targetsTotal,
-}: {
-  success: boolean;
-  targetsHit: number;
-  targetsTotal: number;
-}) {
-  const showZeroHitState = targetsTotal > 0 && targetsHit === 0;
-
-  return (
-    <Badge
-      variant={success ? "success" : showZeroHitState ? "destructive" : "warning"}
-      className={cn(
-        "rounded-full px-2.5 py-1 text-[12px] font-semibold tracking-normal",
-        success
-          ? "bg-success/12 text-success"
-          : showZeroHitState
-            ? "bg-destructive/10 text-destructive"
-            : "bg-warning/12 text-warning",
-      )}
-    >
-      {success
-        ? "已命中全部目標"
-        : showZeroHitState
-          ? "未命中任何目標"
-          : "尚未完全命中"}
-    </Badge>
-  );
-}
-
 function ResultSummaryHeader(props: {
-  result: PlanResult;
   onReset: () => void;
 }) {
-  const { result, onReset } = props;
+  const { onReset } = props;
 
   return (
     <div
@@ -1004,11 +978,6 @@ function ResultSummaryHeader(props: {
     >
       <div className="min-w-0 flex flex-1 flex-wrap items-center gap-2.5">
         <div className="text-sm font-semibold text-foreground">結果摘要</div>
-        <ResultSummaryStatusBadge
-          success={result.success}
-          targetsHit={result.targets_hit}
-          targetsTotal={result.targets_total}
-        />
       </div>
 
       <Button
@@ -1032,7 +1001,6 @@ function PlannerSidebarRail() {
   return (
     <Card className="workspace-pane sticky top-0 self-start border-border/55">
       <ResultSummaryHeader
-        result={appliedSession.result}
         onReset={goToInputStage}
       />
       <CardContent className="subtle-scrollbar max-h-[calc(100vh-3rem)] overflow-y-auto">
@@ -1083,7 +1051,6 @@ function PlannerResultsStage() {
       <div className="lg:hidden">
         <Card className="workspace-pane border-border/55">
           <ResultSummaryHeader
-            result={appliedSession.result}
             onReset={goToInputStage}
           />
           <CardContent className="space-y-3">

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { PlanResult } from "@/features/planner/logic/core";
@@ -25,6 +26,44 @@ type ResourceUsageItem = {
   label: ActionLabel;
   value: number;
 };
+
+function getHitStatValueClass(params: {
+  success: boolean;
+  targetsHit: number;
+  targetsTotal: number;
+}) {
+  const { success, targetsHit, targetsTotal } = params;
+  if (success) return "text-success";
+  if (targetsTotal > 0 && targetsHit === 0) return "text-destructive";
+  return "text-warning";
+}
+
+function getResultStatusMeta(params: {
+  success: boolean;
+  targetsHit: number;
+  targetsTotal: number;
+}) {
+  const { success, targetsHit, targetsTotal } = params;
+  if (success) {
+    return {
+      text: "已命中全部目標",
+      icon: CheckCircle2,
+      className: "text-success",
+    };
+  }
+  if (targetsTotal > 0 && targetsHit === 0) {
+    return {
+      text: "未命中任何目標",
+      icon: AlertCircle,
+      className: "text-destructive",
+    };
+  }
+  return {
+    text: "尚未完全命中",
+    icon: AlertCircle,
+    className: "text-warning",
+  };
+}
 
 function useResultStatsModel(params: {
   result: PlanResult;
@@ -112,6 +151,17 @@ export function ResultStatsSidebar(props: {
 }) {
   const { result, catNameById, compact = false } = props;
   const stats = useResultStatsModel({ result, catNameById });
+  const hitStatValueClass = getHitStatValueClass({
+    success: result.success,
+    targetsHit: result.targets_hit,
+    targetsTotal: result.targets_total,
+  });
+  const resultStatusMeta = getResultStatusMeta({
+    success: result.success,
+    targetsHit: result.targets_hit,
+    targetsTotal: result.targets_total,
+  });
+  const ResultStatusIcon = resultStatusMeta.icon;
   const resourceUsage = useMemo<ResourceUsageItem[]>(() => {
     const singleFood = stats.byAction.get("罐頭") || 0;
     const tenFood = stats.byAction.get("10連抽") || 0;
@@ -136,11 +186,24 @@ export function ResultStatsSidebar(props: {
   }, [stats.byAction]);
   return (
     <div className="space-y-4">
+      <div
+        className={cn(
+          "inline-flex items-center gap-2",
+          compact ? "text-[13px]" : "text-sm",
+          "font-semibold",
+          resultStatusMeta.className,
+        )}
+      >
+        <ResultStatusIcon className="size-4 shrink-0" strokeWidth={2.2} />
+        <span>{resultStatusMeta.text}</span>
+      </div>
+
       <div className="rounded-xl">
         <div className={cn("grid grid-cols-2", compact ? "gap-x-4 gap-y-6" : "gap-x-6 gap-y-5")}>
           <StatItem
             label="命中目標"
             value={`${result.targets_hit}/${result.targets_total}`}
+            valueClassName={hitStatValueClass}
             compact={compact}
           />
           <StatItem label="終點位置" value={result.final_cursor_id} compact={compact} />

@@ -39,7 +39,6 @@ export function TargetCatsPicker(props: {
   selectedIds: number[];
   maxSelection: number;
   onChange: (next: number[]) => void;
-  onClear: () => void;
   query?: string;
   onQueryChange?: (value: string) => void;
   hideSearchInput?: boolean;

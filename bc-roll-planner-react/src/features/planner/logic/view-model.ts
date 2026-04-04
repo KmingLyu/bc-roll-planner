@@ -38,10 +38,6 @@ export function formatStepText(stepIndex1Based: number): string {
 export function formatTenRollHead(i1Based: number): string {
   return `${UI_TEXT.tenRollPrefix}#${i1Based}`;
 }
-export function formatTargetCount(n: number): string {
-  return `${UI_TEXT.targetPrefix}${n}`;
-}
-
 /**
  * 將命中目標的 Map<catId, count> 格式化為 "貓名A、貓名Bx2" 格式
  * count === 1 不加 x1，count >= 2 加 xN
@@ -108,14 +104,6 @@ export const TARGET_NODE_STYLE = {
   textColor: "rgba(0, 0, 0, 0.85)",
 };
 
-export function hashString(s: string): number {
-  const str = String(s || "");
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
-  // console.log("hashString:", s, "->", h);
-  return h >>> 0;
-}
-
 // 30 色（Hue 調色盤）
 export const EVENT_HUES_30 = [
   240, 24, 180, 288, 0, 216, 324, 48, 204, 336, 12, 252, 276, 36, 228, 312,
@@ -151,22 +139,6 @@ export function makeEventColorPicker(eventValuesInOrder: string[]) {
   };
 }
 
-// export function eventHue(ev: string): number {
-//   console.log("eventHue:", ev, "->", hashString(ev) % EVENT_HUES_30.length);
-//   return EVENT_HUES_30[hashString(ev) % EVENT_HUES_30.length];
-// }
-// export function eventColor(ev: string): string {
-//   return `hsl(${eventHue(ev)}, 72%, 42%)`;
-// }
-// export function eventTint(ev: string): string {
-//   return `hsla(${eventHue(ev)}, 72%, 55%, 0.14)`;
-// }
-
-export function truncateText(s: string, n: number): string {
-  const t = String(s || "");
-  return t.length <= n ? t : t.slice(0, n) + "…";
-}
-
 export function actionLabelFromStep(step: PlanStep): ActionLabel {
   if (step.resource === "ticket" && step.method === "single") return "稀有券";
   if (step.resource === "platinum_ticket" && step.method === "single")
@@ -176,15 +148,6 @@ export function actionLabelFromStep(step: PlanStep): ActionLabel {
   if (step.resource === "food" && step.method === "single") return "罐頭";
   if (step.resource === "food" && step.method === "ten") return "10連抽";
   return "稀有券";
-}
-
-export function safeGetNormalCatName(
-  g: TrackGraph | null | undefined,
-  posId: string,
-): string {
-  const node = g?.nodes?.[posId];
-  const cat = node?.edges?.normal?.cat;
-  return cat?.name || UI_TEXT.dash;
 }
 
 export function safeGetNormalCat(
@@ -448,25 +411,6 @@ export function buildDrawRows(params: {
       const track = from.ok ? from.track : null;
       const to = posTrackFromPosId(d.to_pos_id);
 
-      // const baseA = isGuaranteed
-      //   ? track === "A"
-      //     ? d.cat_name || UI_TEXT.dash
-      //     : pos != null
-      //     ? safeGetNormalCatName(g, `${pos}A`)
-      //     : UI_TEXT.dash
-      //   : pos != null
-      //   ? safeGetNormalCatName(g, `${pos}A`)
-      //   : UI_TEXT.dash;
-
-      // const baseB = isGuaranteed
-      //   ? track === "B"
-      //     ? d.cat_name || UI_TEXT.dash
-      //     : pos != null
-      //     ? safeGetNormalCatName(g, `${pos}B`)
-      //     : UI_TEXT.dash
-      //   : pos != null
-      //   ? safeGetNormalCatName(g, `${pos}B`)
-      //   : UI_TEXT.dash;
       const normalA =
         pos != null ? safeGetNormalCat(g, `${pos}A`) : null;
       const normalB =

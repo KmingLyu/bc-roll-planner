@@ -45,15 +45,3 @@ export const BC_ENV: BcEnv = {
     mustString(E.VITE_BC_GODFAT_BASE_URL, "VITE_BC_GODFAT_BASE_URL")
   ),
 };
-
-// // DEBUG
-// if (E.DEV) {
-//   // eslint-disable-next-line no-console
-//   console.log("[BC_ENV]", {
-//     VITE_BC_UI: E.VITE_BC_UI,
-//     VITE_BC_LANG: E.VITE_BC_LANG,
-//     VITE_BC_PAST_EVENT_LIMIT: E.VITE_BC_PAST_EVENT_LIMIT,
-//     VITE_BC_GODFAT_BASE_URL: E.VITE_BC_GODFAT_BASE_URL,
-//     parsed: BC_ENV,
-//   });
-// }

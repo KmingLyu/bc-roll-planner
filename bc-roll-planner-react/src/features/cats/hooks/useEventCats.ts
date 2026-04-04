@@ -3,16 +3,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Event } from "@/types/models";
 import { fetchEventCats } from "@/features/cats/api/getEventCats";
 import { ApiError } from "@/lib/api-client";
+import { tierOrder } from "@/features/cats/types";
 import type { CatTier, TierGroup, UiCat } from "@/features/cats/types";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
-
-function tierOrder(t: CatTier): number {
-  if (t === "legendary") return 0;
-  if (t === "uber") return 1;
-  if (t === "super") return 2;
-  return 3;
-}
 
 export function useEventCats(params: {
   selectedEventValues: string[];

@@ -267,9 +267,7 @@ function simulateSingleTransition(params: {
   }
 
   const { edge, used } = chooseEdgeForSingleDraw(node, prev_cat_id);
-  // console.log({ edge, used });
   const p = catPayload(edge.cat);
-  // console.log(p.id, p.name);
 
   const hit: DrawHit = {
     cat_id: p.id,
@@ -284,7 +282,6 @@ function simulateSingleTransition(params: {
 
   const next_cursor_id = parsePosId(edge.to).id;
   const next_prev = p.id;
-  // console.log({ next_cursor_id, next_prev, hit });
   return { next_cursor_id, next_prev, hit };
 }
 
@@ -751,7 +748,6 @@ export function planMinCost(params: {
             prev_cat_id: s.prev_cat_id,
           });
           singleCache.set(key1, single);
-          // console.log(singleCache);
         } catch {
           continue; // 此 event 在此 cursor 不可用
         }
@@ -968,7 +964,6 @@ export function planMinCost(params: {
         start_prev_cat_id: fromState.prev_cat_id,
         end_prev_cat_id: single.next_prev,
       });
-      // console.log(planSteps);
     } else {
       const ten = simulateTenTransition({
         graph,
@@ -1000,8 +995,6 @@ export function planMinCost(params: {
   for (const st of planSteps) allDraws.push(...st.draws);
 
   const [equiv, foodUsed, tUsed, pUsed, lUsed] = endCost;
-
-  console.log(`Total Expansions: ${expansions.toLocaleString()}`);
 
   return {
     success,

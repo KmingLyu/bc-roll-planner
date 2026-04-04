@@ -10,7 +10,6 @@ export function RunBar(props: {
   disabled: boolean;
   hint?: string;
   error?: string;
-  stale?: boolean;
   hasResult?: boolean;
 }) {
   const { state, onRun, disabled, hint, error, hasResult = false } = props;

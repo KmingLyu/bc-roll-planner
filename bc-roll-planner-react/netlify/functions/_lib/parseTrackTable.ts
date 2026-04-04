@@ -8,8 +8,6 @@ import { normalizeText } from "./normalize";
 
 const PICK_ID_RE = /^(\d+)([AB])(.*)$/; // 1A, 1AG, 1BR
 const ONCLICK_RE = /pick\('([^']+)'\)/; // pick('3A')
-// const JUMP_RE = /->\s*([0-9]+[AB])/; // -> 13B
-// const REF_RE = /<-\s*([0-9]+[AB])/; // <- 12A
 const JUMP_TO_B_RE = /->\s*([0-9]+[AB])/; // -> 13B
 const JUMP_TO_A_RE = /<-\s*([0-9]+[AB])/; // <- 12A
 const CATS_ID_RE = /\/cats\/(\d+)/; // /cats/123
@@ -62,31 +60,9 @@ function detectRarityFromClasses(classes: string[]): string | null {
   return null;
 }
 
-function extractJumpAndRef(text: string): string | null {
-  // {
-  //   jump_to: string | null;
-  //   ref_from: string | null;
-  // }
+function extractJumpTo(text: string): string | null {
   const t = normalizeText(text);
-  // let jump_to: string | null = null;
-  // let ref_from: string | null = null;
-
-  // const jm = JUMP_RE.exec(t); // -> 13B
-  // if (jm) jump_to = jm[1];
-
-  // const rm = REF_RE.exec(t); // <- 12A
-  // // if (rm) ref_from = rm[1];
-  // if (rm) jump_to = rm[1];
-  // jm = JUMP_TO_B/A_RE.exec(t);
-
-  // const jm = JUMP_TO_A_RE.exec(t) ?? JUMP_TO_B_RE.exec(t);
-  // jump_to = jm ? jm[1] : null;
-
-  const jump_to =
-    JUMP_TO_A_RE.exec(t)?.[1] ?? JUMP_TO_B_RE.exec(t)?.[1] ?? null;
-
-  // return { jump_to, ref_from };
-  return jump_to;
+  return JUMP_TO_A_RE.exec(t)?.[1] ?? JUMP_TO_B_RE.exec(t)?.[1] ?? null;
 }
 
 /**
@@ -151,18 +127,7 @@ export function parseTrackCellsFromTableHtml(
     const rarity = detectRarityFromClasses(classes);
 
     const rawText = normalizeText($td.text());
-    // const extracted = extractJumpAndRef(rawText);
-    const jump_to = extractJumpAndRef(rawText);
-    // const ref_from = null;
-
-    // 注意‼️：
-    // 原本的 jump_to/ref_from 是以 A->B 的顯示方式解讀；
-    // 若目前格子在 B 軌，B->A 的箭頭語意會相反，所以要對調。
-    // let jump_to = extracted.jump_to;
-    // let ref_from = extracted.ref_from;
-    // if (parsed.track === "B") {
-    //   [jump_to, ref_from] = [ref_from, jump_to];
-    // }
+    const jump_to = extractJumpTo(rawText);
 
     const cat = parseCatFromTd($, $td);
 
@@ -174,7 +139,6 @@ export function parseTrackCellsFromTableHtml(
       rarity,
       cat,
       jump_to,
-      // ref_from,
     };
   });
 

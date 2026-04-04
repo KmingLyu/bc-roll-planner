@@ -68,7 +68,6 @@ type PlannerScreenContextValue = {
   manualCount: number | null;
   autoCount: number;
   resolvedCount: number;
-  resultsStale: boolean;
   runDisabled: boolean;
   runHint: string;
   runOverlayOpen: boolean;
@@ -304,9 +303,6 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
     () => buildDraftSignature(viewDraft),
     [viewDraft],
   );
-  const resultsStale = appliedSession
-    ? draftSignature !== appliedSession.signature
-    : false;
 
   const hasSeed = viewDraft.seed.trim().length > 0;
 
@@ -541,7 +537,6 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
     manualCount,
     autoCount,
     resolvedCount,
-    resultsStale,
     runDisabled,
     runHint,
     runOverlayOpen,
@@ -839,7 +834,6 @@ function PlannerTargetPanel() {
           selectedIds={draft.targetCatIds}
           maxSelection={MAX_SELECTED_TARGET_CATS}
           onChange={setTargetCatIds}
-          onClear={clearTargetCatIds}
           query={catQuery}
           onQueryChange={setCatQuery}
           hideSearchInput
@@ -877,7 +871,6 @@ function PlannerInputEditor({ layout }: { layout: "immersive" | "compact" }) {
     pastEvents,
     planState,
     planErr,
-    resultsStale,
     runDisabled,
     runHint,
     appliedSession,
@@ -931,7 +924,6 @@ function PlannerInputEditor({ layout }: { layout: "immersive" | "compact" }) {
               disabled={runDisabled}
               hint={runHint}
               error={planErr}
-              stale={resultsStale}
               hasResult={!!appliedSession}
             />
           </div>

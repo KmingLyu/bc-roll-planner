@@ -624,18 +624,9 @@ function PlannerHeader() {
   );
 }
 
-function PlannerFooter({
-  reserveScrollTopSpace = false,
-}: {
-  reserveScrollTopSpace?: boolean;
-}) {
+function PlannerFooter() {
   return (
-    <footer
-      className={cn(
-        "mt-2 border-t border-border/45 pt-5 pb-2 sm:pt-6 sm:pb-3",
-        reserveScrollTopSpace && "pr-[4.75rem] sm:pr-[9.5rem] lg:pr-[10.5rem]",
-      )}
-    >
+    <footer className="mt-2 border-t border-border/45 pt-5 pb-2 sm:pt-6 sm:pb-3">
       <div className="flex justify-end">
         <div className="flex max-w-[760px] flex-wrap items-center justify-end gap-x-3 gap-y-2.5 text-[15px] text-muted-foreground/85">
           <span className="text-[14px] font-semibold text-muted-foreground/75">
@@ -1141,7 +1132,7 @@ function ResultScrollTopButton(props: {
       aria-label="回到最上方"
       className={cn(
         "fixed z-40 inline-flex items-center justify-center gap-2 rounded-full border border-border/70 bg-background/92 text-foreground shadow-[0_14px_32px_rgba(15,23,42,0.14)] backdrop-blur transition-all duration-200 focus-visible:ring-4 focus-visible:ring-primary/20",
-        "bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] right-4 size-12 sm:bottom-[calc(env(safe-area-inset-bottom,0px)+1.25rem)] sm:right-5 sm:h-11 sm:w-auto sm:px-4 lg:bottom-6 lg:right-6 2xl:right-[calc((100vw-1480px)/2+1.5rem)]",
+        "bottom-[calc(env(safe-area-inset-bottom,0px)+3.75rem)] right-5 size-12 sm:bottom-[calc(env(safe-area-inset-bottom,0px)+4rem)] sm:right-6 sm:h-11 sm:w-auto sm:px-4 lg:bottom-16 lg:right-7 2xl:right-[calc((100vw-1480px)/2+1.5rem)]",
         visible
           ? "translate-y-0 opacity-100 hover:-translate-y-0.5 hover:bg-background"
           : "pointer-events-none translate-y-3 opacity-0",
@@ -1218,7 +1209,7 @@ function PlannerScreen() {
         <div ref={topRef} />
         <PlannerHeader />
         {isResultsStage ? <PlannerResultsStage /> : <PlannerInputStage />}
-        <PlannerFooter reserveScrollTopSpace={isResultsStage} />
+        <PlannerFooter />
       </div>
       <ResultScrollTopButton
         visible={isResultsStage && showScrollTop}

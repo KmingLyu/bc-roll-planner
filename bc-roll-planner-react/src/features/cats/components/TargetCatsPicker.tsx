@@ -1,25 +1,29 @@
-// src/features/cats/ui/TargetCatsPicker.tsx
-import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
-  Alert,
-  Avatar,
-  Box,
-  Button,
-  // Checkbox,
-  // FormControlLabel,
-  LinearProgress,
-  Link,
-  Stack,
-  Typography,
-} from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import { useDeferredValue, useMemo, useState } from "react";
+import { Search } from "lucide-react";
+import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import type { TierGroup } from "@/features/cats/types";
 import { CatSelectableItem } from "./CatSelectableItem";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
+
+function describeSelectionCapacity(params: {
+  count: number;
+  limit: number;
+  unit: string;
+}) {
+  const { count, limit, unit } = params;
+  const remaining = Math.max(0, limit - count);
+
+  if (count >= limit) {
+    return `已達上限 ${limit} 隻${unit}，取消已選項目後才能更換。`;
+  }
+  if (count === 0) {
+    return `最多可選 ${limit} 隻${unit}。`;
+  }
+  return `還可再選 ${remaining} 隻${unit}。`;
+}
 
 function tierLabel(tier: TierGroup["tier"]) {
   if (tier === "rare") return "Rare";
@@ -32,16 +36,14 @@ export function TargetCatsPicker(props: {
   loadState: LoadState;
   error: string;
   groups: TierGroup[];
-
   selectedIds: number[];
+  maxSelection: number;
   onChange: (next: number[]) => void;
-  onClear: () => void;
-
-  // 多欄 layout 控制（可調）
-  minColWidth?: number; // 每個 item 最小寬度，越大欄越少
-  dense?: boolean; // 更緊湊
-
-  // 顯示圖片/連結
+  query?: string;
+  onQueryChange?: (value: string) => void;
+  hideSearchInput?: boolean;
+  minColWidth?: number;
+  dense?: boolean;
   getCatHref?: (catId: number) => string | undefined;
   getCatImageUrl?: (catId: number) => string | undefined;
   renderCatSecondary?: (catId: number) => React.ReactNode;
@@ -51,109 +53,150 @@ export function TargetCatsPicker(props: {
     error,
     groups,
     selectedIds,
+    maxSelection,
     onChange,
-    onClear,
-    minColWidth = 220,
+    query,
+    onQueryChange,
+    hideSearchInput = false,
+    minColWidth = 176,
     dense = true,
     getCatHref,
     getCatImageUrl,
     renderCatSecondary,
   } = props;
 
-  const selectedSet = new Set(selectedIds);
+  const [internalQuery, setInternalQuery] = useState("");
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const queryValue = query ?? internalQuery;
+  const deferredQuery = useDeferredValue(queryValue);
+  const normalizedQuery = deferredQuery.trim().toLowerCase();
+  const atSelectionLimit = selectedIds.length >= maxSelection;
+  const selectionSummary = describeSelectionCapacity({
+    count: selectedIds.length,
+    limit: maxSelection,
+    unit: "目標貓咪",
+  });
 
-  function toggle(id: number, on: boolean) {
-    if (on)
-      onChange(selectedIds.includes(id) ? selectedIds : [...selectedIds, id]);
-    else onChange(selectedIds.filter((x) => x !== id));
+  const filteredGroups = useMemo(() => {
+    if (!normalizedQuery) return groups;
+    return groups
+      .map((group) => ({
+        ...group,
+        cats: group.cats.filter((cat) =>
+          cat.name.toLowerCase().includes(normalizedQuery),
+        ),
+      }))
+      .filter((group) => group.cats.length);
+  }, [groups, normalizedQuery]);
+
+  function toggle(id: number, checked: boolean) {
+    if (checked) {
+      if (selectedIds.includes(id)) {
+        onChange(selectedIds);
+        return;
+      }
+      if (selectedIds.length >= maxSelection) {
+        return;
+      }
+      onChange([...selectedIds, id]);
+      return;
+    }
+    onChange(selectedIds.filter((value) => value !== id));
+  }
+
+  function handleQueryChange(value: string) {
+    if (onQueryChange) {
+      onQueryChange(value);
+      return;
+    }
+    setInternalQuery(value);
   }
 
   return (
-    <Stack spacing={1.5}>
-      <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
-        <Typography variant="body2" color="text.secondary">
-          狀態：<b>{loadState}</b>
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          已選：<b>{selectedIds.length}</b>
-        </Typography>
-        <Button
-          variant="outlined"
-          size="small"
-          onClick={onClear}
-          disabled={!selectedIds.length}
-        >
-          清空已選
-        </Button>
-      </Stack>
+    <div className="space-y-3">
+      {!hideSearchInput ? (
+        <div className="relative w-full">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            name="target-cat-search"
+            autoComplete="off"
+            value={queryValue}
+            onChange={(event) => handleQueryChange(event.target.value)}
+            placeholder="搜尋目標貓咪"
+            className="workspace-search pl-11"
+          />
+        </div>
+      ) : null}
 
-      {loadState === "loading" && <LinearProgress />}
-      {loadState === "error" && (
-        <Alert severity="error">eventCats 錯誤：{error}</Alert>
+      {loadState === "loading" ? (
+        <div className="text-sm text-muted-foreground">正在載入貓池…</div>
+      ) : null}
+      {loadState === "error" ? (
+        <div className="text-sm text-destructive">{error}</div>
+      ) : null}
+      {atSelectionLimit ? (
+        <Alert variant="warning">
+          已選滿 {maxSelection} 隻目標貓咪，先取消既有目標後才能再新增。
+        </Alert>
+      ) : (
+        <div className="px-1 text-xs text-muted-foreground">
+          {selectionSummary}
+        </div>
       )}
 
-      {loadState === "ok" && (
-        <Box>
-          {/* <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            目前為「選到的所有 events 的貓咪聯集」。未來多選 events
-            時，不用改這個元件。
-          </Typography> */}
-
-          <Stack spacing={1}>
-            {groups.map((g) => (
-              <Accordion
-                key={g.tier}
-                defaultExpanded={g.tier === "legendary" || g.tier === "uber"}
-              >
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography fontWeight={800} variant="subtitle2">
-                    {tierLabel(g.tier)}（{g.cats.length}）
-                  </Typography>
-                </AccordionSummary>
-
-                <AccordionDetails sx={{ pt: 0 }}>
-                  <Box
-                    sx={{
-                      display: "grid",
-                      gridTemplateColumns: `repeat(auto-fit, minmax(${minColWidth}px, 1fr))`,
-                      gap: dense ? 0.5 : 1,
-                      alignItems: "start",
-                    }}
-                  >
-                    {g.cats.map((c) => {
-                      const checked = selectedSet.has(c.id);
-
-                      return (
-                        <CatSelectableItem
-                          key={c.id}
-                          catId={c.id}
-                          name={c.name}
-                          checked={checked}
-                          onToggle={(next) => toggle(c.id, next)}
-                          imageUrl={getCatImageUrl?.(c.id)}
-                          href={getCatHref?.(c.id)}
-                          dense={dense}
-                          secondary={
-                            renderCatSecondary
-                              ? renderCatSecondary(c.id)
-                              : undefined
-                          }
-                        />
-                      );
-                    })}
-                  </Box>
-                </AccordionDetails>
-              </Accordion>
-            ))}
-
-            {!groups.length && (
-              <Alert severity="warning">
-                解析不到貓咪列表（eventCats 回傳可能為空）
-              </Alert>
-            )}
-          </Stack>
-        </Box>
-      )}
-    </Stack>
+      <div className="space-y-0.5">
+        {filteredGroups.length ? (
+          filteredGroups.map((group, index) => (
+            <section
+              key={group.tier}
+              className={index > 0 ? "pt-2.5" : ""}
+            >
+              <div className="sticky top-0 z-10 -mx-5 mb-1 flex items-center gap-2 border-b border-border/45 bg-card/95 px-5 py-2 backdrop-blur supports-[backdrop-filter]:bg-card/85">
+                <span className="text-sm font-semibold text-foreground">
+                  {tierLabel(group.tier)}
+                </span>
+                <Badge variant="muted">{group.cats.length}</Badge>
+              </div>
+              <div className="pt-0.5">
+                <div
+                  className="grid gap-1"
+                  style={{
+                    gridTemplateColumns: `repeat(auto-fit, minmax(min(100%, ${minColWidth}px), 1fr))`,
+                  }}
+                >
+                  {group.cats.map((cat) => (
+                    <CatSelectableItem
+                      key={cat.id}
+                      catId={cat.id}
+                      name={cat.name}
+                      checked={selectedSet.has(cat.id)}
+                      disabled={atSelectionLimit && !selectedSet.has(cat.id)}
+                      onToggle={(checked) => toggle(cat.id, checked)}
+                      imageUrl={getCatImageUrl?.(cat.id)}
+                      href={getCatHref?.(cat.id)}
+                      dense={dense}
+                      secondary={renderCatSecondary?.(cat.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            </section>
+          ))
+        ) : (
+          groups.length ? (
+            <div className="space-y-1 py-2">
+              <div className="text-sm text-muted-foreground">
+                沒有符合搜尋條件的貓咪。
+              </div>
+              {atSelectionLimit ? (
+                <div className="text-xs font-medium text-warning">
+                  已達上限時，仍可搜尋並取消目前已選的目標貓咪。
+                </div>
+              ) : null}
+            </div>
+          ) : null
+        )}
+      </div>
+    </div>
   );
 }

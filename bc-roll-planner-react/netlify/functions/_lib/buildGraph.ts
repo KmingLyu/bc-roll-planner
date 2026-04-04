@@ -30,7 +30,6 @@ export function buildTrackGraphFromCells(args: {
   raw_cells: Record<string, PickCell>;
 }): TrackGraph {
   const { seed, count, event, raw_cells } = args;
-  // console.log("raw_cells", raw_cells);
 
   const baseIds = Object.keys(raw_cells)
     .filter((pid) => {
@@ -62,7 +61,6 @@ export function buildTrackGraphFromCells(args: {
       advance: 1,
       cost_rolls: 1,
       note: "normal roll",
-      // ref_from: baseCell.ref_from ?? null,
       source_pick_id: baseId,
     };
 
@@ -71,9 +69,7 @@ export function buildTrackGraphFromCells(args: {
     const gCell = raw_cells[gId];
     if (gCell?.cat) {
       const to = (
-        gCell.jump_to ||
-        // gCell.ref_from ||
-        inferGuaranteedTo(pos, track)
+        gCell.jump_to || inferGuaranteedTo(pos, track)
       ).trim();
 
       edges.guaranteed = {
@@ -85,10 +81,7 @@ export function buildTrackGraphFromCells(args: {
         cost_rolls: 11,
         note: gCell.jump_to
           ? `guaranteed ${gCell.jump_to}`
-          : // : gCell.ref_from
-            // ? `guaranteed (ref_from ${gCell.ref_from})`
-            "guaranteed (inferred)",
-        // ref_from: gCell.ref_from ?? null,
+          : "guaranteed (inferred)",
         source_pick_id: gId,
       };
     }
@@ -108,7 +101,6 @@ export function buildTrackGraphFromCells(args: {
         note: rCell.jump_to
           ? `switch_track ${rCell.jump_to}`
           : "switch_track (fallback)",
-        // ref_from: rCell.ref_from ?? null,
         source_pick_id: rId,
       };
     }

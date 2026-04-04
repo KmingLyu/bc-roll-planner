@@ -1,121 +1,62 @@
-import { Stack, TextField } from "@mui/material";
-import Grid from "@mui/material/Grid";
 import NumberField from "@/components/inputs/NumberField";
-import type {
-  PlannerResources,
-  PlannerUiConfig,
-} from "@/features/planner/types";
+import type { PlannerResources } from "@/features/planner/types";
+
+function ResourceAdornment({ src, alt }: { src: string; alt: string }) {
+  return (
+    <img
+      src={src}
+      alt={alt}
+      width={32}
+      height={32}
+      className="h-8 w-8 object-contain"
+    />
+  );
+}
+
+type ResourceField = {
+  key: keyof PlannerResources;
+  label: string;
+  src: string;
+};
+
+const RESOURCE_FIELDS: ResourceField[] = [
+  { key: "tickets", label: "稀有券", src: "/稀有券.png" },
+  { key: "platinum_tickets", label: "白金券", src: "/白金券.png" },
+  { key: "legend_tickets", label: "傳說券", src: "/傳說券.png" },
+  { key: "food", label: "罐頭", src: "/貓罐頭.png" },
+];
 
 export function ResourceForm(props: {
   value: PlannerResources;
-  cfg: PlannerUiConfig;
   onChange: (next: PlannerResources) => void;
-  onCfgChange: (next: PlannerUiConfig) => void;
-  showAdvanced?: boolean;
 }) {
-  const { value, cfg, onChange, onCfgChange, showAdvanced = false } = props;
+  const { value, onChange } = props;
 
   return (
-    <Stack spacing={1.25} sx={{ width: "100%" }}>
-      <Grid
-        container
-        spacing={1.25}
-        sx={{ width: "100%", justifyContent: "space-between" }}
-      >
-        <Grid size={{ xs: 6, sm: 6, md: 3 }}>
+    <section className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {RESOURCE_FIELDS.map((field) => (
           <NumberField
-            label="金券"
+            key={field.key}
+            label={field.label}
             min={0}
-            size="small"
-            value={value.tickets}
-            onValueChange={(v) =>
+            value={value[field.key]}
+            inputProps={{
+              name: field.key,
+              autoComplete: "off",
+            }}
+            onValueChange={(nextValue) =>
               onChange({
                 ...value,
-                tickets: Math.max(0, v ?? 0), // 清空時 v 會是 null，就當 0；同時保底不小於 0
+                [field.key]: Math.max(0, nextValue ?? 0),
               })
             }
-          />
-        </Grid>
-
-        <Grid size={{ xs: 6, sm: 6, md: 3 }}>
-          <NumberField
-            label="白金券"
-            min={0}
-            size="small"
-            value={value.platinum_tickets}
-            onValueChange={(v) =>
-              onChange({
-                ...value,
-                platinum_tickets: Math.max(0, v ?? 0), // 清空時 v 會是 null，就當 0；同時保底不小於 0
-              })
+            startAdornment={
+              <ResourceAdornment src={field.src} alt={field.label} />
             }
           />
-        </Grid>
-
-        <Grid size={{ xs: 6, sm: 6, md: 3 }}>
-          <NumberField
-            label="傳說券"
-            min={0}
-            size="small"
-            value={value.legend_tickets}
-            onValueChange={(v) =>
-              onChange({
-                ...value,
-                legend_tickets: Math.max(0, v ?? 0), // 清空時 v 會是 null，就當 0；同時保底不小於 0
-              })
-            }
-          />
-        </Grid>
-
-        <Grid size={{ xs: 6, sm: 6, md: 3 }}>
-          <NumberField
-            label="罐頭"
-            min={0}
-            size="small"
-            value={value.food}
-            onValueChange={(v) =>
-              onChange({
-                ...value,
-                food: Math.max(0, v ?? 0), // 清空時 v 會是 null，就當 0；同時保底不小於 0
-              })
-            }
-          />
-        </Grid>
-
-        {showAdvanced && (
-          <>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                fullWidth
-                size="small"
-                label="start_pos_id"
-                value={cfg.start_pos_id}
-                onChange={(e) =>
-                  onCfgChange({ ...cfg, start_pos_id: e.target.value })
-                }
-                placeholder="例如 1A"
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                fullWidth
-                size="small"
-                label="max_expansions"
-                type="number"
-                inputProps={{ min: 1000, step: 1000 }}
-                value={cfg.max_expansions}
-                onChange={(e) =>
-                  onCfgChange({
-                    ...cfg,
-                    max_expansions: Number(e.target.value),
-                  })
-                }
-              />
-            </Grid>
-          </>
-        )}
-      </Grid>
-    </Stack>
+        ))}
+      </div>
+    </section>
   );
 }

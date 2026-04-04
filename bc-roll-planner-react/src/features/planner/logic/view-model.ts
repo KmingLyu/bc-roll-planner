@@ -17,7 +17,6 @@ import type {
 } from "@/features/planner/logic/core";
 import type { TrackGraph } from "@/types/models";
 import { parsePosId } from "@/utils/cursor";
-import { APP_THEME_TOKENS } from "@/styles/theme/tokens";
 
 /**
  * ============================================================
@@ -39,10 +38,6 @@ export function formatStepText(stepIndex1Based: number): string {
 export function formatTenRollHead(i1Based: number): string {
   return `${UI_TEXT.tenRollPrefix}#${i1Based}`;
 }
-export function formatTargetCount(n: number): string {
-  return `${UI_TEXT.targetPrefix}${n}`;
-}
-
 /**
  * 將命中目標的 Map<catId, count> 格式化為 "貓名A、貓名Bx2" 格式
  * count === 1 不加 x1，count >= 2 加 xN
@@ -59,7 +54,7 @@ export function formatHitCatNames(
     .join("、");
 }
 
-export const ACTIONS = ["金券", "白金券", "傳說券", "罐頭", "10連抽"] as const;
+export const ACTIONS = ["稀有券", "白金券", "傳說券", "罐頭", "10連抽"] as const;
 export type ActionLabel = (typeof ACTIONS)[number];
 
 export type StatusKey = "normal" | "hit" | "guaranteed";
@@ -67,19 +62,23 @@ export const STATUS_STYLE: Record<
   StatusKey,
   { bg: string; node: string; border?: string }
 > = {
-  // 抽到：黃底
+  // 抽到：不透明黃底
   hit: {
-    bg: APP_THEME_TOKENS.planner.status.hitBg,
-    node: APP_THEME_TOKENS.planner.status.hitNode,
+    bg: "#fef5c4",
+    node: "#fde04b",
   },
 
-  // 保底：藍色
+  // 保底：不透明紫底
   guaranteed: {
-    bg: APP_THEME_TOKENS.planner.status.guaranteedBg,
-    node: APP_THEME_TOKENS.planner.status.guaranteedNode,
+    bg: "#f9e1fc",
+    node: "#de75f1",
   },
 
-  normal: { bg: "action.hover", node: "background.default" },
+  normal: {
+    bg: "#f8fafc",
+    node: "#f8fafc",
+    border: "#cbd5e1",
+  },
 };
 
 /**
@@ -88,9 +87,9 @@ export const STATUS_STYLE: Record<
  * - 淺綠底稍微再淡一點，避免壓過內容
  */
 export const TARGET_BORDER_STYLE = {
-  border: `2.5px solid ${APP_THEME_TOKENS.planner.target.border}`,
-  boxShadow: APP_THEME_TOKENS.planner.target.ring,
-  background: `linear-gradient(0deg, ${APP_THEME_TOKENS.planner.target.background}, ${APP_THEME_TOKENS.planner.target.background})`,
+  border: "2.5px solid rgba(16, 185, 129, 0.95)",
+  boxShadow: "none",
+  background: "#e7f8f2",
 };
 
 /**
@@ -99,22 +98,17 @@ export const TARGET_BORDER_STYLE = {
  * - 用 boxShadow 做「外圈」與「發光」，辨識度大幅提升
  */
 export const TARGET_NODE_STYLE = {
-  bg: APP_THEME_TOKENS.planner.target.nodeBg,
-  borderColor: APP_THEME_TOKENS.planner.target.border,
-  ringShadow: APP_THEME_TOKENS.planner.target.ring,
-  textColor: APP_THEME_TOKENS.planner.target.nodeText,
+  bg: "#10b981",
+  borderColor: "rgba(16, 185, 129, 0.95)",
+  ringShadow: "none",
+  textColor: "rgba(0, 0, 0, 0.85)",
 };
 
-export function hashString(s: string): number {
-  const str = String(s || "");
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
-  // console.log("hashString:", s, "->", h);
-  return h >>> 0;
-}
-
 // 30 色（Hue 調色盤）
-export const EVENT_HUES_30 = [...APP_THEME_TOKENS.planner.eventHues] as const;
+export const EVENT_HUES_30 = [
+  240, 24, 180, 288, 0, 216, 324, 48, 204, 336, 12, 252, 276, 36, 228, 312,
+  192, 348, 264, 96, 108, 120, 132, 144, 156, 168, 72, 84, 60, 300,
+] as const;
 
 export function makeEventColorPicker(eventValuesInOrder: string[]) {
   // 照 list 順序分配 hue（同名 event 只分配一次）
@@ -145,40 +139,23 @@ export function makeEventColorPicker(eventValuesInOrder: string[]) {
   };
 }
 
-// export function eventHue(ev: string): number {
-//   console.log("eventHue:", ev, "->", hashString(ev) % EVENT_HUES_30.length);
-//   return EVENT_HUES_30[hashString(ev) % EVENT_HUES_30.length];
-// }
-// export function eventColor(ev: string): string {
-//   return `hsl(${eventHue(ev)}, 72%, 42%)`;
-// }
-// export function eventTint(ev: string): string {
-//   return `hsla(${eventHue(ev)}, 72%, 55%, 0.14)`;
-// }
-
-export function truncateText(s: string, n: number): string {
-  const t = String(s || "");
-  return t.length <= n ? t : t.slice(0, n) + "…";
-}
-
 export function actionLabelFromStep(step: PlanStep): ActionLabel {
-  if (step.resource === "ticket" && step.method === "single") return "金券";
+  if (step.resource === "ticket" && step.method === "single") return "稀有券";
   if (step.resource === "platinum_ticket" && step.method === "single")
     return "白金券";
   if (step.resource === "legend_ticket" && step.method === "single")
     return "傳說券";
   if (step.resource === "food" && step.method === "single") return "罐頭";
   if (step.resource === "food" && step.method === "ten") return "10連抽";
-  return "金券";
+  return "稀有券";
 }
 
-export function safeGetNormalCatName(
+export function safeGetNormalCat(
   g: TrackGraph | null | undefined,
   posId: string,
-): string {
-  const node = g?.nodes?.[posId as any];
-  const cat = node?.edges?.normal?.cat;
-  return cat?.name || UI_TEXT.dash;
+) {
+  const node = g?.nodes?.[posId];
+  return node?.edges?.normal?.cat ?? null;
 }
 
 /**
@@ -193,7 +170,7 @@ export function posTrackFromPosId(posId: string): {
   const raw = String(posId || "");
   try {
     const c = parsePosId(raw);
-    return { ok: true, pos: c.pos, track: c.track as any, id: c.id };
+    return { ok: true, pos: c.pos, track: c.track, id: c.id };
   } catch {
     const m = raw.match(/(\d+)\s*([AB])/i);
     if (m) {
@@ -220,6 +197,8 @@ export type DrawRow = {
 
   A: string;
   B: string;
+  catIdA: number | null;
+  catIdB: number | null;
 
   statusA: StatusKey;
   statusB: StatusKey;
@@ -236,6 +215,8 @@ export type DrawRow = {
 
   pos: number | null;
   track: "A" | "B" | null;
+  endPos: number | null;
+  endTrack: "A" | "B" | null;
   used: DrawHit["used"];
   catId: number | null;
 
@@ -244,9 +225,85 @@ export type DrawRow = {
   isHeader: boolean;
   isTen: boolean;
   isGuaranteedRow: boolean;
+  isVirtual: boolean;
 
   isTarget: boolean;
 };
+
+function buildSkippedPositionRows(params: {
+  graph: TrackGraph | undefined;
+  step: PlanStep;
+  action: ActionLabel;
+  eventName: string;
+  eventRawName: string;
+  eventStartDate: string | null;
+  eventEndDate: string | null;
+  stepIndex: number;
+  withinStepIndex: number;
+  fromPos: number | null;
+  toPos: number | null;
+}): DrawRow[] {
+  const {
+    graph,
+    step,
+    action,
+    eventName,
+    eventRawName,
+    eventStartDate,
+    eventEndDate,
+    stepIndex,
+    withinStepIndex,
+    fromPos,
+    toPos,
+  } = params;
+
+  if (fromPos == null || toPos == null || toPos <= fromPos + 1) return [];
+
+  const rows: DrawRow[] = [];
+
+  for (let pos = fromPos + 1; pos < toPos; pos += 1) {
+    const normalA = safeGetNormalCat(graph, `${pos}A`);
+    const normalB = safeGetNormalCat(graph, `${pos}B`);
+
+    rows.push({
+      key: `s${stepIndex}-gap-${withinStepIndex}-${pos}`,
+      countText: String(pos),
+      stepText: UI_TEXT.dash,
+      actionText: action,
+      eventValue: step.event_value,
+      eventName,
+      eventRawName,
+      eventStartDate,
+      eventEndDate,
+      A: normalA?.name || UI_TEXT.dash,
+      B: normalB?.name || UI_TEXT.dash,
+      catIdA: normalA?.id ?? null,
+      catIdB: normalB?.id ?? null,
+      statusA: "normal",
+      statusB: "normal",
+      isTargetA: false,
+      isTargetB: false,
+      isDuplicateA: false,
+      isDuplicateB: false,
+      note: `補位 ${pos}A / ${pos}B`,
+      pos,
+      track: null,
+      endPos: null,
+      endTrack: null,
+      used: "normal",
+      catId: null,
+      stepIndex,
+      withinStepIndex,
+      isHeader: false,
+      isTen: step.method === "ten",
+      isGuaranteedRow: false,
+      isVirtual: true,
+      isTarget: false,
+    });
+  }
+
+  return rows;
+}
 
 export function buildDrawRows(params: {
   result: PlanResult;
@@ -297,6 +354,8 @@ export function buildDrawRows(params: {
       const totalHit = hitA + hitB;
       const sp = posTrackFromPosId(st.start_cursor_id);
 
+      const ep = posTrackFromPosId(st.end_cursor_id);
+
       out.push({
         key: `s${si}-ten-summary`,
         countText: sp.ok ? String(sp.pos) : UI_TEXT.dash,
@@ -310,15 +369,19 @@ export function buildDrawRows(params: {
 
         A: hitA > 0 ? formatHitCatNames(hitMapA, catNameById) : UI_TEXT.dash,
         B: hitB > 0 ? formatHitCatNames(hitMapB, catNameById) : UI_TEXT.dash,
+        catIdA: hitMapA.size === 1 ? [...hitMapA.keys()][0] : null,
+        catIdB: hitMapB.size === 1 ? [...hitMapB.keys()][0] : null,
 
-        statusA: "hit",
-        statusB: "hit",
+        statusA: hitA > 0 ? "hit" : "normal",
+        statusB: hitB > 0 ? "hit" : "normal",
         isTargetA: hitA > 0,
         isTargetB: hitB > 0,
 
         note: `${st.start_cursor_id} → ${st.end_cursor_id}`,
         pos: sp.ok ? sp.pos : null,
-        track: sp.ok ? (sp.track as any) : null,
+        track: sp.ok ? sp.track : null,
+        endPos: ep.ok ? ep.pos : null,
+        endTrack: ep.ok ? ep.track : null,
         used: "normal",
         catId: null,
 
@@ -327,6 +390,7 @@ export function buildDrawRows(params: {
         isHeader: true,
         isTen: true,
         isGuaranteedRow: false,
+        isVirtual: false,
 
         isTarget: totalHit > 0,
 
@@ -344,44 +408,41 @@ export function buildDrawRows(params: {
       const isGuaranteed = d.used === "guaranteed";
 
       const pos = from.ok ? from.pos : null;
-      const track = from.ok ? (from.track as any) : null;
+      const track = from.ok ? from.track : null;
+      const to = posTrackFromPosId(d.to_pos_id);
 
-      // const baseA = isGuaranteed
-      //   ? track === "A"
-      //     ? d.cat_name || UI_TEXT.dash
-      //     : pos != null
-      //     ? safeGetNormalCatName(g, `${pos}A`)
-      //     : UI_TEXT.dash
-      //   : pos != null
-      //   ? safeGetNormalCatName(g, `${pos}A`)
-      //   : UI_TEXT.dash;
-
-      // const baseB = isGuaranteed
-      //   ? track === "B"
-      //     ? d.cat_name || UI_TEXT.dash
-      //     : pos != null
-      //     ? safeGetNormalCatName(g, `${pos}B`)
-      //     : UI_TEXT.dash
-      //   : pos != null
-      //   ? safeGetNormalCatName(g, `${pos}B`)
-      //   : UI_TEXT.dash;
       const normalA =
-        pos != null ? safeGetNormalCatName(g, `${pos}A`) : UI_TEXT.dash;
+        pos != null ? safeGetNormalCat(g, `${pos}A`) : null;
       const normalB =
-        pos != null ? safeGetNormalCatName(g, `${pos}B`) : UI_TEXT.dash;
+        pos != null ? safeGetNormalCat(g, `${pos}B`) : null;
 
       // 預設先用 normal 軌道當底（用來顯示另一條 lane 的對照）
-      let baseA = normalA;
-      let baseB = normalB;
+      let baseA = normalA?.name || UI_TEXT.dash;
+      let baseB = normalB?.name || UI_TEXT.dash;
+      let catIdA = normalA?.id ?? null;
+      let catIdB = normalB?.id ?? null;
 
       // 不管 used 是 normal / switch_track / guaranteed：抽到的那條 lane 一律顯示結果貓
       if (track === "A") {
-        baseA = (d.cat_name || "").trim() ? d.cat_name : normalA;
+        baseA = (d.cat_name || "").trim() ? d.cat_name : baseA;
+        catIdA = d.cat_id ?? catIdA;
       } else if (track === "B") {
-        baseB = (d.cat_name || "").trim() ? d.cat_name : normalB;
+        baseB = (d.cat_name || "").trim() ? d.cat_name : baseB;
+        catIdB = d.cat_id ?? catIdB;
       } else {
         // 解析不到 track 的保守處理：維持你原本習慣（當作 B）
-        baseB = (d.cat_name || "").trim() ? d.cat_name : normalB;
+        baseB = (d.cat_name || "").trim() ? d.cat_name : baseB;
+        catIdB = d.cat_id ?? catIdB;
+      }
+
+      if (isGuaranteed) {
+        if (track === "A") {
+          baseB = UI_TEXT.dash;
+          catIdB = null;
+        } else if (track === "B") {
+          baseA = UI_TEXT.dash;
+          catIdA = null;
+        }
       }
 
       const isTarget = d.cat_id != null && targetIdSet.has(d.cat_id);
@@ -451,6 +512,8 @@ export function buildDrawRows(params: {
         eventEndDate,
         A,
         B,
+        catIdA,
+        catIdB,
         statusA,
         statusB,
         isTargetA,
@@ -479,6 +542,8 @@ export function buildDrawRows(params: {
         })(),
         pos,
         track,
+        endPos: to.ok ? to.pos : null,
+        endTrack: to.ok ? to.track : null,
         used: d.used,
         catId: d.cat_id ?? null,
         stepIndex: si,
@@ -486,10 +551,27 @@ export function buildDrawRows(params: {
         isHeader: !isTen && di === 0,
         isTen,
         isGuaranteedRow: isGuaranteed,
+        isVirtual: false,
         isTarget,
         isDuplicateA,
         isDuplicateB,
       });
+
+      out.push(
+        ...buildSkippedPositionRows({
+          graph: g,
+          step: st,
+          action,
+          eventName,
+          eventRawName,
+          eventStartDate,
+          eventEndDate,
+          stepIndex: si,
+          withinStepIndex: di + 1,
+          fromPos: pos,
+          toPos: to.ok ? to.pos : null,
+        }),
+      );
     }
   }
 

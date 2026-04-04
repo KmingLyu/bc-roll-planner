@@ -1,64 +1,123 @@
-// src/features/planner/PlannerPageContainer.tsx
-import { useEffect, useMemo, useState } from "react";
-
-// MUI
 import {
-  Box,
-  Container,
-  Stack,
-  Typography,
-  Badge,
-  IconButton,
-  Tooltip,
-  Fab,
-} from "@mui/material";
-import { useTheme } from "@mui/material/styles";
-import useMediaQuery from "@mui/material/useMediaQuery";
-
-import PetsIcon from "@mui/icons-material/Pets";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-
-// Models
+  createContext,
+  startTransition,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  ArrowUp,
+  GitBranch,
+  Mail,
+  PencilLine,
+  Search,
+} from "lucide-react";
 import type { Event, TrackGraph } from "@/types/models";
-
-// APIs
-import { ApiError } from "@/lib/api-client";
-
-// Hooks
+import { ApiError, isAbortError } from "@/lib/api-client";
+import { cn } from "@/lib/utils";
 import { EventsPicker, useEvents } from "@/features/events";
 import { TargetCatsSelectionContent, useEventCats } from "@/features/cats";
+import {
+  buildGodfatCatHref,
+  buildGodfatCatImageUrl,
+} from "@/features/cats/presentation/godfat";
 import { useTrackGraphs } from "@/features/track-graph";
-import { usePlannerWorker } from "./hooks/usePlannerWorker";
-
-// Components
-import { Section } from "@/components";
+import { Badge } from "@/components/ui/badge";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { DisclaimerNote } from "./components/Note";
 import { ResourceForm } from "./components/ResourceForm";
+import { RunBlockingOverlay } from "./components/RunBlockingOverlay";
 import { RunBar } from "./components/RunBar";
 import { SeedCountForm } from "./components/SeedCountForm";
-import { ResultStatsCard } from "./components/ResultStats";
-import { ResultTable } from "./components/Results";
-import { TargetCatsLayout } from "./components/TargetLayout";
-
-// Planner types
+import { ResultStatsSidebar } from "./components/ResultStats";
+import { ResultTable, type ResultFilterMode } from "./components/Results";
+import { usePlannerWorker } from "./hooks/usePlannerWorker";
 import type { PlanResult } from "./logic/core";
-import type { PlannerResources, PlannerUiConfig, UiFlags } from "./types";
+import type {
+  PlannerAppliedInputs,
+  PlannerDraftInputs,
+  PlannerResources,
+  PlannerSessionState,
+} from "./types";
 import { parsePosId } from "@/utils/cursor";
-
-// env
 import { BC_ENV } from "@/config/bcEnv";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
 
-function safeErrText(e: unknown): string {
-  if (e instanceof ApiError) return `${e.message} (HTTP ${e.status})`;
-  if (e && typeof e === "object" && "message" in e)
-    return String((e as any).message);
-  return String(e);
+const MAX_SELECTED_EVENTS = 5;
+const MAX_SELECTED_TARGET_CATS = 20;
+const AUTO_COUNT_PER_TEN_ROLL = 13;
+
+type AppliedPlannerSession = {
+  signature: string;
+  inputs: PlannerAppliedInputs;
+  result: PlanResult;
+  graphsByEvent: Record<string, TrackGraph>;
+};
+
+type ActivePlannerRun = {
+  token: number;
+  controller: AbortController;
+};
+
+type PlannerScreenContextValue = {
+  draft: PlannerDraftInputs;
+  session: PlannerSessionState;
+  appliedSession: AppliedPlannerSession | null;
+  planState: LoadState;
+  planErr: string;
+  countError: string;
+  manualCount: number | null;
+  autoCount: number;
+  resolvedCount: number;
+  runDisabled: boolean;
+  runHint: string;
+  runOverlayOpen: boolean;
+  eventsState: LoadState;
+  eventsErr: string;
+  upcomingEvents: Event[];
+  pastEvents: Event[];
+  catsState: LoadState;
+  catsErr: string;
+  tierGroups: ReturnType<typeof useEventCats>["tierGroups"];
+  catNameById: Map<number, string>;
+  setSeed: (value: string) => void;
+  setCountInput: (value: string) => void;
+  setResources: (next: PlannerResources) => void;
+  setSelectedEventValues: (next: string[]) => void;
+  setPrimaryEventValue: (value: string) => void;
+  setTargetCatIds: (next: number[]) => void;
+  clearTargetCatIds: () => void;
+  toggleManualCount: () => void;
+  goToInputStage: () => void;
+  cancelPlannerFlow: () => void;
+  runPlannerFlow: () => Promise<void>;
+};
+
+const PlannerScreenContext = createContext<PlannerScreenContextValue | null>(
+  null,
+);
+
+function safeErrText(error: unknown): string {
+  if (error instanceof ApiError)
+    return `${error.message} (HTTP ${error.status})`;
+  if (error && typeof error === "object" && "message" in error) {
+    return String((error as { message?: unknown }).message);
+  }
+  return String(error);
 }
 
-function clampNonNegativeInt(n: number): number {
-  return Math.max(0, Math.floor(n || 0));
+function clampNonNegativeInt(value: number): number {
+  return Math.max(0, Math.floor(value || 0));
+}
+
+function clampSelection<T>(values: T[], limit: number) {
+  return [...new Set(values)].slice(0, limit);
 }
 
 function getStartPosOffset(startPosId: string): number {
@@ -74,7 +133,7 @@ function estimateAutoCount(params: {
   eventsByValue: Map<string, Event>;
   resources: PlannerResources;
   startPosId: string;
-}): number {
+}) {
   const { selectedEventValues, eventsByValue, resources, startPosId } = params;
 
   if (!selectedEventValues.length) return 0;
@@ -84,9 +143,13 @@ function estimateAutoCount(params: {
     poolTypes.add(eventsByValue.get(eventValue)?.pool_type ?? "normal");
   }
 
+  const normalizedFood = clampNonNegativeInt(resources.food);
+  const fullTenRollBundles = Math.floor(normalizedFood / 1500);
+  const remainingFood = normalizedFood % 1500;
   const normalDepth = poolTypes.has("normal")
     ? clampNonNegativeInt(resources.tickets) +
-      Math.floor(clampNonNegativeInt(resources.food) / 150)
+      fullTenRollBundles * AUTO_COUNT_PER_TEN_ROLL +
+      Math.floor(remainingFood / 150)
     : 0;
   const platinumDepth = poolTypes.has("platinum")
     ? clampNonNegativeInt(resources.platinum_tickets)
@@ -95,572 +158,1040 @@ function estimateAutoCount(params: {
     ? clampNonNegativeInt(resources.legend_tickets)
     : 0;
 
-  return getStartPosOffset(startPosId) + normalDepth + platinumDepth + legendDepth;
+  return (
+    getStartPosOffset(startPosId) + normalDepth + platinumDepth + legendDepth
+  );
 }
 
-export function PlannerPageContainer() {
-  const theme = useTheme();
-  const isMdDown = useMediaQuery(theme.breakpoints.down("md"));
+function parseManualCount(countInput: string): {
+  manualCount: number | null;
+  countError: string;
+} {
+  const trimmed = countInput.trim();
+  if (!trimmed) return { manualCount: null, countError: "" };
 
-  // Drawer open 狀態（小螢幕用）
-  const [targetCatsDrawerOpen, setTargetCatsDrawerOpen] = useState(false);
+  const next = Number(trimmed);
+  if (!Number.isFinite(next) || !Number.isInteger(next) || next <= 0) {
+    return { manualCount: null, countError: "count 必須是正整數" };
+  }
 
-  // -------------------------
-  // UI flags
-  // -------------------------
-  const [ui, setUi] = useState<UiFlags>({
-    showControlPanel: false,
+  return { manualCount: next, countError: "" };
+}
 
-    showSeedCount: true,
-    seedCountCollapsed: false,
+function buildDraftSignature(draft: PlannerDraftInputs) {
+  return JSON.stringify({
+    seed: draft.seed.trim(),
+    countInput: draft.countInput.trim(),
+    resources: draft.resources,
+    cfg: {
+      start_pos_id: draft.cfg.start_pos_id.trim(),
+      max_expansions: clampNonNegativeInt(draft.cfg.max_expansions),
+    },
+    selectedEventValues: [...draft.selectedEventValues].sort(),
+    targetCatIds: [...draft.targetCatIds].sort((a, b) => a - b),
+  });
+}
 
-    showEvents: true,
-    eventsCollapsed: false,
-
-    showTargetCats: true,
-    targetCatsCollapsed: false,
-
-    showPlanner: false,
-    plannerCollapsed: false,
-
-    showPlannerResultSummary: true,
-    plannerResultSummaryCollapsed: false,
-
-    showPlannerResultTable: false,
-    plannerResultTableCollapsed: false,
-
-    showGraphDebug: false,
-    graphDebugCollapsed: true,
-
-    showSimulator: false,
-    simulatorCollapsed: true,
+function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
+  const [draft, setDraft] = useState<PlannerDraftInputs>({
+    seed: "",
+    countInput: "",
+    resources: {
+      tickets: 0,
+      platinum_tickets: 0,
+      legend_tickets: 0,
+      food: 0,
+    },
+    cfg: {
+      start_pos_id: "1A",
+      max_expansions: 200000,
+    },
+    selectedEventValues: [],
+    primaryEventValue: "",
+    targetCatIds: [],
   });
 
-  // -------------------------
-  // Seed/Count
-  // -------------------------
-  const [seedApplied, setSeedApplied] = useState<string>("");
-  const [countInput, setCountInput] = useState<string>("");
-  const [manualCount, setManualCount] = useState<number | null>(null);
-  const [countError, setCountError] = useState<string>("");
-
-  // -------------------------
-  // Events
-  // -------------------------
-  const {
-    eventsState,
-    eventsErr,
-    events,
-    upcomingEvents,
-    pastEvents,
-    reloadEvents,
-  } = useEvents({
-    pastLimit: BC_ENV.pastEventLimit,
-    lang: BC_ENV.lang,
-    ui: BC_ENV.ui,
+  const [session, setSession] = useState<PlannerSessionState>({
+    stage: "input",
+    manualCountExpanded: false,
   });
+  const [appliedSession, setAppliedSession] =
+    useState<AppliedPlannerSession | null>(null);
+  const hasSyntheticResultsHistoryRef = useRef(false);
 
-  // 多選 values
-  const [selectedEventValues, setSelectedEventValues] = useState<string[]>([]);
+  const pendingRunRef = useRef<{
+    token: number;
+    signature: string;
+    inputs: PlannerAppliedInputs;
+    graphsByEvent: Record<string, TrackGraph>;
+  } | null>(null);
+  const activeRunRef = useRef<ActivePlannerRun | null>(null);
+  const runTokenRef = useRef(0);
 
-  // primary event：Graph Debug / Simulator 用
-  const [primaryEventValue, setPrimaryEventValue] = useState<string>("");
+  const { manualCount, countError } = useMemo(
+    () => parseManualCount(draft.countInput),
+    [draft.countInput],
+  );
 
-  useEffect(() => {
-    if (!selectedEventValues.length) {
-      setPrimaryEventValue("");
-      return;
-    }
-    if (
-      !primaryEventValue ||
-      !selectedEventValues.includes(primaryEventValue)
-    ) {
-      setPrimaryEventValue(selectedEventValues[0]);
-    }
-  }, [selectedEventValues, primaryEventValue]);
+  const { eventsState, eventsErr, events, upcomingEvents, pastEvents } =
+    useEvents({
+      pastLimit: BC_ENV.pastEventLimit,
+      lang: BC_ENV.lang,
+      ui: BC_ENV.ui,
+    });
 
-  // Map lookup
   const eventsByValue = useMemo(() => {
-    const m = new Map<string, Event>();
-    for (const e of events) m.set(e.value, e);
-    return m;
+    const next = new Map<string, Event>();
+    for (const event of events) next.set(event.value, event);
+    return next;
   }, [events]);
 
-  const hasSeed = useMemo(() => !!seedApplied.trim(), [seedApplied]);
-
-  // -------------------------
-  // Target Cats
-  // -------------------------
-  const { catsState, catsErr, tierGroups, allowedCatIdSet, catNameById } =
-    useEventCats({
-      selectedEventValues,
-      eventsByValue,
-      lang: BC_ENV.lang,
-      ui: BC_ENV.ui,
-    });
-
-  const [targetCatIds, setTargetCatIds] = useState<number[]>([]);
-
-  useEffect(() => {
-    if (!allowedCatIdSet) return;
-    setTargetCatIds((prev) => prev.filter((id) => allowedCatIdSet.has(id)));
-  }, [allowedCatIdSet]);
-
-  // -------------------------
-  // Graphs
-  // -------------------------
-  const { graphState, graphErr, graphByEvent, fetchGraphs, clearGraphs } =
-    useTrackGraphs({
-      seed: seedApplied,
-      selectedEventValues,
-      eventsByValue,
-      lang: BC_ENV.lang,
-      ui: BC_ENV.ui,
-    });
-
-  const activeGraph: TrackGraph | null = useMemo(() => {
-    if (!primaryEventValue) return null;
-    return graphByEvent[primaryEventValue] ?? null;
-  }, [graphByEvent, primaryEventValue]);
-
-  // -------------------------
-  // Planner resources + cfg
-  // -------------------------
-  const [resources, setResources] = useState<PlannerResources>({
-    tickets: 0,
-    platinum_tickets: 0,
-    legend_tickets: 0,
-    food: 0,
-  });
-
-  const [plannerCfg, setPlannerCfg] = useState<PlannerUiConfig>({
-    start_pos_id: "1A",
-    max_expansions: 200000,
-  });
+  const resolvedPrimaryEventValue = useMemo(() => {
+    if (!draft.selectedEventValues.length) return "";
+    return draft.selectedEventValues.includes(draft.primaryEventValue)
+      ? draft.primaryEventValue
+      : draft.selectedEventValues[0];
+  }, [draft.primaryEventValue, draft.selectedEventValues]);
 
   const autoCount = useMemo(
     () =>
       estimateAutoCount({
-        selectedEventValues,
+        selectedEventValues: draft.selectedEventValues,
         eventsByValue,
-        resources,
-        startPosId: plannerCfg.start_pos_id,
+        resources: draft.resources,
+        startPosId: draft.cfg.start_pos_id,
       }),
-    [selectedEventValues, eventsByValue, resources, plannerCfg.start_pos_id]
+    [
+      draft.cfg.start_pos_id,
+      draft.resources,
+      draft.selectedEventValues,
+      eventsByValue,
+    ],
   );
 
-  // -------------------------
-  // Planner worker
-  // -------------------------
-  const { runPlanner, setLoading, planState, planErr, planResult, resetPlan } =
-    usePlannerWorker();
+  const resolvedCount = manualCount ?? autoCount;
+
+  const { catsState, catsErr, tierGroups, allowedCatIdSet, catNameById } =
+    useEventCats({
+      selectedEventValues: draft.selectedEventValues,
+      eventsByValue,
+      lang: BC_ENV.lang,
+      ui: BC_ENV.ui,
+    });
+
+  const resolvedTargetCatIds = useMemo(() => {
+    if (!allowedCatIdSet) return draft.targetCatIds;
+    return draft.targetCatIds.filter((catId) => allowedCatIdSet.has(catId));
+  }, [allowedCatIdSet, draft.targetCatIds]);
+
+  const viewDraft = useMemo<PlannerDraftInputs>(
+    () => ({
+      ...draft,
+      primaryEventValue: resolvedPrimaryEventValue,
+      targetCatIds: resolvedTargetCatIds,
+    }),
+    [draft, resolvedPrimaryEventValue, resolvedTargetCatIds],
+  );
+
+  const { fetchGraphs } = useTrackGraphs({
+    seed: viewDraft.seed.trim(),
+    selectedEventValues: viewDraft.selectedEventValues,
+    eventsByValue,
+    lang: BC_ENV.lang,
+    ui: BC_ENV.ui,
+  });
+
+  const {
+    runPlanner,
+    planErr,
+    planResult,
+    planState,
+    setLoading,
+    cancelPlanner,
+  } = usePlannerWorker();
+
+  const draftSignature = useMemo(
+    () => buildDraftSignature(viewDraft),
+    [viewDraft],
+  );
+
+  const hasSeed = viewDraft.seed.trim().length > 0;
+
+  const runDisabled =
+    planState === "loading" ||
+    !viewDraft.selectedEventValues.length ||
+    !hasSeed ||
+    !!countError ||
+    viewDraft.targetCatIds.length === 0 ||
+    resolvedCount <= 0;
+
+  const runHint = !viewDraft.selectedEventValues.length
+    ? "請先選擇至少一個卡池。"
+    : !hasSeed
+      ? "請先輸入種子碼。"
+      : countError
+        ? "請修正 count。"
+        : !viewDraft.targetCatIds.length
+          ? "請先選擇至少一隻目標貓咪。"
+          : resolvedCount <= 0
+            ? "目前沒有可用資源可規劃。"
+            : "";
+
+  const runOverlayOpen = planState === "loading";
+
+  function clearActiveRun(token?: number) {
+    if (token != null && activeRunRef.current?.token !== token) return;
+    activeRunRef.current = null;
+  }
+
+  function isCurrentRun(token: number) {
+    return activeRunRef.current?.token === token;
+  }
+
+  function cancelPlannerFlow() {
+    activeRunRef.current?.controller.abort();
+    activeRunRef.current = null;
+    pendingRunRef.current = null;
+    cancelPlanner();
+  }
 
   useEffect(() => {
-    clearGraphs();
-    resetPlan();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    seedApplied,
-    countInput,
-    selectedEventValues.join("|"),
-    targetCatIds.join("|"),
-    resources.tickets,
-    resources.platinum_tickets,
-    resources.legend_tickets,
-    resources.food,
-    plannerCfg.start_pos_id,
-    plannerCfg.max_expansions,
-  ]);
+    if (planState !== "ok" || !planResult || !pendingRunRef.current) return;
 
-  async function onClickPlanner() {
-    if (!selectedEventValues.length) {
-      return runPlanner({ kind: "errorOnly", error: "請先選擇至少一個 event" });
+    const completedRun = pendingRunRef.current;
+    pendingRunRef.current = null;
+    clearActiveRun(completedRun.token);
+
+    setAppliedSession({
+      signature: completedRun.signature,
+      inputs: completedRun.inputs,
+      result: planResult,
+      graphsByEvent: completedRun.graphsByEvent,
+    });
+    startTransition(() => {
+      setSession((current) => ({
+        ...current,
+        stage: "results",
+      }));
+    });
+  }, [planResult, planState]);
+
+  useEffect(() => {
+    if (planState !== "error") return;
+
+    pendingRunRef.current = null;
+    clearActiveRun();
+  }, [planState]);
+
+  useEffect(() => {
+    if (session.stage !== "results" || hasSyntheticResultsHistoryRef.current)
+      return;
+
+    window.history.pushState(
+      {
+        ...(window.history.state ?? {}),
+        bcPlannerStage: "results",
+      },
+      "",
+    );
+    hasSyntheticResultsHistoryRef.current = true;
+  }, [session.stage]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      setSession((current) => {
+        if (current.stage !== "results") {
+          return current;
+        }
+
+        hasSyntheticResultsHistoryRef.current = false;
+        return {
+          ...current,
+          stage: "input",
+        };
+      });
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      activeRunRef.current?.controller.abort();
+      activeRunRef.current = null;
+      pendingRunRef.current = null;
+    };
+  }, []);
+
+  async function runPlannerFlow() {
+    if (!viewDraft.selectedEventValues.length) {
+      runPlanner({ kind: "errorOnly", error: "請先選擇至少一個卡池。" });
+      return;
     }
     if (!hasSeed) {
-      return runPlanner({
-        kind: "errorOnly",
-        error: "請先在最上方輸入 seed",
-      });
+      runPlanner({ kind: "errorOnly", error: "請先輸入種子碼。" });
+      return;
     }
     if (countError) {
-      return runPlanner({ kind: "errorOnly", error: countError });
+      runPlanner({ kind: "errorOnly", error: countError });
+      return;
     }
-    if (!targetCatIds.length) {
-      return runPlanner({ kind: "errorOnly", error: "請先選至少一隻目標貓" });
+    if (!viewDraft.targetCatIds.length) {
+      runPlanner({ kind: "errorOnly", error: "請先選擇至少一隻目標貓咪。" });
+      return;
     }
-
-    const nextResolvedCount = manualCount ?? autoCount;
-    if (!Number.isFinite(nextResolvedCount) || nextResolvedCount <= 0) {
-      return runPlanner({
-        kind: "errorOnly",
-        error: "目前沒有可用資源可規劃",
-      });
+    if (!Number.isFinite(resolvedCount) || resolvedCount <= 0) {
+      runPlanner({ kind: "errorOnly", error: "目前沒有可用資源可規劃。" });
+      return;
     }
 
+    activeRunRef.current?.controller.abort();
+    pendingRunRef.current = null;
+    cancelPlanner();
+
+    const token = ++runTokenRef.current;
+    const controller = new AbortController();
+    activeRunRef.current = {
+      token,
+      controller,
+    };
     setLoading();
 
     let graphsByEvent: Record<string, TrackGraph>;
     try {
-      graphsByEvent = await fetchGraphs(nextResolvedCount);
-    } catch (e) {
-      return runPlanner({
-        kind: "errorOnly",
-        error: `取得 TrackGraph 失敗：${safeErrText(e)}`,
+      graphsByEvent = await fetchGraphs(resolvedCount, {
+        signal: controller.signal,
       });
+    } catch (error) {
+      if (
+        isAbortError(error) ||
+        controller.signal.aborted ||
+        !isCurrentRun(token)
+      ) {
+        return;
+      }
+
+      clearActiveRun(token);
+      runPlanner({
+        kind: "errorOnly",
+        error: `取得 TrackGraph 失敗：${safeErrText(error)}`,
+      });
+      return;
+    }
+
+    if (controller.signal.aborted || !isCurrentRun(token)) {
+      return;
     }
 
     const primary =
-      primaryEventValue && selectedEventValues.includes(primaryEventValue)
-        ? primaryEventValue
-        : selectedEventValues[0];
+      viewDraft.primaryEventValue &&
+      viewDraft.selectedEventValues.includes(viewDraft.primaryEventValue)
+        ? viewDraft.primaryEventValue
+        : viewDraft.selectedEventValues[0];
 
-    const g = primary ? graphsByEvent[primary] : undefined;
-    const ok = !!g && Object.keys(g.nodes ?? {}).length > 0;
-
-    if (!ok) {
-      return runPlanner({
+    const primaryGraph = primary ? graphsByEvent[primary] : undefined;
+    if (!primaryGraph || !Object.keys(primaryGraph.nodes || {}).length) {
+      clearActiveRun(token);
+      runPlanner({
         kind: "errorOnly",
-        error: "主要 event 的 TrackGraph 不存在（可能抓取失敗或回傳為空）",
+        error: "主要卡池的 TrackGraph 不存在或內容為空。",
       });
+      return;
     }
+
+    pendingRunRef.current = {
+      token,
+      signature: draftSignature,
+      inputs: {
+        ...draft,
+        primaryEventValue: viewDraft.primaryEventValue,
+        targetCatIds: viewDraft.targetCatIds,
+        manualCount,
+        resolvedCount,
+      },
+      graphsByEvent,
+    };
 
     runPlanner({
       kind: "run",
       req: {
         graphs_by_event: graphsByEvent,
-        events: selectedEventValues.map((ev) => ({ event_value: ev })),
-        target_cats: targetCatIds,
-
-        tickets: Math.max(0, Math.floor(resources.tickets)),
-        platinum_tickets: Math.max(0, Math.floor(resources.platinum_tickets)),
-        legend_tickets: Math.max(0, Math.floor(resources.legend_tickets)),
-        food: Math.max(0, Math.floor(resources.food)),
-
-        start_pos_id: (plannerCfg.start_pos_id || "1A").trim(),
+        events: viewDraft.selectedEventValues.map((eventValue) => ({
+          event_value: eventValue,
+        })),
+        target_cats: viewDraft.targetCatIds,
+        tickets: clampNonNegativeInt(viewDraft.resources.tickets),
+        platinum_tickets: clampNonNegativeInt(
+          viewDraft.resources.platinum_tickets,
+        ),
+        legend_tickets: clampNonNegativeInt(viewDraft.resources.legend_tickets),
+        food: clampNonNegativeInt(viewDraft.resources.food),
+        start_pos_id: (viewDraft.cfg.start_pos_id || "1A").trim(),
         cfg: {
-          max_expansions: Math.max(1000, Math.floor(plannerCfg.max_expansions)),
+          max_expansions: Math.max(
+            1000,
+            clampNonNegativeInt(viewDraft.cfg.max_expansions),
+          ),
         },
       },
     });
   }
 
-  // 預留：圖片/連結
-  const getCatHref = (catId: number) => undefined as string | undefined;
-  const getCatImageUrl = (catId: number) => undefined as string | undefined;
+  const value: PlannerScreenContextValue = {
+    draft: viewDraft,
+    session,
+    appliedSession,
+    planState,
+    planErr,
+    countError,
+    manualCount,
+    autoCount,
+    resolvedCount,
+    runDisabled,
+    runHint,
+    runOverlayOpen,
+    eventsState,
+    eventsErr,
+    upcomingEvents,
+    pastEvents,
+    catsState,
+    catsErr,
+    tierGroups,
+    catNameById,
+    setSeed: (value) => setDraft((current) => ({ ...current, seed: value })),
+    setCountInput: (value) =>
+      setDraft((current) => ({ ...current, countInput: value })),
+    setResources: (next) =>
+      setDraft((current) => ({ ...current, resources: next })),
+    setSelectedEventValues: (next) =>
+      setDraft((current) => ({
+        ...current,
+        selectedEventValues: clampSelection(next, MAX_SELECTED_EVENTS),
+      })),
+    setPrimaryEventValue: (value) =>
+      setDraft((current) => ({ ...current, primaryEventValue: value })),
+    setTargetCatIds: (next) =>
+      setDraft((current) => ({
+        ...current,
+        targetCatIds: clampSelection(next, MAX_SELECTED_TARGET_CATS),
+      })),
+    clearTargetCatIds: () =>
+      setDraft((current) => ({ ...current, targetCatIds: [] })),
+    toggleManualCount: () =>
+      startTransition(() =>
+        setSession((current) => ({
+          ...current,
+          manualCountExpanded: !current.manualCountExpanded,
+        })),
+      ),
+    goToInputStage: () => {
+      if (hasSyntheticResultsHistoryRef.current) {
+        window.history.back();
+        return;
+      }
 
-  // 小螢幕：用 Drawer；大螢幕：右欄
-  const shouldUseDrawer = isMdDown;
-  const runDisabled =
-    planState === "loading" ||
-    !selectedEventValues.length ||
-    !hasSeed ||
-    !!countError ||
-    targetCatIds.length === 0;
+      startTransition(() =>
+        setSession((current) => ({
+          ...current,
+          stage: "input",
+        })),
+      );
+    },
+    cancelPlannerFlow,
+    runPlannerFlow,
+  };
 
-  const runHint = !selectedEventValues.length
-    ? "請先選至少一個 event"
-    : !hasSeed
-      ? "請先輸入 seed"
-      : countError
-        ? "count 必須是正整數或留空改用自動搜尋上限"
-        : !targetCatIds.length
-          ? "請先選目標貓"
-          : !countInput.trim() && autoCount <= 0
-            ? "目前沒有可用資源可規劃"
-            : "";
+  return (
+    <PlannerScreenContext.Provider value={value}>
+      {children}
+    </PlannerScreenContext.Provider>
+  );
+}
+
+function usePlannerScreen() {
+  const context = useContext(PlannerScreenContext);
+  if (!context) {
+    throw new Error("Planner screen context is missing.");
+  }
+  return context;
+}
+
+function PlannerHeader() {
+  return (
+    <header className="space-y-2 border-b border-border/45 pb-3">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          貓咪大戰爭抽卡規劃
+        </h1>
+      </div>
+      <DisclaimerNote />
+    </header>
+  );
+}
+
+function PlannerFooter() {
+  return (
+    <footer className="mt-2 border-t border-border/45 pt-5 pb-2 sm:pt-6 sm:pb-3">
+      <div className="flex justify-end">
+        <div className="flex max-w-[760px] flex-wrap items-center justify-end gap-x-3 gap-y-2.5 text-[15px] text-muted-foreground/85">
+          <span className="text-[14px] font-semibold text-muted-foreground/75">
+            問題回報：
+          </span>
+
+          <span className="text-border/80">·</span>
+
+          <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
+            <a
+              href="mailto:keming0325@gmail.com"
+              title="keming0325@gmail.com"
+              aria-label="寄信到 keming0325@gmail.com"
+              className="group inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+            >
+              <Mail className="size-[18px] shrink-0" />
+              <span className="font-medium">Email</span>
+            </a>
+
+            <span className="text-border/80">·</span>
+
+            <a
+              href="https://github.com/KmingLyu/bc-roll-planner"
+              target="_blank"
+              rel="noreferrer"
+              title="github.com/KmingLyu/bc-roll-planner"
+              aria-label="前往 GitHub 專案頁回報 issue"
+              className="group inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+            >
+              <GitBranch className="size-[18px] shrink-0" />
+              <span className="font-medium">GitHub</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+function SelectedCatSummaryItem({
+  catId,
+  name,
+}: {
+  catId: number;
+  name: string;
+}) {
+  return (
+    <div className="inline-flex max-w-full items-center gap-2 rounded-full bg-muted/28 px-2.5 py-1.5">
+      <img
+        src={buildGodfatCatImageUrl(catId, { lang: BC_ENV.lang })}
+        alt=""
+        width={28}
+        height={28}
+        className="size-7 shrink-0 rounded-md bg-background object-cover"
+        loading="lazy"
+      />
+      <span className="min-w-0 break-keep text-sm font-medium leading-5 text-foreground">
+        {name}
+      </span>
+    </div>
+  );
+}
+
+function PlannerTargetPanel() {
+  const {
+    catsState,
+    catsErr,
+    tierGroups,
+    catNameById,
+    draft,
+    setTargetCatIds,
+    clearTargetCatIds,
+  } = usePlannerScreen();
+
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [catQuery, setCatQuery] = useState("");
+
+  const selectedCats = useMemo(() => {
+    const namesFromGroups = new Map<number, string>();
+    for (const group of tierGroups) {
+      for (const cat of group.cats) {
+        namesFromGroups.set(cat.id, cat.name);
+      }
+    }
+
+    return draft.targetCatIds.map((catId) => ({
+      id: catId,
+      name:
+        namesFromGroups.get(catId) ??
+        catNameById.get(catId) ??
+        `貓咪 #${catId}`,
+    }));
+  }, [catNameById, draft.targetCatIds, tierGroups]);
+  const visibleSelectedCats = selectedCats.slice(0, MAX_SELECTED_TARGET_CATS);
+  const hiddenSelectedCatCount = Math.max(
+    0,
+    selectedCats.length - visibleSelectedCats.length,
+  );
+  const atSelectionLimit =
+    draft.targetCatIds.length >= MAX_SELECTED_TARGET_CATS;
+  const selectionSummary = atSelectionLimit
+    ? `已達上限 ${MAX_SELECTED_TARGET_CATS} 隻，取消已選貓咪後才能更換。`
+    : draft.targetCatIds.length === 0
+      ? `最多可選 ${MAX_SELECTED_TARGET_CATS} 隻目標貓咪。`
+      : `還可再選 ${MAX_SELECTED_TARGET_CATS - draft.targetCatIds.length} 隻目標貓咪。`;
+
+  return (
+    <section className="space-y-2.5">
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          <div className="text-sm font-semibold text-foreground">
+            選擇目標貓咪
+          </div>
+          <Badge variant={atSelectionLimit ? "warning" : "muted"}>
+            {draft.targetCatIds.length}/{MAX_SELECTED_TARGET_CATS}
+          </Badge>
+          {draft.targetCatIds.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-1 h-auto rounded-none border-l border-border/55 px-0 pl-3 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground"
+              onClick={clearTargetCatIds}
+            >
+              清空
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setSheetOpen(true)}
+        className="group block w-full rounded-2xl border border-border/55 bg-background px-4 py-3 text-left transition-colors hover:border-border hover:bg-muted/[0.04] active:bg-muted/[0.08]"
+      >
+        {selectedCats.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {visibleSelectedCats.map((cat) => (
+              <SelectedCatSummaryItem
+                key={cat.id}
+                catId={cat.id}
+                name={cat.name}
+              />
+            ))}
+            {hiddenSelectedCatCount > 0 ? (
+              <div className="inline-flex items-center rounded-full bg-muted/24 px-3 py-1.5 text-sm font-medium text-muted-foreground">
+                +{hiddenSelectedCatCount} 隻已選貓咪
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="py-2 text-sm text-muted-foreground">
+            點擊選擇目標貓咪
+          </div>
+        )}
+      </button>
+      <div
+        className={cn(
+          "px-1 text-xs",
+          atSelectionLimit
+            ? "font-medium text-warning"
+            : "text-muted-foreground",
+        )}
+      >
+        {selectionSummary}
+      </div>
+
+      <BottomSheet
+        open={sheetOpen}
+        onOpenChange={(nextOpen) => {
+          setSheetOpen(nextOpen);
+          if (!nextOpen) setCatQuery("");
+        }}
+        title={`選擇目標貓咪 (${draft.targetCatIds.length}/${MAX_SELECTED_TARGET_CATS})`}
+        toolbar={
+          <div className="flex items-center gap-4">
+            <div className="w-20 shrink-0">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={clearTargetCatIds}
+                className={cn(
+                  "h-auto w-full shrink-0 justify-end px-0 pr-2 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground",
+                  draft.targetCatIds.length > 0 ? "visible" : "invisible",
+                )}
+                tabIndex={draft.targetCatIds.length > 0 ? 0 : -1}
+                aria-hidden={draft.targetCatIds.length > 0 ? undefined : true}
+              >
+                清空
+              </Button>
+            </div>
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                name="target-cat-search-header"
+                autoComplete="off"
+                value={catQuery}
+                onChange={(event) => setCatQuery(event.target.value)}
+                placeholder="搜尋目標貓咪"
+                className="workspace-search pl-11"
+              />
+            </div>
+          </div>
+        }
+      >
+        <TargetCatsSelectionContent
+          loadState={catsState}
+          error={catsErr}
+          groups={tierGroups}
+          selectedIds={draft.targetCatIds}
+          maxSelection={MAX_SELECTED_TARGET_CATS}
+          onChange={setTargetCatIds}
+          query={catQuery}
+          onQueryChange={setCatQuery}
+          hideSearchInput
+          getCatHref={(catId) =>
+            buildGodfatCatHref(catId, {
+              lang: BC_ENV.lang,
+              ui: BC_ENV.ui,
+            })
+          }
+          getCatImageUrl={(catId) =>
+            buildGodfatCatImageUrl(catId, { lang: BC_ENV.lang })
+          }
+          dense
+        />
+      </BottomSheet>
+    </section>
+  );
+}
+
+function PlannerInputEditor({ layout }: { layout: "immersive" | "compact" }) {
+  const {
+    draft,
+    session,
+    countError,
+    autoCount,
+    manualCount,
+    setSeed,
+    setCountInput,
+    setResources,
+    setSelectedEventValues,
+    toggleManualCount,
+    eventsState,
+    eventsErr,
+    upcomingEvents,
+    pastEvents,
+    planState,
+    planErr,
+    runDisabled,
+    runHint,
+    appliedSession,
+    runPlannerFlow,
+  } = usePlannerScreen();
+
+  const content = (
+    <>
+      <div className="space-y-5">
+        <SeedCountForm
+          seed={draft.seed}
+          countInput={draft.countInput}
+          countError={countError}
+          autoCount={autoCount}
+          manualCount={manualCount}
+          manualCountExpanded={session.manualCountExpanded}
+          onSeedChange={setSeed}
+          onCountInputChange={setCountInput}
+          onToggleManualCount={toggleManualCount}
+        />
+
+        <div className="workspace-divider pt-3.5">
+          <ResourceForm value={draft.resources} onChange={setResources} />
+        </div>
+
+        <div className="grid gap-5 lg:grid-cols-[minmax(280px,0.9fr)_minmax(0,1.35fr)]">
+          <div className="border-t border-border pt-5">
+            <EventsPicker
+              loadState={eventsState}
+              error={eventsErr}
+              upcomingEvents={upcomingEvents}
+              pastEvents={pastEvents}
+              value={draft.selectedEventValues}
+              maxSelection={MAX_SELECTED_EVENTS}
+              onChange={setSelectedEventValues}
+            />
+          </div>
+
+          <div className="border-t border-border pt-5">
+            <PlannerTargetPanel />
+          </div>
+        </div>
+
+        <div className="border-t border-border pt-5">
+          <div className="space-y-3">
+            <RunBar
+              state={planState}
+              onRun={() => {
+                void runPlannerFlow();
+              }}
+              disabled={runDisabled}
+              hint={runHint}
+              error={planErr}
+              hasResult={!!appliedSession}
+            />
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
+  if (layout === "compact") {
+    return <div className="space-y-5">{content}</div>;
+  }
+
+  return (
+    <Card className="workspace-pane border-border/55">
+      <CardContent className="space-y-5 px-4 py-3.5 sm:px-4 sm:py-4">
+        {content}
+      </CardContent>
+    </Card>
+  );
+}
+
+function PlannerInputStage() {
+  return (
+    <div className="mx-auto w-full max-w-[1220px]">
+      <PlannerInputEditor layout="immersive" />
+    </div>
+  );
+}
+
+function ResultSummaryHeader(props: {
+  onReset: () => void;
+}) {
+  const { onReset } = props;
+
+  return (
+    <div
+      className={cn(
+        "workspace-toolbar",
+        "items-start sm:items-center",
+      )}
+    >
+      <div className="min-w-0 flex flex-1 flex-wrap items-center gap-2.5">
+        <div className="text-sm font-semibold text-foreground">結果摘要</div>
+      </div>
+
+      <Button
+        variant="ghost"
+        size="sm"
+        className="shrink-0 self-start text-muted-foreground hover:text-foreground"
+        onClick={onReset}
+      >
+        <PencilLine className="size-4" />
+        重新輸入
+      </Button>
+    </div>
+  );
+}
+
+function PlannerSidebarRail() {
+  const { appliedSession, catNameById, goToInputStage } = usePlannerScreen();
+
+  if (!appliedSession) return null;
+
+  return (
+    <Card className="workspace-pane sticky top-0 self-start border-border/55">
+      <ResultSummaryHeader
+        onReset={goToInputStage}
+      />
+      <CardContent className="subtle-scrollbar max-h-[calc(100vh-3rem)] overflow-y-auto">
+        <ResultStatsSidebar
+          result={appliedSession.result}
+          graphsByEvent={appliedSession.graphsByEvent}
+          catNameById={catNameById}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+function PlannerResultsView(props: {
+  filterMode: ResultFilterMode;
+  onFilterModeChange: (next: ResultFilterMode) => void;
+}) {
+  const { filterMode, onFilterModeChange } = props;
+  const { appliedSession, catNameById } = usePlannerScreen();
+
+  if (!appliedSession) return null;
+
+  return (
+    <div className="workspace-pane border-border/55">
+      <ResultTable
+        result={appliedSession.result}
+        graphsByEvent={appliedSession.graphsByEvent}
+        targetCatIds={appliedSession.inputs.targetCatIds}
+        catNameById={catNameById}
+        filterMode={filterMode}
+        onFilterModeChange={onFilterModeChange}
+      />
+    </div>
+  );
+}
+
+function PlannerResultsStage() {
+  const { appliedSession, catNameById, goToInputStage } = usePlannerScreen();
+  const [resultFilterMode, setResultFilterMode] =
+    useState<ResultFilterMode>("all");
+
+  if (!appliedSession) {
+    return <PlannerInputStage />;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="lg:hidden">
+        <Card className="workspace-pane border-border/55">
+          <ResultSummaryHeader
+            onReset={goToInputStage}
+          />
+          <CardContent className="space-y-3">
+            <ResultStatsSidebar
+              result={appliedSession.result}
+              graphsByEvent={appliedSession.graphsByEvent}
+              catNameById={catNameById}
+              compact
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="hidden lg:grid lg:grid-cols-[minmax(280px,320px)_minmax(0,1fr)] lg:gap-4 xl:grid-cols-[minmax(300px,320px)_minmax(0,1fr)]">
+        <PlannerSidebarRail />
+        <PlannerResultsView
+          filterMode={resultFilterMode}
+          onFilterModeChange={setResultFilterMode}
+        />
+      </div>
+
+      <div className="lg:hidden">
+        <PlannerResultsView
+          filterMode={resultFilterMode}
+          onFilterModeChange={setResultFilterMode}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ResultScrollTopButton(props: {
+  visible: boolean;
+  onClick: () => void;
+}) {
+  const { visible, onClick } = props;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="回到最上方"
+      className={cn(
+        "fixed z-40 inline-flex items-center justify-center gap-2 rounded-full border border-border/70 bg-background/92 text-foreground shadow-[0_14px_32px_rgba(15,23,42,0.14)] backdrop-blur transition-all duration-200 focus-visible:ring-4 focus-visible:ring-primary/20",
+        "bottom-[calc(env(safe-area-inset-bottom,0px)+3.75rem)] right-5 size-12 sm:bottom-[calc(env(safe-area-inset-bottom,0px)+4rem)] sm:right-6 sm:h-11 sm:w-auto sm:px-4 lg:bottom-16 lg:right-7 2xl:right-[calc((100vw-1480px)/2+1.5rem)]",
+        visible
+          ? "translate-y-0 opacity-100 hover:-translate-y-0.5 hover:bg-background"
+          : "pointer-events-none translate-y-3 opacity-0",
+      )}
+    >
+      <ArrowUp className="size-4 shrink-0" />
+      <span className="hidden text-sm font-semibold sm:inline">回到頂部</span>
+    </button>
+  );
+}
+
+function PlannerScreen() {
+  const { session, appliedSession, runOverlayOpen, cancelPlannerFlow } =
+    usePlannerScreen();
+  const topRef = useRef<HTMLDivElement | null>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const isResultsStage = session.stage === "results" && !!appliedSession;
+  const shouldRestoreInputView = session.stage === "input" && !!appliedSession;
+
+  useEffect(() => {
+    if (!isResultsStage) return;
+
+    topRef.current?.scrollIntoView({
+      block: "start",
+      behavior: "smooth",
+    });
+  }, [isResultsStage]);
+
+  useEffect(() => {
+    if (!shouldRestoreInputView) return;
+
+    topRef.current?.scrollIntoView({
+      block: "start",
+      behavior: "smooth",
+    });
+  }, [shouldRestoreInputView]);
+
+  useEffect(() => {
+    if (!runOverlayOpen) return;
+
+    const { body, documentElement } = document;
+    const prevBodyOverflow = body.style.overflow;
+    const prevHtmlOverflow = documentElement.style.overflow;
+
+    body.style.overflow = "hidden";
+    documentElement.style.overflow = "hidden";
+
+    return () => {
+      body.style.overflow = prevBodyOverflow;
+      documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, [runOverlayOpen]);
+
+  useEffect(() => {
+    if (!isResultsStage) return;
+
+    const onScroll = () => {
+      setShowScrollTop(window.scrollY > 140);
+    };
+
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [isResultsStage]);
 
   return (
     <>
-      <Stack
-        spacing={2}
-        sx={{
-          width: "100%",
-          backgroundColor: "#1E293B", // 比 #0B1220 淺很多
-          color: "#E2E8F0",
-          border: "1px solid #334155",
-          borderRadius: 0,
-          boxShadow: "0 6px 18px rgba(0,0,0,0.25)",
-          px: { xs: 2, sm: 3 },
-          py: { xs: 1.5, sm: 2 },
-        }}
+      <div
+        className={cn(
+          "mx-auto w-full space-y-4",
+          isResultsStage ? "max-w-[1480px]" : "max-w-[1220px]",
+        )}
       >
-        <Stack
-          spacing={1}
-          alignItems="center"
-          justifyContent="space-between"
-          sx={{ width: "100%" }}
-          direction="row"
-        >
-          <Typography
-            component="h1"
-            sx={{
-              fontWeight: 800,
-              lineHeight: 1.2,
-              letterSpacing: "-0.015em",
-              fontSize: { xs: "1.35rem", sm: "1.75rem", md: "2rem" },
-              display: "flex",
-              alignItems: "baseline",
-              flexWrap: "wrap",
-              gap: 0.5,
-            }}
-          >
-            <Box component="span" sx={{ color: "#60a8ffff" }}>
-              貓咪大戰爭
-            </Box>
-
-            <Box component="span" sx={{ color: "#FBBF24", mx: 0.25 }}>
-              ⦁
-            </Box>
-
-            <Box component="span" sx={{ color: "#E5E7EB" }}>
-              抽卡規劃
-            </Box>
-
-            <Box
-              component="span"
-              sx={{
-                ml: 0.75,
-                px: 0.8,
-                py: 0.2,
-                borderRadius: 1.2, // 關閉圓角
-                fontSize: { xs: "0.7rem", sm: "0.78rem" },
-                fontWeight: 700,
-                color: "#93C5FD",
-                backgroundColor: "#172554",
-                border: "1px solid #1D4ED8",
-                lineHeight: 1.4,
-              }}
-            >
-              測試版
-            </Box>
-          </Typography>
-
-          {shouldUseDrawer && ui.showTargetCats && (
-            <Tooltip title="打開目標貓列表">
-              <IconButton
-                onClick={() => setTargetCatsDrawerOpen(true)}
-                sx={{
-                  alignSelf: "center",
-                  border: "1px solid #334155",
-                  color: "#E2E8F0",
-                  backgroundColor: "#111827",
-                  borderRadius: 2, // 關閉圓角
-                  transition: "all 0.2s ease",
-                  "&:hover": {
-                    backgroundColor: "#1F2937",
-                    borderColor: "#475569",
-                  },
-                }}
-              >
-                <Badge
-                  color="secondary"
-                  badgeContent={targetCatIds.length}
-                  overlap="circular"
-                >
-                  <PetsIcon />
-                </Badge>
-              </IconButton>
-            </Tooltip>
-          )}
-        </Stack>
-
-        <DisclaimerNote
-          textColor="#CBD5E1" // 內文：淺灰
-          linkColor="#93C5FD" // 連結：淺藍
-          fontSize="0.76rem"
-        />
-      </Stack>
-
-      <Container
-        maxWidth={false}
-        disableGutters
-        sx={{ px: { xs: 1.5, sm: 2, md: 3 }, py: { xs: 1.5, md: 2 } }}
-      >
-        <Stack spacing={{ xs: 1.25, sm: 1.5, md: 2 }} sx={{ width: "100%" }}>
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns:
-                shouldUseDrawer || !ui.showTargetCats
-                  ? "minmax(0, 1fr)"
-                  : "minmax(0, 1fr) minmax(280px, 360px)",
-              gap: { xs: 1.25, sm: 1.5, md: 2 },
-              alignItems: "start",
-            }}
-          >
-            <Stack direction="column" spacing={{ xs: 1.25, sm: 1.5 }}>
-              {ui.showSeedCount && (
-                <Section
-                  title="輸入條件與資源"
-                  variant="planner"
-                  collapsed={ui.seedCountCollapsed}
-                  // collapsible={true}
-                  onToggleCollapsed={() =>
-                    setUi((p) => ({
-                      ...p,
-                      seedCountCollapsed: !p.seedCountCollapsed,
-                    }))
-                  }
-                  onHide={() => setUi((p) => ({ ...p, showSeedCount: false }))}
-                >
-                  <Stack spacing={0}>
-                    <Stack spacing={1} sx={{ py: 0.5 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        Seed / Count
-                      </Typography>
-                      <SeedCountForm
-                        seedApplied={seedApplied}
-                        countInput={countInput}
-                        autoCount={autoCount}
-                        onChange={({
-                          seed,
-                          countInput,
-                          manualCount,
-                          countError,
-                        }) => {
-                          setSeedApplied(seed);
-                          setCountInput(countInput);
-                          setManualCount(manualCount);
-                          setCountError(countError);
-                        }}
-                      />
-                    </Stack>
-
-                    <Stack spacing={1} sx={{ py: 1 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        可用資源
-                      </Typography>
-                      <ResourceForm
-                        value={resources}
-                        cfg={plannerCfg}
-                        onChange={setResources}
-                        onCfgChange={setPlannerCfg}
-                      />
-                    </Stack>
-
-                    <Stack spacing={1} sx={{ py: 1 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        卡池選擇
-                      </Typography>
-                      <EventsPicker
-                        loadState={eventsState as LoadState}
-                        error={eventsErr}
-                        upcomingEvents={upcomingEvents}
-                        pastEvents={pastEvents}
-                        value={selectedEventValues}
-                        onChange={(next) => setSelectedEventValues(next)}
-                        primaryValue={primaryEventValue}
-                        onPrimaryChange={(v) => setPrimaryEventValue(v)}
-                      />
-                    </Stack>
-
-                    <Box sx={{ pt: 1, pb: 0.5 }}>
-                      <RunBar
-                        state={planState as LoadState}
-                        onRun={onClickPlanner}
-                        disabled={runDisabled}
-                        hint={runHint}
-                        error={planState === "error" ? planErr : ""}
-                      />
-                    </Box>
-                  </Stack>
-                </Section>
-              )}
-
-              {ui.showPlannerResultSummary && (
-                <Section
-                  title="結果統計"
-                  variant="planner"
-                  collapsed={ui.plannerResultSummaryCollapsed}
-                  onToggleCollapsed={() =>
-                    setUi((p) => ({
-                      ...p,
-                      plannerResultSummaryCollapsed:
-                        !p.plannerResultSummaryCollapsed,
-                    }))
-                  }
-                  onHide={() =>
-                    setUi((p) => ({ ...p, showPlannerResultSummary: false }))
-                  }
-                >
-                  {planState === "ok" && (
-                    <ResultStatsCard
-                      result={planResult as PlanResult}
-                      graphsByEvent={graphByEvent}
-                      catNameById={catNameById}
-                    />
-                  )}
-                </Section>
-              )}
-
-              {planResult && (
-                <Section
-                  title="規劃結果"
-                  variant="planner"
-                  collapsed={ui.plannerResultTableCollapsed}
-                  headerBorderBottom="none"
-                  onToggleCollapsed={() =>
-                    setUi((p) => ({
-                      ...p,
-                      plannerResultTableCollapsed:
-                        !p.plannerResultTableCollapsed,
-                    }))
-                  }
-                >
-                  <ResultTable
-                    result={planResult as PlanResult}
-                    graphsByEvent={graphByEvent}
-                    targetCatIds={targetCatIds}
-                    catNameById={catNameById}
-                    showTitle={false}
-                  />
-                </Section>
-              )}
-            </Stack>
-
-            {ui.showTargetCats && (
-              <TargetCatsLayout
-                isMobile={shouldUseDrawer}
-                drawerOpen={targetCatsDrawerOpen}
-                onCloseDrawer={() => setTargetCatsDrawerOpen(false)}
-                onHideDesktop={() =>
-                  setUi((p) => ({ ...p, showTargetCats: false }))
-                }
-              >
-                <TargetCatsSelectionContent
-                  loadState={catsState as LoadState}
-                  error={catsErr}
-                  groups={tierGroups}
-                  selectedIds={targetCatIds}
-                  onChange={setTargetCatIds}
-                  onClear={() => setTargetCatIds([])}
-                  getCatHref={getCatHref}
-                  getCatImageUrl={getCatImageUrl}
-                  minColWidth={130}
-                  dense
-                />
-              </TargetCatsLayout>
-            )}
-          </Box>
-
-          {/* 大螢幕右欄被隱藏時，提供快速打開入口 */}
-          {!shouldUseDrawer && !ui.showTargetCats && (
-            <Fab
-              size="small"
-              color="primary"
-              onClick={() => setUi((p) => ({ ...p, showTargetCats: true }))}
-              sx={{
-                position: "fixed",
-                right: 16,
-                bottom: 16,
-                zIndex: theme.zIndex.modal + 1,
-              }}
-            >
-              <ChevronRightIcon />
-            </Fab>
-          )}
-        </Stack>
-      </Container>
+        <div ref={topRef} />
+        <PlannerHeader />
+        {isResultsStage ? <PlannerResultsStage /> : <PlannerInputStage />}
+        <PlannerFooter />
+      </div>
+      <ResultScrollTopButton
+        visible={isResultsStage && showScrollTop}
+        onClick={() =>
+          topRef.current?.scrollIntoView({
+            block: "start",
+            behavior: "smooth",
+          })
+        }
+      />
+      <RunBlockingOverlay open={runOverlayOpen} onCancel={cancelPlannerFlow} />
     </>
+  );
+}
+
+export function PlannerPageContainer() {
+  return (
+    <PlannerScreenProvider>
+      <PlannerScreen />
+    </PlannerScreenProvider>
   );
 }

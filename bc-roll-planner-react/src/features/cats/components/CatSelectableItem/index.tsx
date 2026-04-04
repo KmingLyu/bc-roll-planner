@@ -1,151 +1,82 @@
-import * as React from "react";
-import { Avatar, Box, Link, Stack, Typography } from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 
-function getCatImageUrl(catId: number) {
-  const index = catId - 1;
-  const index3 = String(index).padStart(3, "0");
-
-  return `https://bc.godfat.org/extract/tw/uni${index3}_f00.png`;
-}
-
-// 可選擇的貓咪項目
-export type CatSelectableItemProps = {
+export function CatSelectableItem(props: {
   catId: number;
   name: string;
-
   checked: boolean;
+  disabled?: boolean;
   onToggle: (next: boolean) => void;
-
-  /** 若未提供，會自動用 bc.godfat 的圖片 */
   imageUrl?: string;
   href?: string;
-
   dense?: boolean;
   secondary?: React.ReactNode;
-};
-
-export function CatSelectableItem(props: CatSelectableItemProps) {
+}) {
   const {
     catId,
     name,
     checked,
+    disabled = false,
     onToggle,
     imageUrl,
     href,
     dense = true,
     secondary,
   } = props;
-
-  const resolvedImageUrl = imageUrl ?? getCatImageUrl(catId);
-  // console.log("CatSelectableItem render", catId, name, resolvedImageUrl);
+  const [imageFailed, setImageFailed] = useState(false);
+  const showImage = !!imageUrl && !imageFailed;
 
   return (
-    <Box
-      role="checkbox"
-      aria-checked={checked}
-      tabIndex={0}
+    <button
+      type="button"
+      disabled={disabled}
       onClick={() => onToggle(!checked)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onToggle(!checked);
-        }
-      }}
-      sx={{
-        borderRadius: 2,
-        // border: "0.5px solid",
-        bgcolor: checked ? "primary.main" : "transparent",
-        color: checked ? "primary.contrastText" : "text.primary",
-        cursor: "pointer",
-        userSelect: "none",
-        px: dense ? 1 : 1.25,
-        py: dense ? 0.25 : 0.75,
-        minHeight: dense ? 44 : 56,
-        display: "flex",
-        alignItems: "center",
-        transition: "background-color .2s ease, transform .16s ease",
-        "&:hover": {
-          bgcolor: checked ? "primary.dark" : "action.hover",
-        },
-        "&:active": {
-          transform: "translateY(2px)",
-        },
-        "&:focus-visible": {
-          outline: "2px solid",
-          outlineColor: checked ? "primary.contrastText" : "primary.main",
-          outlineOffset: 2,
-        },
-      }}
+      className={cn(
+        "group flex h-full w-full items-start rounded-lg border px-2 py-2 text-left transition-colors disabled:cursor-not-allowed",
+        checked
+          ? "border-primary/45 bg-primary/[0.06] shadow-[inset_0_0_0_1px_rgba(59,130,246,0.12)]"
+          : disabled
+            ? "border-transparent opacity-45"
+            : "border-transparent hover:border-border/60 hover:bg-muted/20",
+      )}
+      aria-disabled={disabled}
     >
-      <Stack
-        direction="row"
-        spacing={1}
-        alignItems="center"
-        sx={{ width: "100%", minWidth: 0 }}
+      <div
+        className={cn(
+          "flex min-w-0 flex-1 items-start gap-1.5",
+          dense ? "min-h-[54px]" : "min-h-[70px]",
+        )}
       >
-        <Avatar
-          src={resolvedImageUrl}
-          variant="rounded"
-          sx={(theme) => ({
-            width: 35,
-            height: 35,
-            overflow: "hidden", // 確保 zoom 不會溢出
-            bgcolor: checked
-              ? alpha(theme.palette.common.white, 0.22)
-              : "action.selected",
-            color: checked ? "primary.contrastText" : "text.primary",
-
-            "& img": {
-              transform: "scale(1.7)", // ← 這裡調整 zoom 程度
-              transformOrigin: "center",
-            },
-          })}
-        >
-          {name?.[0] ?? "?"}
-        </Avatar>
-
-        <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography
-            variant="body2"
-            noWrap
-            title={name}
-            sx={{ fontWeight: 600 }}
-          >
-            {href ? (
-              <Link
-                href={href}
-                target="_blank"
-                rel="noreferrer"
-                underline="hover"
-                color="inherit"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {name}
-              </Link>
-            ) : (
-              name
+        {showImage ? (
+          <img
+            src={imageUrl}
+            alt=""
+            width={34}
+            height={34}
+            loading="lazy"
+            onError={() => setImageFailed(true)}
+            className={cn(
+              "size-[34px] shrink-0 rounded-md object-cover ring-1 ring-border/20",
+              checked && "ring-primary/25",
             )}
-          </Typography>
-
-          <Typography
-            variant="caption"
-            sx={(theme) => ({
-              color: checked
-                ? alpha(theme.palette.common.white, 0.9)
-                : "text.secondary",
-            })}
-          >
-            #{catId}
-          </Typography>
-        </Box>
-
-        {secondary ? (
-          <Box sx={{ flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
-            {secondary}
-          </Box>
+          />
         ) : null}
-      </Stack>
-    </Box>
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <div
+            className={cn(
+              "line-clamp-2 break-keep text-sm font-semibold leading-5 text-foreground",
+              checked && "text-foreground",
+            )}
+          >
+            {name}
+          </div>
+          {secondary ? (
+            <div className="text-xs text-muted-foreground">{secondary}</div>
+          ) : (
+            <div className="text-xs text-muted-foreground">#{catId}</div>
+          )}
+        </div>
+      </div>
+    </button>
   );
 }

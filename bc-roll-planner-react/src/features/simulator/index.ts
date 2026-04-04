@@ -1,5 +1,3 @@
-export { SimulatorPanel } from "./components/SimulatorPanel";
-
 export {
   chooseEdgeForSingleDraw,
   estimateRequiredCounts,
@@ -8,4 +6,3 @@ export {
 } from "./logic/core";
 
 export type { DrawRecord, Method, SimAction } from "./logic/core";
-

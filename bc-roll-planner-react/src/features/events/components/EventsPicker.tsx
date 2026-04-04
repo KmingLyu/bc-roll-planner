@@ -1,84 +1,115 @@
-import { useState } from "react";
-import type { Event } from "@/types/models";
-import { Drawer } from "@/components";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import {
-  Alert,
-  Box,
-  Button,
-  Checkbox,
-  Chip,
-  Divider,
-  FormControl,
-  InputAdornment,
-  InputLabel,
-  LinearProgress,
-  ListItemText,
-  ListSubheader,
-  MenuItem,
-  OutlinedInput,
-  Select,
-  Stack,
-  Typography,
-} from "@mui/material";
-import { useTheme } from "@mui/material/styles";
-import useMediaQuery from "@mui/material/useMediaQuery";
-import { getEventDisplayLines } from "@/utils/event-display";
+  useDeferredValue,
+  useMemo,
+  useState,
+} from "react";
+import {
+  Search,
+} from "lucide-react";
+import type { Event } from "@/types/models";
+import {
+  formatEventDateText,
+  getEventDisplayLines,
+} from "@/utils/event-display";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
+import { cn } from "@/lib/utils";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
-type EvKind = "upcoming" | "past";
 
-function MobileEventLabel(props: { event: Event }) {
-  const { event } = props;
+function describeSelectionCapacity(params: {
+  count: number;
+  limit: number;
+  unit: string;
+}) {
+  const { count, limit, unit } = params;
+  const remaining = Math.max(0, limit - count);
+
+  if (count >= limit) {
+    return `已達上限 ${limit} 個${unit}，取消已選項目後才能更換。`;
+  }
+  if (count === 0) {
+    return `最多可選 ${limit} 個${unit}。`;
+  }
+  return `還可再選 ${remaining} 個${unit}。`;
+}
+
+function EventOption({
+  event,
+  checked,
+  disabled = false,
+  onToggle,
+}: {
+  event: Event;
+  checked: boolean;
+  disabled?: boolean;
+  onToggle: () => void;
+}) {
   const { dateText, nameText, titleText } = getEventDisplayLines(event);
 
   return (
-    <Box sx={{ minWidth: 0, flex: 1 }} title={titleText}>
-      <Typography
-        variant="body2"
-        color="text.secondary"
-        sx={{
-          lineHeight: 1.35,
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}
-      >
-        {dateText}
-      </Typography>
-      <Typography
-        variant="body2"
-        sx={{
-          mt: 0.25,
-          lineHeight: 1.35,
-          fontWeight: 600,
-          wordBreak: "break-word",
-          display: "-webkit-box",
-          overflow: "hidden",
-          WebkitBoxOrient: "vertical",
-          WebkitLineClamp: 2,
-        }}
-      >
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onToggle}
+      className={cn(
+        "flex w-full items-start rounded-lg border px-2 py-2 text-left transition-colors disabled:cursor-not-allowed",
+        checked
+          ? "border-primary/45 bg-primary/[0.06] shadow-[inset_0_0_0_1px_rgba(59,130,246,0.12)]"
+          : disabled
+            ? "border-transparent opacity-45"
+            : "border-transparent hover:border-border/60 hover:bg-muted/20",
+      )}
+      title={titleText}
+      aria-disabled={disabled}
+    >
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <div
+          className={cn(
+            "text-sm font-semibold leading-5 text-foreground",
+            checked && "text-foreground",
+          )}
+        >
+          {nameText}
+        </div>
+        <div className="text-xs text-muted-foreground">{dateText}</div>
+      </div>
+    </button>
+  );
+}
+
+function SelectedEventSummaryItem(props: {
+  nameText: string;
+  dateText: string;
+  titleText: string;
+}) {
+  const { nameText, dateText, titleText } = props;
+  return (
+    <div
+      className="py-2.5 first:pt-0 last:pb-0"
+      title={titleText}
+    >
+      <div className="text-sm font-semibold leading-5 text-foreground">
         {nameText}
-      </Typography>
-    </Box>
+      </div>
+      <div className="mt-1 text-xs text-muted-foreground">
+        {dateText}
+      </div>
+    </div>
   );
 }
 
 export function EventsPicker(props: {
   loadState: LoadState;
   error: string;
-
   upcomingEvents: Event[];
   pastEvents: Event[];
-
-  /** 多選 */
   value: string[];
+  maxSelection: number;
   onChange: (next: string[]) => void;
-
-  /** primary event：給 graph debug / simulator 用（planner 仍用全部 events） */
-  primaryValue: string;
-  onPrimaryChange: (v: string) => void;
 }) {
   const {
     loadState,
@@ -86,389 +117,239 @@ export function EventsPicker(props: {
     upcomingEvents,
     pastEvents,
     value,
+    maxSelection,
     onChange,
-    primaryValue,
-    onPrimaryChange,
   } = props;
 
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const deferredQuery = useDeferredValue(query);
+  const normalizedQuery = deferredQuery.trim().toLowerCase();
+  const selectedSet = useMemo(() => new Set(value), [value]);
 
-  const selectedSet = new Set(value);
+  const findEvent = (eventValue: string) =>
+    upcomingEvents.find((event) => event.value === eventValue) ??
+    pastEvents.find((event) => event.value === eventValue);
 
-  const findEvent = (v: string): Event | undefined =>
-    upcomingEvents.find((e) => e.value === v) ??
-    pastEvents.find((e) => e.value === v);
+  const filterEvents = (events: Event[]) =>
+    events.filter((event) => {
+      if (!normalizedQuery) return true;
+      return (
+        event.name.toLowerCase().includes(normalizedQuery) ||
+        event.raw_name.toLowerCase().includes(normalizedQuery) ||
+        String(event.start_date ?? "").toLowerCase().includes(normalizedQuery) ||
+        String(event.end_date ?? "").toLowerCase().includes(normalizedQuery)
+      );
+    });
 
-  const getKind = (v: string): EvKind | null => {
-    if (upcomingEvents.some((e) => e.value === v)) return "upcoming";
-    if (pastEvents.some((e) => e.value === v)) return "past";
-    return null;
-  };
+  const filteredUpcoming = useMemo(
+    () => filterEvents(upcomingEvents),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [normalizedQuery, upcomingEvents],
+  );
+  const filteredPast = useMemo(
+    () => filterEvents(pastEvents),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [normalizedQuery, pastEvents],
+  );
 
-  const clearAllEvents = () => {
-    onChange([]);
-    if (primaryValue) onPrimaryChange("");
-  };
+  const selectedEventSummaries = value.map((eventValue) => {
+    const event = findEvent(eventValue);
+    if (!event) {
+      return {
+        id: eventValue,
+        nameText: eventValue,
+        dateText: "卡池資料載入中",
+        titleText: eventValue,
+      };
+    }
+
+    const { nameText, titleText } = getEventDisplayLines(event);
+    return {
+      id: event.value,
+      nameText,
+      dateText: formatEventDateText(event),
+      titleText,
+    };
+  });
+  const visibleSelectedEvents = selectedEventSummaries.slice(0, maxSelection);
+  const hiddenSelectedEventCount = Math.max(0, selectedEventSummaries.length - visibleSelectedEvents.length);
+  const atSelectionLimit = value.length >= maxSelection;
+  const selectionSummary = describeSelectionCapacity({
+    count: value.length,
+    limit: maxSelection,
+    unit: "卡池",
+  });
 
   const toggleEvent = (eventValue: string) => {
     if (selectedSet.has(eventValue)) {
-      onChange(value.filter((v) => v !== eventValue));
-      if (primaryValue === eventValue) onPrimaryChange("");
+      onChange(value.filter((entry) => entry !== eventValue));
       return;
     }
-
+    if (value.length >= maxSelection) {
+      return;
+    }
     onChange([...value, eventValue]);
   };
 
-  const selectedEvents = value
-    .map((v) => findEvent(v))
-    .filter(Boolean) as Event[];
-
-  const renderSummary = (selected: string[]) => {
-    if (!selected.length) return "（未選）";
-    if (selected.length === 1) {
-      const e = findEvent(selected[0]);
-      return e ? e.name : selected[0];
-    }
-    return `已選 ${selected.length} 個 events`;
-  };
-
-  const renderMenuItem = (ev: Event, kind: EvKind) => {
-    const checked = selectedSet.has(ev.value);
-    const { dateText, nameText, titleText } = getEventDisplayLines(ev);
-
-    return (
-      <MenuItem key={ev.value} value={ev.value} dense>
-        <Checkbox size="small" checked={checked} />
-        <ListItemText
-          primary={dateText}
-          secondary={nameText}
-          slotProps={{
-            primary: {
-              noWrap: true,
-              title: titleText,
-              color: "text.secondary",
-              variant: "body2",
-            },
-            secondary: {
-              title: titleText,
-              color: "text.primary",
-              variant: "body2",
-              sx: {
-                mt: 0.25,
-                fontWeight: 600,
-                lineHeight: 1.35,
-                display: "-webkit-box",
-                overflow: "hidden",
-                WebkitBoxOrient: "vertical",
-                WebkitLineClamp: 2,
-              },
-            },
-          }}
-          sx={{ mr: 1, my: 0.25 }}
-        />
-        <Chip
-          size="small"
-          variant="outlined"
-          label={kind === "upcoming" ? "Upcoming" : "Past"}
-          sx={{ flexShrink: 0 }}
-        />
-      </MenuItem>
-    );
-  };
-
-  const renderMobileItem = (ev: Event, kind: EvKind) => {
-    const checked = selectedSet.has(ev.value);
-
-    return (
-      <Box
-        key={ev.value}
-        role="button"
-        tabIndex={0}
-        onClick={() => toggleEvent(ev.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            toggleEvent(ev.value);
-          }
-        }}
-        sx={{
-          display: "flex",
-          alignItems: "flex-start",
-          gap: 1.25,
-          px: 2,
-          py: 1.25,
-          borderTop: "1px solid",
-          borderColor: "divider",
-          cursor: "pointer",
-          backgroundColor: checked ? "action.selected" : "transparent",
-        }}
-      >
-        <Checkbox
-          checked={checked}
-          tabIndex={-1}
-          sx={{ mt: -0.35, ml: -0.5 }}
-          onClick={(e) => {
-            e.stopPropagation();
-          }}
-          onChange={() => toggleEvent(ev.value)}
-        />
-
-        <MobileEventLabel event={ev} />
-
-        <Chip
-          size="small"
-          variant="outlined"
-          label={kind === "upcoming" ? "Upcoming" : "Past"}
-          sx={{ mt: 0.25, flexShrink: 0 }}
-        />
-      </Box>
-    );
-  };
-
-  const renderMobileSection = (
-    title: string,
-    events: Event[],
-    kind: EvKind,
-    emptyText: string,
-  ) => (
-    <Box>
-      <Box
-        sx={{
-          px: 2,
-          py: 1.1,
-          backgroundColor: "background.paper",
-          borderTop: "1px solid",
-          borderColor: "divider",
-        }}
-      >
-        <Typography variant="subtitle2" fontWeight={800}>
-          {title}（{events.length}）
-        </Typography>
-      </Box>
-
-      {events.length ? (
-        events.map((ev) => renderMobileItem(ev, kind))
-      ) : (
-        <Box
-          sx={{
-            px: 2,
-            py: 2,
-            borderTop: "1px solid",
-            borderColor: "divider",
-          }}
-        >
-          <Typography variant="body2" color="text.secondary">
-            {emptyText}
-          </Typography>
-        </Box>
-      )}
-    </Box>
-  );
-
   return (
-    <Stack spacing={1.25}>
-      {loadState === "loading" && <LinearProgress />}
-      {loadState === "error" && (
-        <Alert severity="error">events 錯誤：{error}</Alert>
-      )}
-
-      {isMobile ? (
-        <>
-          <FormControl fullWidth size="small">
-            <InputLabel shrink htmlFor="event-mobile-trigger">
-              選擇卡池（多選）
-            </InputLabel>
-            <OutlinedInput
-              id="event-mobile-trigger"
-              notched
-              readOnly
-              label="選擇卡池（多選）"
-              value={renderSummary(value)}
-              onClick={() => setMobileOpen(true)}
-              endAdornment={
-                <InputAdornment position="end">
-                  <ExpandMoreIcon color="action" />
-                </InputAdornment>
-              }
-              sx={{
-                cursor: "pointer",
-                "& input": {
-                  cursor: "pointer",
-                  textOverflow: "ellipsis",
-                },
-              }}
-            />
-          </FormControl>
-
-          <Drawer
-            title="選擇卡池"
-            headerRight={
-              value.length ? (
-                <Button
-                  size="small"
-                  color="inherit"
-                  onClick={clearAllEvents}
-                  sx={{ fontWeight: 700 }}
-                >
-                  清空全部
-                </Button>
-              ) : undefined
-            }
-            open={mobileOpen}
-            onRequestClose={() => setMobileOpen(false)}
-            onClose={() => setMobileOpen(false)}
-            closeAriaLabel="關閉卡池選單"
-            anchor="bottom"
-            width="100%"
-            paperSx={{
-              width: "100%",
-              maxHeight: "82vh",
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
-              p: 0,
-            }}
-            headerSx={{
-              px: 2,
-              pt: 1.2,
-              pb: 0.8,
-              position: "sticky",
-              top: 0,
-              zIndex: 1,
-              backgroundColor: "background.paper",
-              borderBottom: "1px solid",
-              borderColor: "divider",
-            }}
-            bodySx={{ pt: 0, pb: 1.25 }}
-          >
-            <Stack spacing={0}>
-              {renderMobileSection(
-                "Upcoming",
-                upcomingEvents,
-                "upcoming",
-                "（沒有 upcoming events）",
-              )}
-              <Divider />
-              {renderMobileSection(
-                "Past",
-                pastEvents,
-                "past",
-                "（沒有 past events）",
-              )}
-            </Stack>
-          </Drawer>
-        </>
-      ) : (
-        <FormControl fullWidth size="small">
-          <InputLabel id="event-multi-label">選擇卡池（多選）</InputLabel>
-          <Select
-            labelId="event-multi-label"
-            multiple
-            value={value}
-            onChange={(e) => {
-              const next = e.target.value as string[];
-              onChange(next);
-            }}
-            input={<OutlinedInput label="選擇卡池（多選）" />}
-            renderValue={(selected) =>
-              renderSummary((selected as string[]) || [])
-            }
-            MenuProps={{ PaperProps: { sx: { maxHeight: 520 } } }}
-          >
-            <ListSubheader disableSticky>
-              Upcoming（{upcomingEvents.length}）
-            </ListSubheader>
-
-            {upcomingEvents.length ? (
-              upcomingEvents.map((ev) => renderMenuItem(ev, "upcoming"))
-            ) : (
-              <MenuItem disabled dense>
-                <ListItemText primary="（沒有 upcoming events）" />
-              </MenuItem>
-            )}
-
-            <Divider sx={{ my: 0.5 }} />
-
-            <ListSubheader disableSticky>
-              Past（{pastEvents.length}）
-            </ListSubheader>
-
-            {pastEvents.length ? (
-              pastEvents.map((ev) => renderMenuItem(ev, "past"))
-            ) : (
-              <MenuItem disabled dense>
-                <ListItemText primary="（沒有 past events）" />
-              </MenuItem>
-            )}
-          </Select>
-        </FormControl>
-      )}
-
-      {!!value.length && (
-        <Stack spacing={0.75}>
-          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-            <Button size="small" onClick={clearAllEvents} sx={{ fontWeight: 700 }}>
-              清空所有 event
+    <section className="space-y-2.5">
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          <div className="text-sm font-semibold text-foreground">選擇卡池</div>
+          <Badge variant={atSelectionLimit ? "warning" : "muted"}>
+            {value.length}/{maxSelection}
+          </Badge>
+          {value.length ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-1 h-auto rounded-none border-l border-border/55 px-0 pl-3 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground"
+              onClick={() => onChange([])}
+            >
+              清空
             </Button>
-          </Box>
+          ) : null}
+        </div>
+      </div>
 
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            {selectedEvents.slice(0, 20).map((ev) => {
-              const kind = getKind(ev.value);
-              const suffix = kind === "past" ? "（Past）" : "";
-              const { dateText, nameText, titleText } = getEventDisplayLines(ev);
-              const displayName = `${nameText}${suffix}`;
-              return (
-                <Chip
-                  key={ev.value}
-                  size="small"
-                  label={
-                    <Box sx={{ py: 0.25 }}>
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        sx={{ display: "block", lineHeight: 1.2 }}
-                      >
-                        {dateText}
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        sx={{ display: "block", lineHeight: 1.25, fontWeight: 600 }}
-                      >
-                        {displayName}
-                      </Typography>
-                    </Box>
-                  }
-                  onDelete={() =>
-                    onChange(value.filter((v) => v !== ev.value))
-                  }
-                  variant="outlined"
-                  color="default"
-                  title={titleText}
-                  sx={{
-                    height: "auto",
-                    alignItems: "flex-start",
-                    "& .MuiChip-label": {
-                      display: "block",
-                      whiteSpace: "normal",
-                      py: 0.5,
-                    },
-                  }}
-                />
-              );
-            })}
-            {value.length > 20 && (
-              <Chip
-                size="small"
-                label={`+${value.length - 20}`}
-                variant="outlined"
+      <button
+        type="button"
+        onClick={() => setSheetOpen(true)}
+        className="group block w-full rounded-2xl border border-border/55 bg-background px-4 py-3 text-left transition-colors hover:border-border hover:bg-muted/[0.04] active:bg-muted/[0.08]"
+      >
+        {selectedEventSummaries.length > 0 ? (
+          <div className="divide-y divide-border/40">
+            {visibleSelectedEvents.map((event) => (
+              <SelectedEventSummaryItem
+                key={event.id}
+                nameText={event.nameText}
+                dateText={event.dateText}
+                titleText={event.titleText}
               />
+            ))}
+            {hiddenSelectedEventCount > 0 ? (
+              <div className="pt-2 text-sm font-medium text-muted-foreground">
+                +{hiddenSelectedEventCount} 個已選卡池
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="py-2 text-sm text-muted-foreground">
+            點擊選擇卡池
+          </div>
+        )}
+      </button>
+      <div
+        className={cn(
+          "px-1 text-xs",
+          atSelectionLimit ? "font-medium text-warning" : "text-muted-foreground",
+        )}
+      >
+        {selectionSummary}
+      </div>
+
+      <BottomSheet
+        open={sheetOpen}
+        onOpenChange={(nextOpen) => {
+          setSheetOpen(nextOpen);
+          if (!nextOpen) setQuery("");
+        }}
+        title={`選擇卡池 (${value.length}/${maxSelection})`}
+        toolbar={(
+          <div className="flex items-center gap-4">
+            <div className="w-20 shrink-0">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => onChange([])}
+                className={cn(
+                  "h-auto w-full shrink-0 justify-end px-0 pr-2 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground",
+                  value.length > 0 ? "visible" : "invisible",
+                )}
+                tabIndex={value.length > 0 ? 0 : -1}
+                aria-hidden={value.length > 0 ? undefined : true}
+              >
+                清空
+              </Button>
+            </div>
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                name="event-search"
+                autoComplete="off"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="搜尋卡池名稱或日期"
+                className="workspace-search pl-11"
+              />
+            </div>
+          </div>
+        )}
+      >
+        <div className="space-y-3">
+          {atSelectionLimit ? (
+            <Alert variant="warning">
+              已選滿 {maxSelection} 個卡池，先取消既有卡池才能再新增。
+            </Alert>
+          ) : (
+            <div className="px-1 text-xs text-muted-foreground">
+              已選 {value.length} / {maxSelection} 個卡池，還可再選 {maxSelection - value.length} 個。
+            </div>
+          )}
+          {loadState === "loading" ? <Alert variant="info">正在載入卡池…</Alert> : null}
+          {loadState === "error" ? <Alert variant="error">{error}</Alert> : null}
+
+          <div className="space-y-3">
+            {filteredUpcoming.length > 0 && (
+              <section>
+                <div className="sticky top-0 z-10 -mx-5 mb-1 flex items-center gap-2 border-b border-border/45 bg-card/95 px-5 py-2 backdrop-blur supports-[backdrop-filter]:bg-card/85">
+                  <span className="text-sm font-semibold text-foreground">Upcoming</span>
+                  <Badge variant="muted">{filteredUpcoming.length}</Badge>
+                </div>
+                <div className="mt-1 grid grid-cols-1 gap-1 sm:grid-cols-2">
+                  {filteredUpcoming.map((event) => (
+                    <EventOption
+                      key={event.value}
+                      event={event}
+                      checked={selectedSet.has(event.value)}
+                      disabled={atSelectionLimit && !selectedSet.has(event.value)}
+                      onToggle={() => toggleEvent(event.value)}
+                    />
+                  ))}
+                </div>
+              </section>
             )}
-          </Box>
-        </Stack>
-      )}
-    </Stack>
+
+            {filteredPast.length > 0 && (
+              <section className={filteredUpcoming.length > 0 ? "border-t border-border/45 pt-3" : ""}>
+                <div className="sticky top-0 z-10 -mx-5 mb-1 flex items-center gap-2 border-b border-border/45 bg-card/95 px-5 py-2 backdrop-blur supports-[backdrop-filter]:bg-card/85">
+                  <span className="text-sm font-semibold text-foreground">Past</span>
+                  <Badge variant="muted">{filteredPast.length}</Badge>
+                </div>
+                <div className="mt-1 grid grid-cols-1 gap-1 sm:grid-cols-2">
+                  {filteredPast.map((event) => (
+                    <EventOption
+                      key={event.value}
+                      event={event}
+                      checked={selectedSet.has(event.value)}
+                      disabled={atSelectionLimit && !selectedSet.has(event.value)}
+                      onToggle={() => toggleEvent(event.value)}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {!filteredUpcoming.length && !filteredPast.length && (
+              <div className="bg-muted/30 px-3 py-4 text-sm text-muted-foreground">
+                沒有符合搜尋條件的卡池
+              </div>
+            )}
+          </div>
+        </div>
+      </BottomSheet>
+    </section>
   );
 }

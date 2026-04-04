@@ -21,32 +21,34 @@ export type PlannerWorkerResponse =
   | { ok: true; result: PlanResult }
   | { ok: false; error: string };
 
-const ctx: DedicatedWorkerGlobalScope = self as any;
+const ctx = self as DedicatedWorkerGlobalScope;
 
 function normalizeError(e: unknown): string {
   if (!e) return "Unknown error";
   if (typeof e === "string") return e;
 
   // 常見：Error
-  const anyE = e as any;
-  const msg = anyE?.message ? String(anyE.message) : String(e);
+  const maybeError = e as { message?: unknown; stack?: unknown };
+  const msg = maybeError.message ? String(maybeError.message) : String(e);
 
   // 盡量把 stack 留下（方便你在 devtools 看）
-  const stack = anyE?.stack ? String(anyE.stack) : "";
+  const stack = maybeError.stack ? String(maybeError.stack) : "";
   return stack ? `${msg}\n${stack}` : msg;
 }
 
-function assertValidRequest(d: any): asserts d is PlannerWorkerRequest {
+function assertValidRequest(d: unknown): asserts d is PlannerWorkerRequest {
   if (!d || typeof d !== "object")
     throw new Error("PlannerWorkerRequest is empty");
 
-  if (!d.graphs_by_event || typeof d.graphs_by_event !== "object") {
+  const request = d as Partial<PlannerWorkerRequest>;
+
+  if (!request.graphs_by_event || typeof request.graphs_by_event !== "object") {
     throw new Error("PlannerWorkerRequest.graphs_by_event is missing");
   }
-  if (!Array.isArray(d.events)) {
+  if (!Array.isArray(request.events)) {
     throw new Error("PlannerWorkerRequest.events is missing");
   }
-  if (!Array.isArray(d.target_cats)) {
+  if (!Array.isArray(request.target_cats)) {
     throw new Error("PlannerWorkerRequest.target_cats is missing");
   }
 
@@ -57,7 +59,7 @@ function assertValidRequest(d: any): asserts d is PlannerWorkerRequest {
     "legend_tickets",
     "food",
   ] as const) {
-    if (typeof d[k] !== "number" || Number.isNaN(d[k])) {
+    if (typeof request[k] !== "number" || Number.isNaN(request[k])) {
       throw new Error(`PlannerWorkerRequest.${k} must be a number`);
     }
   }
@@ -65,7 +67,7 @@ function assertValidRequest(d: any): asserts d is PlannerWorkerRequest {
 
 ctx.addEventListener("message", (ev: MessageEvent<PlannerWorkerRequest>) => {
   try {
-    const data: any = ev?.data;
+    const data = ev.data;
     assertValidRequest(data);
 
     const result = planMinCost(data);

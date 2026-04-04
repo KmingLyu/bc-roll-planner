@@ -1,14 +1,17 @@
 // src/features/planner/hooks/usePlannerWorker.ts
 import { useEffect, useRef, useState } from "react";
 import PlannerWorker from "@/features/planner/worker/planner.worker?worker";
-import type { PlannerWorkerResponse } from "@/features/planner/worker/planner.worker";
+import type {
+  PlannerWorkerRequest,
+  PlannerWorkerResponse,
+} from "@/features/planner/worker/planner.worker";
 import type { PlanResult } from "@/features/planner/logic/core";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
 type WorkerResp = PlannerWorkerResponse;
 
 type RunPayload =
-  | { kind: "run"; req: any }
+  | { kind: "run"; req: PlannerWorkerRequest }
   | { kind: "errorOnly"; error: string };
 
 export function usePlannerWorker() {
@@ -28,6 +31,13 @@ export function usePlannerWorker() {
     setPlanState("idle");
     setPlanErr("");
     setPlanResult(null);
+  }
+
+  function cancelPlanner() {
+    seqRef.current += 1;
+    workerRef.current?.terminate();
+    workerRef.current = null;
+    resetPlan();
   }
 
   // 先把狀態切到 loading（通常也順便清掉舊結果/錯誤）
@@ -56,7 +66,7 @@ export function usePlannerWorker() {
       if (seq !== seqRef.current) return;
 
       if (e.data.ok) {
-        setPlanResult(e.data.result as any);
+        setPlanResult(e.data.result);
         setPlanState("ok");
       } else {
         setPlanResult(null);
@@ -82,5 +92,6 @@ export function usePlannerWorker() {
     setLoading,
     runPlanner,
     resetPlan,
+    cancelPlanner,
   };
 }

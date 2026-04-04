@@ -1,326 +1,262 @@
-/**
- * 用途
- * - 顯示 planner 統計摘要（成功/未完成、命中數、終點位置、步驟數、draws 數等）。
- * - 依 ACTIONS 統計各資源使用次數；並以 event 為單位統計 draws 數量。
- *
- * 框架版本
- * - MUI v7 (使用 Grid2)
- */
-import React, { useMemo } from "react";
+import { useMemo } from "react";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import type { PlanResult } from "@/features/planner/logic/core";
 import type { TrackGraph } from "@/types/models";
-import { Alert, Box, Chip, Stack, Typography } from "@mui/material";
-import { getEventDisplayLines } from "@/utils/event-display";
-// 【MUI v7 關鍵修正】從 Grid2 引入，這是新版標準 Grid
-import Grid from "@mui/material/Grid";
-import { actionLabelFromStep, ACTIONS } from "../logic/view-model";
+import { ACTIONS, actionLabelFromStep } from "../logic/view-model";
+import type { ActionLabel } from "../logic/view-model";
+import { ResourceImg } from "./ResourceImg";
 
-/**
- * 輔助元件：顯示單個統計數字
- */
-function StatItem({
-  label,
-  value,
-  color = "text.primary",
-}: {
-  label: string;
-  value: React.ReactNode;
-  color?: string;
+type ResultStatsModel = {
+  byAction: Map<ActionLabel, number>;
+  hitTargets: Array<{
+    id: number;
+    name: string;
+    count: number;
+  }>;
+  missingTargets: Array<{
+    id: number;
+    name: string;
+  }>;
+};
+
+type ResourceUsageItem = {
+  key: ActionLabel;
+  label: ActionLabel;
+  value: number;
+};
+
+function getHitStatValueClass(params: {
+  success: boolean;
+  targetsHit: number;
+  targetsTotal: number;
 }) {
-  return (
-    <Box display="flex" flexDirection="column" alignItems="center">
-      <Typography
-        variant="h6"
-        component="div"
-        fontWeight="800"
-        color={color}
-        sx={{ lineHeight: 1.2 }}
-      >
-        {value}
-      </Typography>
-      <Typography variant="caption" color="text.secondary" noWrap>
-        {label}
-      </Typography>
-    </Box>
-  );
+  const { success, targetsHit, targetsTotal } = params;
+  if (success) return "text-success";
+  if (targetsTotal > 0 && targetsHit === 0) return "text-destructive";
+  return "text-warning";
 }
 
-export function ResultStatsCard(props: {
-  result: PlanResult;
-  graphsByEvent: Record<string, TrackGraph>;
-  catNameById: Map<number, string>;
+function getResultStatusMeta(params: {
+  success: boolean;
+  targetsHit: number;
+  targetsTotal: number;
 }) {
-  const { result, graphsByEvent, catNameById } = props;
+  const { success, targetsHit, targetsTotal } = params;
+  if (success) {
+    return {
+      text: "已命中全部目標",
+      icon: CheckCircle2,
+      className: "text-success",
+    };
+  }
+  if (targetsTotal > 0 && targetsHit === 0) {
+    return {
+      text: "未命中任何目標",
+      icon: AlertCircle,
+      className: "text-destructive",
+    };
+  }
+  return {
+    text: "尚未完全命中",
+    icon: AlertCircle,
+    className: "text-warning",
+  };
+}
 
-  // 預計算統計數據
-  const stats = useMemo(() => {
-    const byAction = new Map<string, number>();
-    const byEvent = new Map<string, number>();
+function useResultStatsModel(params: {
+  result: PlanResult;
+  catNameById: Map<number, string>;
+}): ResultStatsModel {
+  const { result, catNameById } = params;
 
-    // 初始化 Action 計數
-    for (const a of ACTIONS) byAction.set(a, 0);
+  return useMemo(() => {
+    const byAction = new Map<ActionLabel, number>();
 
-    const plan = (result.plan || []) as any[];
-    for (const st of plan) {
-      const label = actionLabelFromStep(st);
-      // 計算該步驟抽了幾張卡
-      const drawsLen = Array.isArray(st.draws) ? st.draws.length : 0;
-
-      // 統計動作次數 (單抽/十連都算 1 次動作)
-      byAction.set(label, (byAction.get(label) || 0) + 1);
-
-      // 統計各卡池(Event)抽到的總張數
-      const ev = String(st.event_value || "");
-      byEvent.set(ev, (byEvent.get(ev) || 0) + drawsLen);
+    for (const action of ACTIONS) {
+      byAction.set(action, 0);
     }
 
-    // 從 all_draws 統計每隻目標貓實際被抽到的次數
-    const hitTargetSet = new Set(result.targets_hit_ids || []);
+    for (const step of result.plan || []) {
+      const action = actionLabelFromStep(step);
+      byAction.set(action, (byAction.get(action) || 0) + 1);
+    }
+
+    const hitSet = new Set(result.targets_hit_ids || []);
     const drawCountById = new Map<number, number>();
-    for (const d of result.all_draws || []) {
-      if (d.cat_id != null && hitTargetSet.has(d.cat_id)) {
-        drawCountById.set(d.cat_id, (drawCountById.get(d.cat_id) || 0) + 1);
+    for (const draw of result.all_draws || []) {
+      if (draw.cat_id != null && hitSet.has(draw.cat_id)) {
+        drawCountById.set(draw.cat_id, (drawCountById.get(draw.cat_id) || 0) + 1);
       }
     }
 
-    const hitTargets = [...hitTargetSet].map((id) => ({
-      id,
-      name: catNameById.get(id) ?? "?",
-      count: drawCountById.get(id) || 1,
-    }));
-    const missTargets = (result.targets_missing_ids || []).map((id) => ({
-      id,
-      name: catNameById.get(id) ?? "?",
-    }));
+    return {
+      byAction,
+      hitTargets: [...hitSet].map((id) => ({
+        id,
+        name: catNameById.get(id) ?? `#${id}`,
+        count: drawCountById.get(id) || 1,
+      })),
+      missingTargets: (result.targets_missing_ids || []).map((id) => ({
+        id,
+        name: catNameById.get(id) ?? `#${id}`,
+      })),
+    };
+  }, [catNameById, result]);
+}
 
-    return { byAction, byEvent, hitTargets, missTargets };
-  }, [result, catNameById]);
-
-  // ✅ error 狀態：完全沒有命中任何目標
-  const noHit = (result.targets_hit ?? 0) === 0;
-
-  // Alert 狀態優先順序：success > error > warning
-  const alertSeverity: "success" | "warning" | "error" = result.success
-    ? "success"
-    : noHit
-      ? "error"
-      : "warning";
-
-  const alertText = result.success
-    ? "規劃成功：命中全部目標"
-    : noHit
-      ? "規劃失敗：未命中任何目標"
-      : "未完全命中：顯示目前最佳路徑";
-
+function StatItem({
+  label,
+  value,
+  labelClassName,
+  valueClassName,
+  compact = false,
+}: {
+  label: string;
+  value: React.ReactNode;
+  labelClassName?: string;
+  valueClassName?: string;
+  compact?: boolean;
+}) {
   return (
-    <Stack spacing={2}>
-      {/* 1. 狀態提示 */}
-      <Alert
-        severity={alertSeverity}
-        variant="standard"
-        sx={{ py: 0, px: 2, alignItems: "center", fontWeight: "bold" }}
-      >
-        {alertText}
-      </Alert>
-
-      {/* 2. 核心指標 Dashboard (使用 Grid v2) */}
-      <Box sx={{ px: 1 }}>
-        <Grid container spacing={2}>
-          {/* 使用 size={{ xs: 6, sm: 3 }} 在手機版一行兩個，桌面版一行四個 */}
-          <Grid size={{ xs: 6, sm: 3 }}>
-            <StatItem
-              label="命中目標"
-              value={`${result.targets_hit}/${result.targets_total}`}
-              color={
-                result.success
-                  ? "success.main"
-                  : noHit
-                    ? "error.main"
-                    : "warning.main"
-              }
-            />
-          </Grid>
-          <Grid size={{ xs: 6, sm: 3 }}>
-            <StatItem label="結束位置" value={result.final_cursor_id} />
-          </Grid>
-          <Grid size={{ xs: 6, sm: 3 }}>
-            <StatItem label="抽卡步驟" value={result.plan?.length ?? 0} />
-          </Grid>
-          <Grid size={{ xs: 6, sm: 3 }}>
-            <StatItem label="獲得貓咪" value={result.all_draws?.length ?? 0} />
-          </Grid>
-        </Grid>
-      </Box>
-
-      {/* 3. 資源消耗與卡池分布 (使用 Stack 排列 Tag) */}
-      <Stack spacing={1.5}>
-        {/* 資源消耗 */}
-        <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
-          <Typography
-            variant="caption"
-            fontWeight="bold"
-            color="text.secondary"
-            sx={{ minWidth: 60 }}
-          >
-            資源消耗
-          </Typography>
-          {Array.from(stats.byAction.entries()).map(
-            ([k, v]) =>
-              v > 0 && (
-                <Chip
-                  key={k}
-                  label={`${k} × ${v}`}
-                  size="small"
-                  variant="outlined"
-                  sx={{ borderRadius: 1.5, borderColor: "divider" }}
-                />
-              ),
-          )}
-          {Array.from(stats.byAction.values()).every((v) => v === 0) && (
-            <Typography variant="caption" color="text.disabled">
-              無消耗
-            </Typography>
-          )}
-        </Box>
-
-        {/* 卡池分布 */}
-        <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
-          <Typography
-            variant="caption"
-            fontWeight="bold"
-            color="text.secondary"
-            sx={{ minWidth: 60 }}
-          >
-            卡池分布
-          </Typography>
-          {Array.from(stats.byEvent.entries())
-            .sort((a, b) => b[1] - a[1])
-            .map(([ev, cnt]) => {
-              const { dateText, nameText, titleText } = getEventDisplayLines(
-                graphsByEvent[ev]?.event ?? {
-                  name: ev,
-                  raw_name: ev,
-                  start_date: null,
-                  end_date: null,
-                },
-              );
-              return (
-                <Chip
-                  key={ev}
-                  label={
-                    <Box sx={{ minWidth: 0 }}>
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        sx={{
-                          display: "block",
-                          lineHeight: 1.2,
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                      >
-                        {dateText}
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        fontWeight={700}
-                        sx={{
-                          mt: 0.25,
-                          lineHeight: 1.3,
-                          wordBreak: "break-word",
-                          display: "-webkit-box",
-                          overflow: "hidden",
-                          WebkitBoxOrient: "vertical",
-                          WebkitLineClamp: 2,
-                        }}
-                      >
-                        {nameText}：{cnt}
-                      </Typography>
-                    </Box>
-                  }
-                  size="small"
-                  color="default"
-                  sx={{
-                    height: "auto",
-                    alignItems: "flex-start",
-                    borderRadius: 1.5,
-                    bgcolor: "action.hover",
-                    py: 0.5,
-                    "& .MuiChip-label": {
-                      display: "block",
-                      px: 1,
-                      py: 0.25,
-                      maxWidth: 240,
-                      whiteSpace: "normal",
-                    },
-                  }}
-                  title={titleText}
-                />
-              );
-            })}
-        </Box>
-      </Stack>
-
-      {/* 4. 目標清單 */}
-      <Stack spacing={1}>
-        <Box>
-          <Typography
-            variant="caption"
-            fontWeight="bold"
-            color="text.secondary"
-            display="block"
-            gutterBottom
-          >
-            已命中目標
-          </Typography>
-          {stats.hitTargets.length ? (
-            <Typography
-              variant="body2"
-              color={noHit ? "text.secondary" : "success.main"}
-              sx={{ lineHeight: 1.6, fontWeight: 500 }}
-            >
-              {stats.hitTargets
-                .map((t) => (t.count >= 2 ? `${t.name}x${t.count}` : t.name))
-                .join("、")}
-            </Typography>
-          ) : (
-            <Typography variant="body2" color="text.disabled">
-              （無）
-            </Typography>
-          )}
-        </Box>
-
-        {!!stats.missTargets.length && (
-          <Box>
-            <Typography
-              variant="caption"
-              fontWeight="bold"
-              color="text.secondary"
-              display="block"
-              gutterBottom
-            >
-              未命中目標
-            </Typography>
-            <Typography
-              variant="body2"
-              color={noHit ? "error.main" : "text.secondary"}
-              sx={{ lineHeight: 1.6 }}
-            >
-              {stats.missTargets
-                .slice(0, 20)
-                .map((t) => t.name)
-                .join("、")}
-              {stats.missTargets.length > 20 && (
-                <Typography component="span" color="text.disabled">
-                  {" "}
-                  ...等
-                </Typography>
-              )}
-            </Typography>
-          </Box>
+    <div className="space-y-1">
+      <div
+        className={cn(
+          "font-medium text-muted-foreground",
+          compact ? "text-[12px]" : "text-[13px]",
+          labelClassName,
         )}
-      </Stack>
-    </Stack>
+      >
+        {label}
+      </div>
+      <div
+        className={cn(
+          "font-semibold leading-none tracking-tight text-foreground",
+          compact ? "text-[28px]" : "text-[30px]",
+          valueClassName,
+        )}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+export function ResultStatsSidebar(props: {
+  result: PlanResult;
+  graphsByEvent: Record<string, TrackGraph>;
+  catNameById: Map<number, string>;
+  compact?: boolean;
+}) {
+  const { result, catNameById, compact = false } = props;
+  const stats = useResultStatsModel({ result, catNameById });
+  const hitStatValueClass = getHitStatValueClass({
+    success: result.success,
+    targetsHit: result.targets_hit,
+    targetsTotal: result.targets_total,
+  });
+  const resultStatusMeta = getResultStatusMeta({
+    success: result.success,
+    targetsHit: result.targets_hit,
+    targetsTotal: result.targets_total,
+  });
+  const ResultStatusIcon = resultStatusMeta.icon;
+  const resourceUsage = useMemo<ResourceUsageItem[]>(() => {
+    const singleFood = stats.byAction.get("罐頭") || 0;
+    const tenFood = stats.byAction.get("10連抽") || 0;
+    const totalFood = singleFood * 150 + tenFood * 1500;
+
+    return ACTIONS.reduce<ResourceUsageItem[]>((items, action) => {
+      if (action === "10連抽") return items;
+
+      if (action === "罐頭") {
+        if (totalFood > 0) {
+          items.push({ key: action, label: action, value: totalFood });
+        }
+        return items;
+      }
+
+      const count = stats.byAction.get(action) || 0;
+      if (count > 0) {
+        items.push({ key: action, label: action, value: count });
+      }
+      return items;
+    }, []);
+  }, [stats.byAction]);
+  return (
+    <div className="space-y-4">
+      <div
+        className={cn(
+          "inline-flex items-center gap-2",
+          compact ? "text-[13px]" : "text-sm",
+          "font-semibold",
+          resultStatusMeta.className,
+        )}
+      >
+        <ResultStatusIcon className="size-4 shrink-0" strokeWidth={2.2} />
+        <span>{resultStatusMeta.text}</span>
+      </div>
+
+      <div className="rounded-xl">
+        <div className={cn("grid grid-cols-2", compact ? "gap-x-4 gap-y-6" : "gap-x-6 gap-y-5")}>
+          <StatItem
+            label="命中目標"
+            value={`${result.targets_hit}/${result.targets_total}`}
+            valueClassName={hitStatValueClass}
+            compact={compact}
+          />
+          <StatItem label="終點位置" value={result.final_cursor_id} compact={compact} />
+          <StatItem label="抽卡步驟" value={result.plan?.length ?? 0} compact={compact} />
+          <StatItem label="獲得貓咪" value={result.all_draws?.length ?? 0} compact={compact} />
+        </div>
+      </div>
+
+      <section className="space-y-3 border-t border-border/45 pt-3.5">
+        <div className="text-sm font-semibold text-foreground">資源消耗</div>
+        <div className="flex flex-wrap gap-2">
+          {resourceUsage.map((item) => (
+              <div
+                key={item.key}
+                className="inline-flex items-center gap-2 rounded-md bg-muted/40 px-2.5 py-1.5 text-sm"
+              >
+                <ResourceImg label={item.label} height={18} showCount={false} />
+                <span>× {item.value}</span>
+              </div>
+            ))}
+          {resourceUsage.length === 0 ? (
+            <Badge variant="muted">沒有消耗任何資源</Badge>
+          ) : null}
+        </div>
+      </section>
+
+      {stats.hitTargets.length > 0 ? (
+        <section className="space-y-3 border-t border-border/45 pt-3.5">
+          <div className="text-sm font-semibold text-foreground">命中</div>
+          <div className="flex flex-wrap gap-2">
+            {stats.hitTargets.map((target) => (
+              <Badge key={target.id} variant="success" className="gap-1.5">
+                {target.name}
+                {target.count > 1 ? ` × ${target.count}` : ""}
+              </Badge>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {stats.missingTargets.length > 0 && (
+        <section className="space-y-3 border-t border-border/45 pt-3.5">
+          <div className="text-sm font-semibold text-foreground">未命中</div>
+          <div className="flex flex-wrap gap-2">
+            {stats.missingTargets.map((target) => (
+              <Badge key={target.id} variant="outline" className="border-transparent text-red-500 shadow-none dark:text-red-400">
+                {target.name}
+              </Badge>
+            ))}
+          </div>
+        </section>
+      )}
+
+    </div>
   );
 }

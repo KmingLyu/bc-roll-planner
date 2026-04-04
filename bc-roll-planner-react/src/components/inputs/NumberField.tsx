@@ -1,75 +1,55 @@
 import * as React from "react";
 import { NumberField as BaseNumberField } from "@base-ui/react/number-field";
-import FormControl from "@mui/material/FormControl";
-import OutlinedInput from "@mui/material/OutlinedInput";
-import InputLabel from "@mui/material/InputLabel";
-
-/**
- * This component is a placeholder for FormControl to correctly set the shrink label state on SSR.
- */
-function SSRInitialFilled(_: BaseNumberField.Root.Props) {
-  return null;
-}
-SSRInitialFilled.muiName = "Input";
+import { Minus, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function NumberField({
   id: idProp,
   label,
-  error,
-  size = "medium",
+  error = false,
+  startAdornment,
+  className,
+  inputProps,
   ...other
 }: BaseNumberField.Root.Props & {
   label?: React.ReactNode;
-  size?: "small" | "medium";
   error?: boolean;
+  startAdornment?: React.ReactNode;
+  className?: string;
+  inputProps?: React.InputHTMLAttributes<HTMLInputElement>;
 }) {
   let id = React.useId();
   if (idProp) {
     id = idProp;
   }
   return (
-    <BaseNumberField.Root
-      {...other}
-      render={(props, state) => (
-        <FormControl
-          size={size}
-          ref={props.ref}
-          disabled={state.disabled}
-          required={state.required}
-          error={error}
-          variant="outlined"
-          fullWidth // 撐滿父層
-          style={{ minWidth: 0 }} // 避免 flexbox 爆寬
+    <BaseNumberField.Root {...other} className={cn("w-full", className)}>
+      <div className="flex flex-col gap-1">
+        {label ? (
+          <label htmlFor={id} className="text-[13px] font-medium text-foreground">
+            {label}
+          </label>
+        ) : null}
+        <div
+          className={cn(
+            "field-shell gap-1",
+            error && "border-destructive ring-4 ring-destructive/10",
+          )}
         >
-          {props.children}
-        </FormControl>
-      )}
-    >
-      <SSRInitialFilled {...other} />
-      <InputLabel htmlFor={id}>{label}</InputLabel>
-      <BaseNumberField.Input
-        id={id}
-        render={(props, state) => (
-          <OutlinedInput
-            label={label}
-            inputRef={props.ref}
-            value={state.inputValue}
-            onBlur={props.onBlur}
-            onChange={props.onChange}
-            onKeyUp={props.onKeyUp}
-            onKeyDown={props.onKeyDown}
-            onFocus={props.onFocus}
-            slotProps={{
-              input: props,
-            }}
-            fullWidth // ✅ 輸入框本身也撐滿
-            sx={{ width: 1 }}
+          {startAdornment ? <span className="shrink-0">{startAdornment}</span> : null}
+          <BaseNumberField.Decrement className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+            <Minus className="size-4" />
+          </BaseNumberField.Decrement>
+          <BaseNumberField.Input
+            id={id}
+            className="h-8 min-w-0 flex-1 border-0 bg-transparent text-sm outline-none"
+            {...inputProps}
           />
-        )}
-      />
-      {/* <FormHelperText sx={{ ml: 0, "&:empty": { mt: 0 } }}>
-        Enter value between 10 and 40
-      </FormHelperText> */}
+          <BaseNumberField.Increment className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+            <Plus className="size-4" />
+          </BaseNumberField.Increment>
+        </div>
+      </div>
     </BaseNumberField.Root>
   );
 }

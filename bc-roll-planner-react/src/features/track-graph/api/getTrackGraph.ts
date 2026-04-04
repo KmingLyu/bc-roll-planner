@@ -10,6 +10,7 @@ export async function fetchTrackGraph(params: {
   seed: string;
   event: string;
   count: number;
+  signal?: AbortSignal;
   lang?: string;
   ui?: string;
   base_url?: string;
@@ -34,5 +35,7 @@ export async function fetchTrackGraph(params: {
     start_date: params.start_date ?? undefined,
     end_date: params.end_date ?? undefined,
     pool_type: params.pool_type,
+  }, {
+    signal: params.signal,
   });
 }

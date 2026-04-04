@@ -79,19 +79,9 @@ export function chooseEdgeForSingleDraw(
     normalCatId !== null &&
     normalCatId === prevCatId;
 
-  // console.log({ edge: normal, used: "normal" });
-
   if (shouldSwitch && sw) {
-    // console.log({ edge: sw, used: "switch_track" });
     return { edge: sw, used: "switch_track" };
   }
-  // console.log({
-  //   nodeId: node.id,
-  //   prevCatId,
-  //   normalCatId,
-  //   shouldSwitch,
-  // });
-  // 把edge印出來
   return { edge: normal, used: "normal" };
 }
 
@@ -126,8 +116,6 @@ export function simulateOnGraph(params: {
 
   for (const act of actions) {
     const method = act.method;
-    // console.log(`--- Action: ${act.event_value} / ${method} ---`);
-
     // 單抽
     if (method === "single") {
       const node = graph.nodes?.[cursor.id];
@@ -138,7 +126,6 @@ export function simulateOnGraph(params: {
       }
 
       const { edge, used } = chooseEdgeForSingleDraw(node, prevCatId);
-      // console.log(used);
       step += 1;
 
       const p = catPayload(edge.cat);
@@ -272,14 +259,14 @@ export function parseActions(raw: unknown): SimAction[] {
 }
 
 /**
- * v1 估算：single=1, ten=10（不算保底第11隻）
+ * v1 估算：single=1, ten=13（對 10 連額外保留安全餘量）
  * +20 buffer
  */
 export function estimateRequiredCounts(actions: SimAction[]): number {
   let count = 0;
   for (const a of actions) {
     if (a.method === "single") count += 1;
-    else if (a.method === "ten") count += 10;
+    else if (a.method === "ten") count += 13;
     else
       throw new SimulationError(
         `未支援 method=${String((a as any).method)} 的估算`

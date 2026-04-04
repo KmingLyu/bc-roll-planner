@@ -12,6 +12,22 @@ export class ApiError extends Error {
   }
 }
 
+function readErrorField(
+  payload: unknown,
+  field: "error" | "message",
+): string | null {
+  if (!payload || typeof payload !== "object") return null;
+
+  const value = (payload as Record<string, unknown>)[field];
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+export function isAbortError(error: unknown): boolean {
+  if (error instanceof DOMException) return error.name === "AbortError";
+  if (!error || typeof error !== "object") return false;
+  return (error as { name?: unknown }).name === "AbortError";
+}
+
 function toQueryString(q: Query): string {
   const usp = new URLSearchParams();
   for (const [k, v] of Object.entries(q)) {
@@ -53,8 +69,8 @@ export async function netlifyGet<T>(
 
   if (!resp.ok) {
     const msg =
-      (payload as any)?.error ||
-      (payload as any)?.message ||
+      readErrorField(payload, "error") ||
+      readErrorField(payload, "message") ||
       `HTTP ${resp.status}`;
     throw new ApiError(msg, resp.status, payload);
   }

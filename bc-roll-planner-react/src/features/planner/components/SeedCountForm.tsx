@@ -58,7 +58,7 @@ export function SeedCountForm(props: {
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <Badge variant="muted" className="gap-1.5">
             <Sparkles className="size-3.5" />
-            自動 count
+            自動估算
           </Badge>
           <span className="font-medium text-foreground">{autoCount}</span>
         </div>

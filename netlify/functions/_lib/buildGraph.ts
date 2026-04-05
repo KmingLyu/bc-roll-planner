@@ -72,18 +72,25 @@ export function buildTrackGraphFromCells(args: {
         gCell.jump_to || inferGuaranteedTo(pos, track)
       ).trim();
 
-      edges.guaranteed = {
-        action: "guaranteed",
-        to,
-        cat: gCell.cat,
-        rolls: 11,
-        advance: 10,
-        cost_rolls: 11,
-        note: gCell.jump_to
-          ? `guaranteed ${gCell.jump_to}`
-          : "guaranteed (inferred)",
-        source_pick_id: gId,
-      };
+      // 只有標準十連抽（前進恰好 10 格）才建立 guaranteed edge；
+      // 好康轉蛋等特殊卡池的 AG 跳躍距離 ≠ 10，暫時略過。
+      const toPos = Number((/^(\d+)/.exec(to) ?? [])[1]);
+      const isStandardTenRoll = Number.isFinite(toPos) && toPos - pos === 10;
+
+      if (isStandardTenRoll) {
+        edges.guaranteed = {
+          action: "guaranteed",
+          to,
+          cat: gCell.cat,
+          rolls: 11,
+          advance: 10,
+          cost_rolls: 11,
+          note: gCell.jump_to
+            ? `guaranteed ${gCell.jump_to}`
+            : "guaranteed (inferred)",
+          source_pick_id: gId,
+        };
+      }
     }
 
     // switch_track (R)

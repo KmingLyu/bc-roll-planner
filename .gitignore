@@ -30,6 +30,7 @@ dist-ssr
 .DS_Store
 .netlify
 .claude/
+.windsurf/
 prompts
 graphs/
 *example*

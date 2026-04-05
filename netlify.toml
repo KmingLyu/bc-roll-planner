@@ -1,5 +1,4 @@
 [build]
-  base = "bc-roll-planner-react"
   command = "npm run build"
   publish = "dist"
   functions = "netlify/functions"
@@ -23,7 +22,6 @@
   # VITE_BC_GODFAT_BASE_URL = "http://localhost:8080"
 
 [dev]
-  base = "bc-roll-planner-react"
   command = "npm run dev"
   framework = "#custom"
   targetPort = 5173

@@ -724,7 +724,8 @@ export function planMinCost(params: {
         s.platinum_left >= 1 && isActionAllowed(cfg, pool, "platinum_single");
       const canLegend =
         s.legend_left >= 1 && isActionAllowed(cfg, pool, "legend_single");
-      const canTenCost = s.food_left >= 1500; // ten 另外還要 hasGuaranteed
+      const canTenCost =
+        s.food_left >= 1500 && isActionAllowed(cfg, pool, "food_ten");
       if (
         !canTicket &&
         !canFoodSingle &&
@@ -842,7 +843,7 @@ export function planMinCost(params: {
       const hasGuaranteed =
         !!startNode?.edges?.guaranteed && !!startNode.edges.guaranteed.cat;
 
-      if (s.food_left >= 1500 && hasGuaranteed) {
+      if (s.food_left >= 1500 && hasGuaranteed && isActionAllowed(cfg, pool, "food_ten")) {
         const key10 = `${ev}|${s.cursor_id}|${
           s.prev_cat_id == null ? "-" : s.prev_cat_id
         }`;

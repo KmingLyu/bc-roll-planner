@@ -29,7 +29,7 @@ import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { DisclaimerNote } from "./components/Note";
+import { NotesBlock } from "./components/Note";
 import { ResourceForm } from "./components/ResourceForm";
 import { RunBlockingOverlay } from "./components/RunBlockingOverlay";
 import { RunBar } from "./components/RunBar";
@@ -625,7 +625,7 @@ function PlannerHeader() {
           貓咪大戰爭抽卡規劃
         </h1>
       </div>
-      <DisclaimerNote />
+      <NotesBlock />
     </header>
   );
 }

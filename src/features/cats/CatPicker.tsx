@@ -3,8 +3,8 @@ import { Search } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import type { TierGroup } from "@/features/cats/types";
-import { CatSelectableItem } from "./CatSelectableItem";
+import type { TierGroup } from "./types";
+import { CatItem } from "./CatItem";
 
 import type { LoadState } from "@/lib/loadState";
 
@@ -17,7 +17,7 @@ function tierLabel(tier: TierGroup["tier"]) {
   return "Legendary";
 }
 
-export function TargetCatsPicker(props: {
+export function CatPicker(props: {
   loadState: LoadState;
   error: string;
   groups: TierGroup[];
@@ -150,7 +150,7 @@ export function TargetCatsPicker(props: {
                   }}
                 >
                   {group.cats.map((cat) => (
-                    <CatSelectableItem
+                    <CatItem
                       key={cat.id}
                       catId={cat.id}
                       name={cat.name}

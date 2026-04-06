@@ -12,7 +12,7 @@ import {
 import {
   buildGodfatCatHref,
   buildGodfatCatImageUrl,
-} from "@/features/cats/presentation/godfat";
+} from "@/features/cats/urls";
 import { BC_ENV } from "@/config/bcEnv";
 import type { TrackGraph } from "@/types/models";
 import { getEventDisplayLines } from "@/utils/event-display";

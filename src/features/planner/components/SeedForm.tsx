@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function SeedCountForm(props: {
+export function SeedForm(props: {
   seed: string;
   countInput: string;
   countError: string;

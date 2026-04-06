@@ -3,6 +3,6 @@ export {
   estimateRequiredCounts,
   parseActions,
   simulateOnGraph,
-} from "./logic/core";
+} from "./simulator";
 
-export type { DrawRecord, Method, SimAction } from "./logic/core";
+export type { DrawRecord, Method, SimAction } from "./simulator";

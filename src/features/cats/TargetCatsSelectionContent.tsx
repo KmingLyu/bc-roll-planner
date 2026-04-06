@@ -1,7 +1,7 @@
 import { useMemo } from "react";
-import { TargetCatsPicker } from "./TargetCatsPicker";
-import { tierOrder } from "@/features/cats/types";
-import type { TierGroup } from "@/features/cats/types";
+import { CatPicker } from "./CatPicker";
+import { tierOrder } from "./types";
+import type { TierGroup } from "./types";
 
 import type { LoadState } from "@/lib/loadState";
 
@@ -43,7 +43,7 @@ export function TargetCatsSelectionContent(props: {
   }, [groups]);
 
   return (
-    <TargetCatsPicker
+    <CatPicker
       loadState={loadState}
       error={error}
       groups={sortedGroups}

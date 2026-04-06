@@ -1,5 +1,5 @@
 export { PlannerPageContainer } from "./PlannerPageContainer";
-export { usePlannerWorker } from "./hooks/usePlannerWorker";
+export { usePlannerWorker } from "./usePlannerWorker";
 
 export { planMinCost } from "./logic/core";
 

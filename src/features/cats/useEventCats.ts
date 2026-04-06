@@ -1,10 +1,10 @@
 // src/features/cats/model/useEventCats.ts
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Event } from "@/types/models";
-import { fetchEventCats } from "@/features/cats/api/getEventCats";
+import { fetchEventCats } from "./api";
 import { ApiError } from "@/lib/api-client";
-import { tierOrder } from "@/features/cats/types";
-import type { CatTier, TierGroup, UiCat } from "@/features/cats/types";
+import { tierOrder } from "./types";
+import type { CatTier, TierGroup, UiCat } from "./types";
 
 import type { LoadState } from "@/lib/loadState";
 

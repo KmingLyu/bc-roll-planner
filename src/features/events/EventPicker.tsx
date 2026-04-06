@@ -87,7 +87,7 @@ function SelectedEventSummaryItem(props: {
   );
 }
 
-export function EventsPicker(props: {
+export function EventPicker(props: {
   loadState: LoadState;
   error: string;
   upcomingEvents: Event[];

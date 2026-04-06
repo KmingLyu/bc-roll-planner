@@ -2,7 +2,7 @@ import { LoaderCircle } from "lucide-react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 
-export function RunBlockingOverlay(props: {
+export function Overlay(props: {
   open: boolean;
   onCancel: () => void;
 }) {

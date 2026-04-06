@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-export function CatSelectableItem(props: {
+export function CatItem(props: {
   catId: number;
   name: string;
   checked: boolean;

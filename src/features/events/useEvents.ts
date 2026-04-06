@@ -1,7 +1,7 @@
 // src/features/events/model/useEvents.ts
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Event } from "@/types/models";
-import { fetchEventsBoth } from "@/features/events/api/getEvents";
+import { fetchEventsBoth } from "./api";
 import { ApiError } from "@/lib/api-client";
 
 import type { LoadState } from "@/lib/loadState";

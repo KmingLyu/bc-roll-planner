@@ -1,7 +1,7 @@
 // src/features/track-graph/model/useTrackGraphs.ts
 import { useRef, useState } from "react";
 import type { Event, TrackGraph } from "@/types/models";
-import { fetchTrackGraph } from "@/features/track-graph/api/getTrackGraph";
+import { fetchTrackGraph } from "./api";
 import { ApiError, isAbortError } from "@/lib/api-client";
 
 import type { LoadState } from "@/lib/loadState";

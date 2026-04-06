@@ -19,12 +19,12 @@ import { isAbortError } from "@/lib/api-client";
 import { safeErrText } from "@/lib/error";
 import { clampSelection } from "@/lib/selection";
 import { cn } from "@/lib/utils";
-import { EventsPicker, useEvents } from "@/features/events";
+import { EventPicker, useEvents } from "@/features/events";
 import { TargetCatsSelectionContent, useEventCats } from "@/features/cats";
 import {
   buildGodfatCatHref,
   buildGodfatCatImageUrl,
-} from "@/features/cats/presentation/godfat";
+} from "@/features/cats/urls";
 import { useTrackGraphs } from "@/features/track-graph";
 import { Badge } from "@/components/ui/badge";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
@@ -33,12 +33,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { NotesBlock } from "./components/Note";
 import { ResourceForm } from "./components/ResourceForm";
-import { RunBlockingOverlay } from "./components/RunBlockingOverlay";
+import { Overlay } from "./components/Overlay";
 import { RunBar } from "./components/RunBar";
-import { SeedCountForm } from "./components/SeedCountForm";
+import { SeedForm } from "./components/SeedForm";
 import { ResultStatsSidebar } from "./components/ResultStats";
-import { ResultTable, type ResultFilterMode } from "./components/Results";
-import { usePlannerWorker } from "./hooks/usePlannerWorker";
+import { ResultTable, type ResultFilterMode } from "./components/ResultTable";
+import { usePlannerWorker } from "./usePlannerWorker";
 import type { PlanResult } from "./logic/core";
 import type {
   PlannerAppliedInputs,
@@ -880,7 +880,7 @@ function PlannerInputEditor({ layout }: { layout: "immersive" | "compact" }) {
   const content = (
     <>
       <div className="space-y-5">
-        <SeedCountForm
+        <SeedForm
           seed={draft.seed}
           countInput={draft.countInput}
           countError={countError}
@@ -898,7 +898,7 @@ function PlannerInputEditor({ layout }: { layout: "immersive" | "compact" }) {
 
         <div className="grid gap-5 lg:grid-cols-[minmax(280px,0.9fr)_minmax(0,1.35fr)]">
           <div className="border-t border-border pt-5">
-            <EventsPicker
+            <EventPicker
               loadState={eventsState}
               error={eventsErr}
               upcomingEvents={upcomingEvents}
@@ -1172,7 +1172,7 @@ function PlannerScreen() {
           })
         }
       />
-      <RunBlockingOverlay open={runOverlayOpen} onCancel={cancelPlannerFlow} />
+      <Overlay open={runOverlayOpen} onCancel={cancelPlannerFlow} />
     </>
   );
 }

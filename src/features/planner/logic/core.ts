@@ -6,7 +6,7 @@ import type {
   PoolType,
 } from "@/types/models";
 import { parsePosId } from "@/utils/cursor";
-import { chooseEdgeForSingleDraw } from "@/features/simulator/logic/core";
+import { chooseEdgeForSingleDraw } from "@/features/simulator";
 
 export type ResourceType =
   | "ticket"

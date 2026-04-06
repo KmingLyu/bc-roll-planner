@@ -1,10 +1,10 @@
 // src/features/planner/hooks/usePlannerWorker.ts
 import { useEffect, useRef, useState } from "react";
-import PlannerWorker from "@/features/planner/worker/planner.worker?worker";
+import PlannerWorker from "@/features/planner/planner.worker?worker";
 import type {
   PlannerWorkerRequest,
   PlannerWorkerResponse,
-} from "@/features/planner/worker/planner.worker";
+} from "@/features/planner/planner.worker";
 import type { PlanResult } from "@/features/planner/logic/core";
 
 import type { LoadState } from "@/lib/loadState";

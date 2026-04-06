@@ -1,1 +1,1 @@
-export { useTrackGraphs } from "./hooks/useTrackGraphs";
+export { useTrackGraphs } from "./useTrackGraphs";

@@ -2,7 +2,7 @@ import { LoaderCircle, Play, RotateCcw } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
-type LoadState = "idle" | "loading" | "ok" | "error";
+import type { LoadState } from "@/lib/loadState";
 
 export function RunBar(props: {
   state: LoadState;

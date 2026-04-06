@@ -3,7 +3,7 @@ import { TargetCatsPicker } from "./TargetCatsPicker";
 import { tierOrder } from "@/features/cats/types";
 import type { TierGroup } from "@/features/cats/types";
 
-type LoadState = "idle" | "loading" | "ok" | "error";
+import type { LoadState } from "@/lib/loadState";
 
 export function TargetCatsSelectionContent(props: {
   loadState: LoadState;

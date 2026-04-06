@@ -15,7 +15,9 @@ import {
   Search,
 } from "lucide-react";
 import type { Event, TrackGraph } from "@/types/models";
-import { ApiError, isAbortError } from "@/lib/api-client";
+import { isAbortError } from "@/lib/api-client";
+import { safeErrText } from "@/lib/error";
+import { clampSelection } from "@/lib/selection";
 import { cn } from "@/lib/utils";
 import { EventsPicker, useEvents } from "@/features/events";
 import { TargetCatsSelectionContent, useEventCats } from "@/features/cats";
@@ -47,7 +49,7 @@ import type {
 import { parsePosId } from "@/utils/cursor";
 import { BC_ENV } from "@/config/bcEnv";
 
-type LoadState = "idle" | "loading" | "ok" | "error";
+import type { LoadState } from "@/lib/loadState";
 
 const MAX_SELECTED_EVENTS = 5;
 const MAX_SELECTED_TARGET_CATS = 20;
@@ -103,21 +105,8 @@ const PlannerScreenContext = createContext<PlannerScreenContextValue | null>(
   null,
 );
 
-function safeErrText(error: unknown): string {
-  if (error instanceof ApiError)
-    return `${error.message} (HTTP ${error.status})`;
-  if (error && typeof error === "object" && "message" in error) {
-    return String((error as { message?: unknown }).message);
-  }
-  return String(error);
-}
-
 function clampNonNegativeInt(value: number): number {
   return Math.max(0, Math.floor(value || 0));
-}
-
-function clampSelection<T>(values: T[], limit: number) {
-  return [...new Set(values)].slice(0, limit);
 }
 
 function getStartPosOffset(startPosId: string): number {

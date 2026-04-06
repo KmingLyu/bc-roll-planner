@@ -20,22 +20,7 @@ import { cn } from "@/lib/utils";
 
 type LoadState = "idle" | "loading" | "ok" | "error";
 
-function describeSelectionCapacity(params: {
-  count: number;
-  limit: number;
-  unit: string;
-}) {
-  const { count, limit, unit } = params;
-  const remaining = Math.max(0, limit - count);
-
-  if (count >= limit) {
-    return `已達上限 ${limit} 個${unit}，取消已選項目後才能更換。`;
-  }
-  if (count === 0) {
-    return `最多可選 ${limit} 個${unit}。`;
-  }
-  return `還可再選 ${remaining} 個${unit}。`;
-}
+import { describeSelectionCapacity } from "@/lib/selection";
 
 function EventOption({
   event,
@@ -178,7 +163,7 @@ export function EventsPicker(props: {
   const selectionSummary = describeSelectionCapacity({
     count: value.length,
     limit: maxSelection,
-    unit: "卡池",
+    unit: "個卡池",
   });
 
   const toggleEvent = (eventValue: string) => {

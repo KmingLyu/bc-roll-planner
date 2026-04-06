@@ -6,24 +6,9 @@ import { Input } from "@/components/ui/input";
 import type { TierGroup } from "@/features/cats/types";
 import { CatSelectableItem } from "./CatSelectableItem";
 
-type LoadState = "idle" | "loading" | "ok" | "error";
+import type { LoadState } from "@/lib/loadState";
 
-function describeSelectionCapacity(params: {
-  count: number;
-  limit: number;
-  unit: string;
-}) {
-  const { count, limit, unit } = params;
-  const remaining = Math.max(0, limit - count);
-
-  if (count >= limit) {
-    return `已達上限 ${limit} 隻${unit}，取消已選項目後才能更換。`;
-  }
-  if (count === 0) {
-    return `最多可選 ${limit} 隻${unit}。`;
-  }
-  return `還可再選 ${remaining} 隻${unit}。`;
-}
+import { describeSelectionCapacity } from "@/lib/selection";
 
 function tierLabel(tier: TierGroup["tier"]) {
   if (tier === "rare") return "Rare";
@@ -74,7 +59,7 @@ export function TargetCatsPicker(props: {
   const selectionSummary = describeSelectionCapacity({
     count: selectedIds.length,
     limit: maxSelection,
-    unit: "目標貓咪",
+    unit: "隻目標貓咪",
   });
 
   const filteredGroups = useMemo(() => {

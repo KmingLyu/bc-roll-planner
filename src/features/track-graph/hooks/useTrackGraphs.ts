@@ -4,7 +4,7 @@ import type { Event, TrackGraph } from "@/types/models";
 import { fetchTrackGraph } from "@/features/track-graph/api/getTrackGraph";
 import { ApiError, isAbortError } from "@/lib/api-client";
 
-type LoadState = "idle" | "loading" | "ok" | "error";
+import type { LoadState } from "@/lib/loadState";
 
 function isValidSeedCount(seed: string, count: number): boolean {
   const s = seed.trim();

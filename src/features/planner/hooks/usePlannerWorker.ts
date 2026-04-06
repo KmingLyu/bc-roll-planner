@@ -7,7 +7,7 @@ import type {
 } from "@/features/planner/worker/planner.worker";
 import type { PlanResult } from "@/features/planner/logic/core";
 
-type LoadState = "idle" | "loading" | "ok" | "error";
+import type { LoadState } from "@/lib/loadState";
 type WorkerResp = PlannerWorkerResponse;
 
 type RunPayload =

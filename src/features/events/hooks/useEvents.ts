@@ -4,7 +4,7 @@ import type { Event } from "@/types/models";
 import { fetchEventsBoth } from "@/features/events/api/getEvents";
 import { ApiError } from "@/lib/api-client";
 
-type LoadState = "idle" | "loading" | "ok" | "error";
+import type { LoadState } from "@/lib/loadState";
 
 export function useEvents(params: {
   pastLimit?: number | null;

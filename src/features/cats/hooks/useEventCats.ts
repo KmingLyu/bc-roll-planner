@@ -6,7 +6,7 @@ import { ApiError } from "@/lib/api-client";
 import { tierOrder } from "@/features/cats/types";
 import type { CatTier, TierGroup, UiCat } from "@/features/cats/types";
 
-type LoadState = "idle" | "loading" | "ok" | "error";
+import type { LoadState } from "@/lib/loadState";
 
 export function useEventCats(params: {
   selectedEventValues: string[];

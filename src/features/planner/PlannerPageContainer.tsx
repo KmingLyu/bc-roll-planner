@@ -1,7 +1,5 @@
 import {
-  createContext,
   startTransition,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -26,74 +24,29 @@ import {
 import { usePlannerWorker } from "./usePlannerWorker";
 import type { PlanResult } from "./logic/core";
 import type {
+  AppliedPlannerSession,
   PlannerAppliedInputs,
   PlannerDraftInputs,
-  PlannerResources,
   PlannerSessionState,
 } from "./types";
+import { DraftContext, type DraftContextValue } from "./context/draftContext";
+import { DataContext, type DataContextValue } from "./context/dataContext";
+import {
+  SessionContext,
+  type SessionContextValue,
+} from "./context/sessionContext";
+import {
+  DerivedContext,
+  type DerivedContextValue,
+} from "./context/derivedContext";
 import { Screen } from "./components/Screen";
-
-import type { LoadState } from "@/lib/loadState";
-
-type AppliedPlannerSession = {
-  signature: string;
-  inputs: PlannerAppliedInputs;
-  result: PlanResult;
-  graphsByEvent: Record<string, TrackGraph>;
-};
 
 type ActivePlannerRun = {
   token: number;
   controller: AbortController;
 };
 
-export type PlannerScreenContextValue = {
-  draft: PlannerDraftInputs;
-  session: PlannerSessionState;
-  appliedSession: AppliedPlannerSession | null;
-  planState: LoadState;
-  planErr: string;
-  countError: string;
-  manualCount: number | null;
-  autoCount: number;
-  resolvedCount: number;
-  runDisabled: boolean;
-  runHint: string;
-  runOverlayOpen: boolean;
-  eventsState: LoadState;
-  eventsErr: string;
-  upcomingEvents: Event[];
-  pastEvents: Event[];
-  catsState: LoadState;
-  catsErr: string;
-  tierGroups: ReturnType<typeof useEventCats>["tierGroups"];
-  catNameById: Map<number, string>;
-  setSeed: (value: string) => void;
-  setCountInput: (value: string) => void;
-  setResources: (next: PlannerResources) => void;
-  setSelectedEventValues: (next: string[]) => void;
-  setPrimaryEventValue: (value: string) => void;
-  setTargetCatIds: (next: number[]) => void;
-  clearTargetCatIds: () => void;
-  toggleManualCount: () => void;
-  goToInputStage: () => void;
-  cancelPlannerFlow: () => void;
-  runPlannerFlow: () => Promise<void>;
-};
-
-const PlannerScreenContext = createContext<PlannerScreenContextValue | null>(
-  null,
-);
-
-export function usePlannerScreen() {
-  const context = useContext(PlannerScreenContext);
-  if (!context) {
-    throw new Error("Planner screen context is missing.");
-  }
-  return context;
-}
-
-function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
+function PlannerProvider({ children }: { children: React.ReactNode }) {
   const [draft, setDraft] = useState<PlannerDraftInputs>({
     seed: "",
     countInput: "",
@@ -439,81 +392,121 @@ function PlannerScreenProvider({ children }: { children: React.ReactNode }) {
     });
   }
 
-  const value: PlannerScreenContextValue = {
-    draft: viewDraft,
-    session,
-    appliedSession,
-    planState,
-    planErr,
-    countError,
-    manualCount,
-    autoCount,
-    resolvedCount,
-    runDisabled,
-    runHint,
-    runOverlayOpen,
-    eventsState,
-    eventsErr,
-    upcomingEvents,
-    pastEvents,
-    catsState,
-    catsErr,
-    tierGroups,
-    catNameById,
-    setSeed: (value) => setDraft((current) => ({ ...current, seed: value })),
-    setCountInput: (value) =>
-      setDraft((current) => ({ ...current, countInput: value })),
-    setResources: (next) =>
-      setDraft((current) => ({ ...current, resources: next })),
-    setSelectedEventValues: (next) =>
-      setDraft((current) => ({
-        ...current,
-        selectedEventValues: clampSelection(next, MAX_SELECTED_EVENTS),
-      })),
-    setPrimaryEventValue: (value) =>
-      setDraft((current) => ({ ...current, primaryEventValue: value })),
-    setTargetCatIds: (next) =>
-      setDraft((current) => ({
-        ...current,
-        targetCatIds: clampSelection(next, MAX_SELECTED_TARGET_CATS),
-      })),
-    clearTargetCatIds: () =>
-      setDraft((current) => ({ ...current, targetCatIds: [] })),
-    toggleManualCount: () =>
-      startTransition(() =>
-        setSession((current) => ({
-          ...current,
-          manualCountExpanded: !current.manualCountExpanded,
-        })),
-      ),
-    goToInputStage: () => {
-      if (hasSyntheticResultsHistoryRef.current) {
-        window.history.back();
-        return;
-      }
+  // ── Memoized context values ────────────────────────────────────────────
 
-      startTransition(() =>
-        setSession((current) => ({
+  const draftValue = useMemo<DraftContextValue>(
+    () => ({
+      draft: viewDraft,
+      manualCountExpanded: session.manualCountExpanded,
+      setSeed: (value) =>
+        setDraft((current) => ({ ...current, seed: value })),
+      setCountInput: (value) =>
+        setDraft((current) => ({ ...current, countInput: value })),
+      setResources: (next) =>
+        setDraft((current) => ({ ...current, resources: next })),
+      setSelectedEventValues: (next) =>
+        setDraft((current) => ({
           ...current,
-          stage: "input",
+          selectedEventValues: clampSelection(next, MAX_SELECTED_EVENTS),
         })),
-      );
-    },
-    cancelPlannerFlow,
-    runPlannerFlow,
-  };
+      setPrimaryEventValue: (value) =>
+        setDraft((current) => ({ ...current, primaryEventValue: value })),
+      setTargetCatIds: (next) =>
+        setDraft((current) => ({
+          ...current,
+          targetCatIds: clampSelection(next, MAX_SELECTED_TARGET_CATS),
+        })),
+      clearTargetCatIds: () =>
+        setDraft((current) => ({ ...current, targetCatIds: [] })),
+      toggleManualCount: () =>
+        startTransition(() =>
+          setSession((current) => ({
+            ...current,
+            manualCountExpanded: !current.manualCountExpanded,
+          })),
+        ),
+    }),
+    [viewDraft, session.manualCountExpanded],
+  );
+
+  const dataValue = useMemo<DataContextValue>(
+    () => ({
+      eventsState,
+      eventsErr,
+      upcomingEvents,
+      pastEvents,
+      catsState,
+      catsErr,
+      tierGroups,
+      catNameById,
+    }),
+    [
+      eventsState,
+      eventsErr,
+      upcomingEvents,
+      pastEvents,
+      catsState,
+      catsErr,
+      tierGroups,
+      catNameById,
+    ],
+  );
+
+  const sessionValue = useMemo<SessionContextValue>(
+    () => ({
+      stage: session.stage,
+      appliedSession,
+      planState,
+      planErr,
+      runOverlayOpen,
+      goToInputStage: () => {
+        if (hasSyntheticResultsHistoryRef.current) {
+          window.history.back();
+          return;
+        }
+
+        startTransition(() =>
+          setSession((current) => ({
+            ...current,
+            stage: "input",
+          })),
+        );
+      },
+      cancelPlannerFlow,
+      runPlannerFlow,
+    }),
+    [session.stage, appliedSession, planState, planErr, runOverlayOpen],
+  );
+
+  const derivedValue = useMemo<DerivedContextValue>(
+    () => ({
+      countError,
+      manualCount,
+      autoCount,
+      resolvedCount,
+      runDisabled,
+      runHint,
+    }),
+    [countError, manualCount, autoCount, resolvedCount, runDisabled, runHint],
+  );
 
   return (
-    <PlannerScreenContext.Provider value={value}>
-      {children}
-    </PlannerScreenContext.Provider>
+    <DataContext.Provider value={dataValue}>
+      <DraftContext.Provider value={draftValue}>
+        <DerivedContext.Provider value={derivedValue}>
+          <SessionContext.Provider value={sessionValue}>
+            {children}
+          </SessionContext.Provider>
+        </DerivedContext.Provider>
+      </DraftContext.Provider>
+    </DataContext.Provider>
   );
 }
 
 export function PlannerPageContainer() {
   return (
-    <PlannerScreenProvider>
+    <PlannerProvider>
       <Screen />
-    </PlannerScreenProvider>
+    </PlannerProvider>
   );
 }

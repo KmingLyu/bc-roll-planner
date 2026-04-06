@@ -1,4 +1,4 @@
-import { usePlannerScreen } from "../PlannerPageContainer";
+import { usePlannerData, usePlannerSession } from "../context/usePlanner";
 import { ResultTable, type ResultFilterMode } from "./ResultTable";
 
 export function ResultsView(props: {
@@ -6,7 +6,8 @@ export function ResultsView(props: {
   onFilterModeChange: (next: ResultFilterMode) => void;
 }) {
   const { filterMode, onFilterModeChange } = props;
-  const { appliedSession, catNameById } = usePlannerScreen();
+  const { appliedSession } = usePlannerSession();
+  const { catNameById } = usePlannerData();
 
   if (!appliedSession) return null;
 

@@ -2,19 +2,19 @@ import { useEffect, useRef, useState } from "react";
 import { Header } from "@/app/Header";
 import { Footer } from "@/app/Footer";
 import { cn } from "@/lib/utils";
-import { usePlannerScreen } from "../PlannerPageContainer";
+import { usePlannerSession } from "../context/usePlanner";
 import { Overlay } from "./Overlay";
 import { InputStage } from "./InputStage";
 import { ResultsStage } from "./ResultsStage";
 import { ScrollTopButton } from "./ScrollTopButton";
 
 export function Screen() {
-  const { session, appliedSession, runOverlayOpen, cancelPlannerFlow } =
-    usePlannerScreen();
+  const { stage, appliedSession, runOverlayOpen, cancelPlannerFlow } =
+    usePlannerSession();
   const topRef = useRef<HTMLDivElement | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const isResultsStage = session.stage === "results" && !!appliedSession;
-  const shouldRestoreInputView = session.stage === "input" && !!appliedSession;
+  const isResultsStage = stage === "results" && !!appliedSession;
+  const shouldRestoreInputView = stage === "input" && !!appliedSession;
 
   useEffect(() => {
     if (!isResultsStage) return;

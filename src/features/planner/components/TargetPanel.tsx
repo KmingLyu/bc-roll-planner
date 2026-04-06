@@ -12,19 +12,12 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { BC_ENV } from "@/config/env";
 import { MAX_SELECTED_TARGET_CATS } from "../logic/helpers";
-import { usePlannerScreen } from "../PlannerPageContainer";
+import { usePlannerDraft, usePlannerData } from "../context/usePlanner";
 import { CatChip } from "./CatChip";
 
 export function TargetPanel() {
-  const {
-    catsState,
-    catsErr,
-    tierGroups,
-    catNameById,
-    draft,
-    setTargetCatIds,
-    clearTargetCatIds,
-  } = usePlannerScreen();
+  const { draft, setTargetCatIds, clearTargetCatIds } = usePlannerDraft();
+  const { catsState, catsErr, tierGroups, catNameById } = usePlannerData();
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [catQuery, setCatQuery] = useState("");

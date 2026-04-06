@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { usePlannerScreen } from "../PlannerPageContainer";
+import { usePlannerData, usePlannerSession } from "../context/usePlanner";
 import { ResultStatsSidebar } from "./ResultStats";
 import type { ResultFilterMode } from "./ResultTable";
 import { InputStage } from "./InputStage";
@@ -9,7 +9,8 @@ import { ResultsView } from "./ResultsView";
 import { SummaryHeader } from "./SummaryHeader";
 
 export function ResultsStage() {
-  const { appliedSession, catNameById, goToInputStage } = usePlannerScreen();
+  const { appliedSession, goToInputStage } = usePlannerSession();
+  const { catNameById } = usePlannerData();
   const [resultFilterMode, setResultFilterMode] =
     useState<ResultFilterMode>("all");
 

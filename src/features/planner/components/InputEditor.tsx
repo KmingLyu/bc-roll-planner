@@ -1,7 +1,12 @@
 import { EventPicker } from "@/features/events";
 import { Card, CardContent } from "@/components/ui/card";
 import { MAX_SELECTED_EVENTS } from "../logic/helpers";
-import { usePlannerScreen } from "../PlannerPageContainer";
+import {
+  usePlannerDraft,
+  usePlannerData,
+  usePlannerDerived,
+  usePlannerSession,
+} from "../context/usePlanner";
 import { ResourceForm } from "./ResourceForm";
 import { RunBar } from "./RunBar";
 import { SeedForm } from "./SeedForm";
@@ -10,26 +15,19 @@ import { TargetPanel } from "./TargetPanel";
 export function InputEditor({ layout }: { layout: "immersive" | "compact" }) {
   const {
     draft,
-    session,
-    countError,
-    autoCount,
-    manualCount,
+    manualCountExpanded,
     setSeed,
     setCountInput,
     setResources,
     setSelectedEventValues,
     toggleManualCount,
-    eventsState,
-    eventsErr,
-    upcomingEvents,
-    pastEvents,
-    planState,
-    planErr,
-    runDisabled,
-    runHint,
-    appliedSession,
-    runPlannerFlow,
-  } = usePlannerScreen();
+  } = usePlannerDraft();
+  const { eventsState, eventsErr, upcomingEvents, pastEvents } =
+    usePlannerData();
+  const { countError, autoCount, manualCount, runDisabled, runHint } =
+    usePlannerDerived();
+  const { planState, planErr, appliedSession, runPlannerFlow } =
+    usePlannerSession();
 
   const content = (
     <>
@@ -40,7 +38,7 @@ export function InputEditor({ layout }: { layout: "immersive" | "compact" }) {
           countError={countError}
           autoCount={autoCount}
           manualCount={manualCount}
-          manualCountExpanded={session.manualCountExpanded}
+          manualCountExpanded={manualCountExpanded}
           onSeedChange={setSeed}
           onCountInputChange={setCountInput}
           onToggleManualCount={toggleManualCount}

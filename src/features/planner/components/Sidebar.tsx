@@ -1,10 +1,11 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { usePlannerScreen } from "../PlannerPageContainer";
+import { usePlannerData, usePlannerSession } from "../context/usePlanner";
 import { ResultStatsSidebar } from "./ResultStats";
 import { SummaryHeader } from "./SummaryHeader";
 
 export function Sidebar() {
-  const { appliedSession, catNameById, goToInputStage } = usePlannerScreen();
+  const { appliedSession, goToInputStage } = usePlannerSession();
+  const { catNameById } = usePlannerData();
 
   if (!appliedSession) return null;
 

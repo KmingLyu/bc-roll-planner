@@ -31,3 +31,10 @@ export type PlannerSessionState = {
   stage: PlannerStage;
   manualCountExpanded: boolean;
 };
+
+export type AppliedPlannerSession = {
+  signature: string;
+  inputs: PlannerAppliedInputs;
+  result: import("./logic/core").PlanResult;
+  graphsByEvent: Record<string, import("@/types/models").TrackGraph>;
+};

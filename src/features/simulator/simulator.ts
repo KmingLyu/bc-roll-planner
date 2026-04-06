@@ -1,6 +1,6 @@
 // src/domain/simulator.ts
 import type { TrackGraph, PositionNode, Edge, Cat } from "@/types/models";
-import { parsePosId, type Cursor, makeCursor } from "@/utils/cursor";
+import { parsePosId, type Cursor, makeCursor } from "@/features/planner/logic/cursor";
 
 // -------------------------
 // 使用者輸入動作格式

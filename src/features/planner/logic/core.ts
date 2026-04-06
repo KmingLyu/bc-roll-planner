@@ -5,7 +5,7 @@ import type {
   Cat,
   PoolType,
 } from "@/types/models";
-import { parsePosId } from "@/utils/cursor";
+import { parsePosId } from "./cursor";
 import { chooseEdgeForSingleDraw } from "@/features/simulator";
 
 export type ResourceType =

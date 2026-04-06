@@ -13,9 +13,9 @@ import {
   buildGodfatCatHref,
   buildGodfatCatImageUrl,
 } from "@/features/cats/urls";
-import { BC_ENV } from "@/config/bcEnv";
+import { BC_ENV } from "@/config/env";
 import type { TrackGraph } from "@/types/models";
-import { getEventDisplayLines } from "@/utils/event-display";
+import { getEventDisplayLines } from "@/features/events/eventDisplay";
 import { cn } from "@/lib/utils";
 
 type ResultRowBlock =

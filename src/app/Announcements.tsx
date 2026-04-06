@@ -1,12 +1,12 @@
-import { Info, AlertTriangle } from "lucide-react";
-import { DATA_SOURCES } from "@/config/dataSources";
+import { AlertTriangle } from "lucide-react";
+import { DATA_SOURCES } from "@/config/data-source";
 import { cn } from "@/lib/utils";
 
 // ── 公告 / 注意事項 ──────────────────────────────────────────────────────────
 // 新增公告在這裡，最新的放最上面。
 const ANNOUNCEMENTS = ["破壞者系列卡池目前僅支援單抽，特殊抽卡機制尚未實作。"];
 
-export function NotesBlock({ className }: { className?: string }) {
+export function Announcements({ className }: { className?: string }) {
   return (
     <ul
       className={cn(

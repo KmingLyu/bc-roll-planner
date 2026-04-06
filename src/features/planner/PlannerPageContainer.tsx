@@ -9,8 +9,6 @@ import {
 } from "react";
 import {
   ArrowUp,
-  GitBranch,
-  Mail,
   PencilLine,
   Search,
 } from "lucide-react";
@@ -31,7 +29,8 @@ import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { NotesBlock } from "./components/Note";
+import { Header } from "@/app/Header";
+import { Footer } from "@/app/Footer";
 import { ResourceForm } from "./components/ResourceForm";
 import { Overlay } from "./components/Overlay";
 import { RunBar } from "./components/RunBar";
@@ -46,8 +45,8 @@ import type {
   PlannerResources,
   PlannerSessionState,
 } from "./types";
-import { parsePosId } from "@/utils/cursor";
-import { BC_ENV } from "@/config/bcEnv";
+import { parsePosId } from "./logic/cursor";
+import { BC_ENV } from "@/config/env";
 
 import type { LoadState } from "@/lib/loadState";
 
@@ -606,61 +605,6 @@ function usePlannerScreen() {
   return context;
 }
 
-function PlannerHeader() {
-  return (
-    <header className="space-y-2 border-b border-border/45 pb-3">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-          貓咪大戰爭抽卡規劃
-        </h1>
-      </div>
-      <NotesBlock />
-    </header>
-  );
-}
-
-function PlannerFooter() {
-  return (
-    <footer className="mt-2 border-t border-border/45 pt-5 pb-2 sm:pt-6 sm:pb-3">
-      <div className="flex justify-end">
-        <div className="flex max-w-[760px] flex-wrap items-center justify-end gap-x-3 gap-y-2.5 text-[15px] text-muted-foreground/85">
-          <span className="text-[14px] font-semibold text-muted-foreground/75">
-            問題回報：
-          </span>
-
-          <span className="text-border/80">·</span>
-
-          <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
-            <a
-              href="mailto:keming0325@gmail.com"
-              title="keming0325@gmail.com"
-              aria-label="寄信到 keming0325@gmail.com"
-              className="group inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
-            >
-              <Mail className="size-[18px] shrink-0" />
-              <span className="font-medium">Email</span>
-            </a>
-
-            <span className="text-border/80">·</span>
-
-            <a
-              href="https://github.com/KmingLyu/bc-roll-planner"
-              target="_blank"
-              rel="noreferrer"
-              title="github.com/KmingLyu/bc-roll-planner"
-              aria-label="前往 GitHub 專案頁回報 issue"
-              className="group inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
-            >
-              <GitBranch className="size-[18px] shrink-0" />
-              <span className="font-medium">GitHub</span>
-            </a>
-          </div>
-        </div>
-      </div>
-    </footer>
-  );
-}
-
 function SelectedCatSummaryItem({
   catId,
   name,
@@ -1159,9 +1103,9 @@ function PlannerScreen() {
         )}
       >
         <div ref={topRef} />
-        <PlannerHeader />
+        <Header />
         {isResultsStage ? <PlannerResultsStage /> : <PlannerInputStage />}
-        <PlannerFooter />
+        <Footer />
       </div>
       <ResultScrollTopButton
         visible={isResultsStage && showScrollTop}

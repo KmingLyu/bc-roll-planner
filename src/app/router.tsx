@@ -1,5 +1,5 @@
 import { PlannerPageContainer } from "@/features/planner";
-import MainLayout from "@/layouts/MainLayout";
+import MainLayout from "@/app/MainLayout";
 
 export default function AppRouter() {
   return (

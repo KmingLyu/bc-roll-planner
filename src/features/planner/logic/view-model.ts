@@ -16,7 +16,7 @@ import type {
   DrawHit,
 } from "@/features/planner/logic/core";
 import type { TrackGraph } from "@/types/models";
-import { parsePosId } from "@/utils/cursor";
+import { parsePosId } from "./cursor";
 
 /**
  * ============================================================

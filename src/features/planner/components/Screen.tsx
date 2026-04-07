@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { usePlannerSession } from "../context/usePlanner";
 import { Overlay } from "./Overlay";
 import { InputStage } from "./InputStage";
-import { ResultsStage } from "./ResultsStage";
+import { ResultStage } from "./ResultStage";
 import { ScrollTopButton } from "./ScrollTopButton";
 
 export function Screen() {
@@ -72,7 +72,7 @@ export function Screen() {
       >
         <div ref={topRef} />
         <Header />
-        {isResultsStage ? <ResultsStage /> : <InputStage />}
+        {isResultsStage ? <ResultStage /> : <InputStage />}
         <Footer />
       </div>
       <ScrollTopButton

@@ -8,7 +8,7 @@ import { ACTIONS, actionLabelFromStep } from "../logic/view-model";
 import type { ActionLabel } from "../logic/view-model";
 import { ResourceImg } from "./ResourceImg";
 
-type ResultStatsModel = {
+type ResultSummaryModel = {
   byAction: Map<ActionLabel, number>;
   hitTargets: Array<{
     id: number;
@@ -65,10 +65,10 @@ function getResultStatusMeta(params: {
   };
 }
 
-function useResultStatsModel(params: {
+function useResultSummaryModel(params: {
   result: PlanResult;
   catNameById: Map<number, string>;
-}): ResultStatsModel {
+}): ResultSummaryModel {
   const { result, catNameById } = params;
 
   return useMemo(() => {
@@ -143,14 +143,14 @@ function StatItem({
   );
 }
 
-export function ResultStatsSidebar(props: {
+export function ResultSummary(props: {
   result: PlanResult;
   graphsByEvent: Record<string, TrackGraph>;
   catNameById: Map<number, string>;
   compact?: boolean;
 }) {
   const { result, catNameById, compact = false } = props;
-  const stats = useResultStatsModel({ result, catNameById });
+  const stats = useResultSummaryModel({ result, catNameById });
   const hitStatValueClass = getHitStatValueClass({
     success: result.success,
     targetsHit: result.targets_hit,

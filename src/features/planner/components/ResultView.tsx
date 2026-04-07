@@ -1,7 +1,7 @@
 import { usePlannerData, usePlannerSession } from "../context/usePlanner";
 import { ResultTable, type ResultFilterMode } from "./ResultTable";
 
-export function ResultsView(props: {
+export function ResultView(props: {
   filterMode: ResultFilterMode;
   onFilterModeChange: (next: ResultFilterMode) => void;
 }) {

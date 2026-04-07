@@ -22,7 +22,6 @@ import {
   buildDraftSignature,
 } from "./logic/helpers";
 import { usePlannerWorker } from "./usePlannerWorker";
-import type { PlanResult } from "./logic/core";
 import type {
   AppliedPlannerSession,
   PlannerAppliedInputs,
@@ -452,31 +451,30 @@ function PlannerProvider({ children }: { children: React.ReactNode }) {
     ],
   );
 
-  const sessionValue = useMemo<SessionContextValue>(
-    () => ({
-      stage: session.stage,
-      appliedSession,
-      planState,
-      planErr,
-      runOverlayOpen,
-      goToInputStage: () => {
-        if (hasSyntheticResultsHistoryRef.current) {
-          window.history.back();
-          return;
-        }
+  function goToInputStage() {
+    if (hasSyntheticResultsHistoryRef.current) {
+      window.history.back();
+      return;
+    }
 
-        startTransition(() =>
-          setSession((current) => ({
-            ...current,
-            stage: "input",
-          })),
-        );
-      },
-      cancelPlannerFlow,
-      runPlannerFlow,
-    }),
-    [session.stage, appliedSession, planState, planErr, runOverlayOpen],
-  );
+    startTransition(() =>
+      setSession((current) => ({
+        ...current,
+        stage: "input",
+      })),
+    );
+  }
+
+  const sessionValue: SessionContextValue = {
+    stage: session.stage,
+    appliedSession,
+    planState,
+    planErr,
+    runOverlayOpen,
+    goToInputStage,
+    cancelPlannerFlow,
+    runPlannerFlow,
+  };
 
   const derivedValue = useMemo<DerivedContextValue>(
     () => ({

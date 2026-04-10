@@ -5,7 +5,9 @@ import { parsePosId, type Cursor, makeCursor } from "@/features/planner/logic/cu
 // -------------------------
 // 使用者輸入動作格式
 // - single: 1抽
-// - ten: 10連抽(是否有保底, 看起點是否有 guaranteed edge)
+// - ten: 罐頭 10 連抽，固定做 11 抽
+//   - 有 guaranteed edge: 第 11 抽走保底規則
+//   - 否則: 第 11 抽沿用一般單抽規則
 // -------------------------
 export type Method = "single" | "ten";
 
@@ -42,6 +44,10 @@ export class SimulationError extends Error {
   }
 }
 
+function formatUnknownMethod(value: unknown): string {
+  return typeof value === "string" ? value : String(value);
+}
+
 // -------------------------
 // helpers
 // -------------------------
@@ -57,7 +63,7 @@ function catPayload(cat?: Cat | null): {
 /**
  * 規則:
  * - 先看 normal edge 抽到的貓
- * - if: 跟上一抽 cat_id 相同, 且有 switch_track edge, 且 rarity == "rare"
+ * - if: 跟上一抽 cat_id 相同，且 graph 已經提供 switch_track edge
  *   就走 switch_track
  * - else: 走 normal
  */
@@ -73,7 +79,6 @@ export function chooseEdgeForSingleDraw(
   const sw = node.edges?.switch_track;
 
   const shouldSwitch =
-    node.rarity === "rare" &&
     !!sw &&
     prevCatId !== null &&
     normalCatId !== null &&
@@ -103,9 +108,6 @@ export function simulateOnGraph(params: {
       throw new SimulationError(
         `v1 simulateOnGraph 只支援單一 graph。actions event_value=${a.event_value} != graph.event.value=${graph.event.value}`
       );
-    }
-    if (a.method !== "single" && a.method !== "ten") {
-      throw new SimulationError(`未支援 method=${String((a as any).method)}`);
     }
   }
 
@@ -160,7 +162,6 @@ export function simulateOnGraph(params: {
       }
 
       const gEdge = startNode.edges?.guaranteed;
-      const hasGuaranteed = !!(gEdge && gEdge.cat);
 
       // (1) 先做 10 抽：依單抽規則逐次走位
       for (let i = 1; i <= 10; i++) {
@@ -194,8 +195,10 @@ export function simulateOnGraph(params: {
         prevCatId = p.id;
       }
 
-      // (2) 若起點有 guaranteed，才追加第 11 抽(保底)
-      if (hasGuaranteed && gEdge) {
+      // (2) 第 11 抽：
+      // - guaranteed pool: 走保底 bonus，並依 guaranteed edge 落點
+      // - 一般 pool: 再做一次單抽規則，不額外強制換線
+      if (gEdge?.cat) {
         step += 1;
         const p = catPayload(gEdge.cat);
 
@@ -223,6 +226,35 @@ export function simulateOnGraph(params: {
         }
 
         prevCatId = p.id;
+      } else {
+        const node = graph.nodes?.[cursor.id];
+        if (!node) {
+          throw new SimulationError(
+            `[${act.event_value}] graph.nodes 找不到位置 ${cursor.id}(count 不夠或資料缺漏)`
+          );
+        }
+
+        const { edge, used } = chooseEdgeForSingleDraw(node, prevCatId);
+        step += 1;
+
+        const p = catPayload(edge.cat);
+        out.push({
+          step,
+          event_value: act.event_value,
+          method,
+          within_action_index: 11,
+          from_pos_id: cursor.id,
+          used,
+          cat_id: p.id,
+          cat_name: p.name,
+          cat_desc: p.desc,
+          to_pos_id: edge.to,
+          source_pick_id: edge.source_pick_id ?? null,
+          note: edge.note || "",
+        });
+
+        cursor = parsePosId(edge.to);
+        prevCatId = p.id;
       }
 
       continue;
@@ -239,18 +271,17 @@ export function parseActions(raw: unknown): SimAction[] {
   if (!Array.isArray(raw)) throw new SimulationError("actions 必須是 array");
   const out: SimAction[] = [];
   for (let i = 0; i < raw.length; i++) {
-    const item = raw[i] as any;
+    const item = raw[i];
     if (!item || typeof item !== "object") {
       throw new SimulationError(`actions[${i + 1}] 必須是 object`);
     }
-    const ev = String(item.event_value || "").trim();
+    const record = item as Record<string, unknown>;
+    const ev = String(record.event_value || "").trim();
     if (!ev) throw new SimulationError(`actions[${i + 1}] 缺少 event_value`);
-    const method = item.method;
+    const method = record.method;
     if (method !== "single" && method !== "ten") {
       throw new SimulationError(
-        `actions[${i + 1}].method 必須是 'single' 或 'ten', 但得到 ${String(
-          method
-        )}`
+        `actions[${i + 1}].method 必須是 'single' 或 'ten', 但得到 ${formatUnknownMethod(method)}`
       );
     }
     out.push({ event_value: ev, method });
@@ -267,10 +298,6 @@ export function estimateRequiredCounts(actions: SimAction[]): number {
   for (const a of actions) {
     if (a.method === "single") count += 1;
     else if (a.method === "ten") count += 13;
-    else
-      throw new SimulationError(
-        `未支援 method=${String((a as any).method)} 的估算`
-      );
   }
   return count + 20;
 }

@@ -1,7 +1,6 @@
 import type {
   TrackGraph,
   PositionNode,
-  Edge,
   Cat,
   PoolType,
 } from "@/types/models";
@@ -135,8 +134,14 @@ function normalizeConfig(cfg?: PlannerConfig): Required<PlannerConfig> {
     normal: ["ticket_single", "food_single", "food_ten"],
     platinum: ["platinum_single"],
     legend: ["legend_single"],
-    ...(cfg?.allowed_actions_by_pool || {}),
-  } as any;
+  };
+  const poolOverrides = cfg?.allowed_actions_by_pool;
+  if (poolOverrides) {
+    for (const pool of Object.keys(poolOverrides) as PoolType[]) {
+      const actions = poolOverrides[pool];
+      if (actions) allowed_actions_by_pool[pool] = actions;
+    }
+  }
 
   return {
     weights,
@@ -191,8 +196,7 @@ function normalizeTargetIds(targets: Array<number | Cat>): number[] {
   const out: number[] = [];
   for (const t of targets) {
     if (typeof t === "number") out.push(t);
-    else if (t && typeof (t as any).id === "number") out.push((t as any).id);
-    else throw new PlannerError(`targets 只支援 number(cat_id) 或 Cat`);
+    else out.push(t.id);
   }
   // 去重但保序
   const seen = new Set<number>();
@@ -299,8 +303,7 @@ function simulateTenTransition(params: {
       `[${graph.event.value}] 找不到十連起點 ${start_cursor_id}`
     );
 
-  const gEdge = (startNode.edges as any)?.guaranteed as Edge | undefined;
-  const hasGuaranteed = !!(gEdge && gEdge.cat);
+  const gEdge = startNode.edges.guaranteed;
 
   const draws: DrawHit[] = [];
   let cur = params.cursor_id;
@@ -331,7 +334,7 @@ function simulateTenTransition(params: {
     prev = p.id;
   }
 
-  if (hasGuaranteed && gEdge) {
+  if (gEdge?.cat) {
     const p = catPayload(gEdge.cat);
     draws.push({
       cat_id: p.id,
@@ -351,6 +354,29 @@ function simulateTenTransition(params: {
       );
     }
     cur = parsePosId(finalTo).id;
+    prev = p.id;
+  } else {
+    const node = graph.nodes?.[cur] as PositionNode | undefined;
+    if (!node)
+      throw new PlannerError(
+        `[${graph.event.value}] 找不到位置 ${cur}（count 不夠或資料缺漏）`
+      );
+
+    const { edge, used } = chooseEdgeForSingleDraw(node, prev);
+    const p = catPayload(edge.cat);
+
+    draws.push({
+      cat_id: p.id,
+      cat_name: p.name,
+      cat_desc: p.desc,
+      used,
+      from_pos_id: cur,
+      to_pos_id: edge.to,
+      source_pick_id: edge.source_pick_id ?? null,
+      note: edge.note || "",
+    });
+
+    cur = parsePosId(edge.to).id;
     prev = p.id;
   }
 
@@ -440,7 +466,7 @@ function parseStateKey(k: string): PlannerState {
   const prev = prevStr === "-" ? null : Number(prevStr);
   return {
     cursor_id: cursor,
-    prev_cat_id: Number.isFinite(prev as any) ? (prev as any) : null,
+    prev_cat_id: prev != null && Number.isFinite(prev) ? prev : null,
     tickets_left: Number(t),
     platinum_left: Number(p),
     legend_left: Number(l),
@@ -569,8 +595,6 @@ export function planMinCost(params: {
     key: startKey,
   });
 
-  let expansions = 0;
-
   // caches: (event|cursor|prev) -> result
   const singleCache = new Map<
     string,
@@ -682,12 +706,6 @@ export function planMinCost(params: {
     if (!costEq(curCost, bestKnown)) continue;
 
     const s = parseStateKey(curKey);
-
-    expansions++;
-    // if (expansions > cfg.max_expansions) {
-    //   // 保險絲：避免 worker 把分頁拖到 OOM
-    //   break;
-    // }
 
     // goal check
     if (s.mask === allMask) {
@@ -839,11 +857,7 @@ export function planMinCost(params: {
       }
 
       // ---- (B) ten：只允許 food ----
-      const startNode = graph.nodes?.[s.cursor_id] as PositionNode | undefined;
-      const hasGuaranteed =
-        !!startNode?.edges?.guaranteed && !!startNode.edges.guaranteed.cat;
-
-      if (s.food_left >= 1500 && hasGuaranteed && isActionAllowed(cfg, pool, "food_ten")) {
+      if (s.food_left >= 1500 && isActionAllowed(cfg, pool, "food_ten")) {
         const key10 = `${ev}|${s.cursor_id}|${
           s.prev_cat_id == null ? "-" : s.prev_cat_id
         }`;

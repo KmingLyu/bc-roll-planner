@@ -178,31 +178,15 @@ export function ResultSummary(props: {
       items.push({ key: "legend", label: "傳說券", value: legendCount });
     }
 
-    const singleFoodCount = counts.get("food:single") || 0;
-    if (singleFoodCount > 0) {
-      items.push({ key: "food-single", label: "罐頭", value: singleFoodCount * 150 });
-    }
+    const totalFoodCost =
+      (counts.get("food:single") || 0) * 150 +
+      (counts.get("food:ten") || 0) * 1500 +
+      (counts.get("step_up_3") || 0) * 300 +
+      (counts.get("step_up_5") || 0) * 750 +
+      (counts.get("step_up_7") || 0) * 1050;
 
-    const tenFoodCount = counts.get("food:ten") || 0;
-    if (tenFoodCount > 0) {
-      items.push({ key: "food-ten", label: "10連抽", value: tenFoodCount * 1500 });
-    }
-
-    const stepUpConfigs = [
-      { key: "step_up_3", value: 300 },
-      { key: "step_up_5", value: 750 },
-      { key: "step_up_7", value: 1050 },
-    ] as const;
-
-    for (const config of stepUpConfigs) {
-      const count = counts.get(config.key) || 0;
-      if (count <= 0) continue;
-      items.push({
-        key: config.key,
-        label: "罐頭",
-        value: config.value * count,
-        subtitle: "好康轉蛋",
-      });
+    if (totalFoodCost > 0) {
+      items.push({ key: "food-total", label: "罐頭", value: totalFoodCost });
     }
 
     return items;

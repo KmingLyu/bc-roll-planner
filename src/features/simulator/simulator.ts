@@ -1,6 +1,10 @@
 // src/domain/simulator.ts
 import type { TrackGraph, PositionNode, Edge, Cat } from "@/types/models";
 import { parsePosId, type Cursor, makeCursor } from "@/features/planner/logic/cursor";
+import {
+  getStepUpGuaranteedAt,
+  isStepUpPool,
+} from "@/features/track-graph/step-up";
 
 // -------------------------
 // 使用者輸入動作格式
@@ -8,8 +12,16 @@ import { parsePosId, type Cursor, makeCursor } from "@/features/planner/logic/cu
 // - ten: 罐頭 10 連抽，固定做 11 抽
 //   - 有 guaranteed edge: 第 11 抽走保底規則
 //   - 否則: 第 11 抽沿用一般單抽規則
+// - step_up_3 / step_up_5 / step_up_7: 好康轉蛋 3 / 5 / 7
 // -------------------------
-export type Method = "single" | "ten";
+export type Method =
+  | "single"
+  | "ten"
+  | "step_up_3"
+  | "step_up_5"
+  | "step_up_7";
+
+type StepUpPhase = "none" | "after_3" | "after_5";
 
 export type SimAction = {
   event_value: string; // v1：你可先固定等於 graph.event.value
@@ -46,6 +58,21 @@ export class SimulationError extends Error {
 
 function formatUnknownMethod(value: unknown): string {
   return typeof value === "string" ? value : String(value);
+}
+
+function isStepUpMethod(method: Method): boolean {
+  return (
+    method === "step_up_3" ||
+    method === "step_up_5" ||
+    method === "step_up_7"
+  );
+}
+
+function stepUpSinglesBeforeGuaranteed(method: Method): number {
+  if (method === "step_up_3") return 3;
+  if (method === "step_up_5") return 5;
+  if (method === "step_up_7") return 6;
+  return 0;
 }
 
 // -------------------------
@@ -113,41 +140,147 @@ export function simulateOnGraph(params: {
 
   let cursor = parsePosId(startPosId);
   let prevCatId: number | null = null;
+  let stepUpPhase: StepUpPhase = "none";
+  let stepUpAgCursor: Cursor | null = null;
+  let stepUpAgPrevCatId: number | null = null;
   const out: DrawRecord[] = [];
   let step = 0;
+
+  function runSingleDraw(
+    eventValue: string,
+    method: Method,
+    currentCursor: Cursor,
+    currentPrevCatId: number | null,
+    withinActionIndex: number
+  ): {
+    nextCursor: Cursor;
+    nextPrevCatId: number | null;
+  } {
+    const node = graph.nodes?.[currentCursor.id];
+    if (!node) {
+      throw new SimulationError(
+        `[${eventValue}] graph.nodes 找不到位置 ${currentCursor.id}(count 不夠或資料缺漏)`
+      );
+    }
+
+    const { edge, used } = chooseEdgeForSingleDraw(node, currentPrevCatId);
+    step += 1;
+
+    const p = catPayload(edge.cat);
+    out.push({
+      step,
+      event_value: eventValue,
+      method,
+      within_action_index: withinActionIndex,
+      from_pos_id: currentCursor.id,
+      used,
+      cat_id: p.id,
+      cat_name: p.name,
+      cat_desc: p.desc,
+      to_pos_id: edge.to,
+      source_pick_id: edge.source_pick_id ?? null,
+      note: edge.note || "",
+    });
+
+    return {
+      nextCursor: parsePosId(edge.to),
+      nextPrevCatId: p.id,
+    };
+  }
+
+  function advanceAgCursorWithMethod(eventValue: string, method: Method) {
+    if (stepUpPhase === "none") return;
+    if (!stepUpAgCursor) {
+      throw new SimulationError(
+        `[${eventValue}] step-up AG cursor 缺失，無法推進好康轉蛋鏈`
+      );
+    }
+
+    if (
+      method !== "single" &&
+      method !== "ten" &&
+      method !== "step_up_3" &&
+      method !== "step_up_5" &&
+      method !== "step_up_7"
+    ) {
+      return;
+    }
+
+    if (isStepUpMethod(method)) return;
+
+    if (method === "single") {
+      const node = graph.nodes?.[stepUpAgCursor.id];
+      if (!node) {
+        throw new SimulationError(
+          `[${eventValue}] graph.nodes 找不到 AG 位置 ${stepUpAgCursor.id}(count 不夠或資料缺漏)`
+        );
+      }
+      const { edge } = chooseEdgeForSingleDraw(node, stepUpAgPrevCatId);
+      stepUpAgCursor = parsePosId(edge.to);
+      stepUpAgPrevCatId = edge.cat?.id ?? null;
+      return;
+    }
+
+    const startCursor = stepUpAgCursor;
+    const startNode = graph.nodes?.[startCursor.id];
+    if (!startNode) {
+      throw new SimulationError(
+        `[${eventValue}] graph.nodes 找不到 AG 起點 ${startCursor.id}, 無法重播 10連`
+      );
+    }
+
+    const gEdge = startNode.edges?.guaranteed;
+    for (let i = 0; i < 10; i += 1) {
+      const node = graph.nodes?.[stepUpAgCursor.id];
+      if (!node) {
+        throw new SimulationError(
+          `[${eventValue}] graph.nodes 找不到 AG 位置 ${stepUpAgCursor.id}(count 不夠或資料缺漏)`
+        );
+      }
+      const { edge } = chooseEdgeForSingleDraw(node, stepUpAgPrevCatId);
+      stepUpAgCursor = parsePosId(edge.to);
+      stepUpAgPrevCatId = edge.cat?.id ?? null;
+    }
+
+    if (gEdge?.cat) {
+      const finalTo = String(gEdge.to || "").trim();
+      if (finalTo) {
+        stepUpAgCursor = parsePosId(finalTo);
+      } else {
+        stepUpAgCursor = makeCursor(
+          stepUpAgCursor.pos + 1,
+          stepUpAgCursor.track === "A" ? "B" : "A"
+        );
+      }
+      stepUpAgPrevCatId = gEdge.cat.id;
+      return;
+    }
+
+    const node = graph.nodes?.[stepUpAgCursor.id];
+    if (!node) {
+      throw new SimulationError(
+        `[${eventValue}] graph.nodes 找不到 AG 位置 ${stepUpAgCursor.id}(count 不夠或資料缺漏)`
+      );
+    }
+    const { edge } = chooseEdgeForSingleDraw(node, stepUpAgPrevCatId);
+    stepUpAgCursor = parsePosId(edge.to);
+    stepUpAgPrevCatId = edge.cat?.id ?? null;
+  }
 
   for (const act of actions) {
     const method = act.method;
     // 單抽
     if (method === "single") {
-      const node = graph.nodes?.[cursor.id];
-      if (!node) {
-        throw new SimulationError(
-          `[${act.event_value}] graph.nodes 找不到位置 ${cursor.id}(count 不夠或資料缺漏)`
-        );
-      }
-
-      const { edge, used } = chooseEdgeForSingleDraw(node, prevCatId);
-      step += 1;
-
-      const p = catPayload(edge.cat);
-      out.push({
-        step,
-        event_value: act.event_value,
+      const next = runSingleDraw(
+        act.event_value,
         method,
-        within_action_index: 1,
-        from_pos_id: cursor.id,
-        used,
-        cat_id: p.id,
-        cat_name: p.name,
-        cat_desc: p.desc,
-        to_pos_id: edge.to,
-        source_pick_id: edge.source_pick_id ?? null,
-        note: edge.note || "",
-      });
-
-      cursor = parsePosId(edge.to);
-      prevCatId = p.id;
+        cursor,
+        prevCatId,
+        1
+      );
+      cursor = next.nextCursor;
+      prevCatId = next.nextPrevCatId;
+      advanceAgCursorWithMethod(act.event_value, method);
       continue;
     }
 
@@ -165,34 +298,15 @@ export function simulateOnGraph(params: {
 
       // (1) 先做 10 抽：依單抽規則逐次走位
       for (let i = 1; i <= 10; i++) {
-        const node = graph.nodes?.[cursor.id];
-        if (!node) {
-          throw new SimulationError(
-            `[${act.event_value}] graph.nodes 找不到位置 ${cursor.id}(count 不夠或資料缺漏)`
-          );
-        }
-
-        const { edge, used } = chooseEdgeForSingleDraw(node, prevCatId);
-        step += 1;
-
-        const p = catPayload(edge.cat);
-        out.push({
-          step,
-          event_value: act.event_value,
+        const next = runSingleDraw(
+          act.event_value,
           method,
-          within_action_index: i,
-          from_pos_id: cursor.id,
-          used,
-          cat_id: p.id,
-          cat_name: p.name,
-          cat_desc: p.desc,
-          to_pos_id: edge.to,
-          source_pick_id: edge.source_pick_id ?? null,
-          note: edge.note || "",
-        });
-
-        cursor = parsePosId(edge.to);
-        prevCatId = p.id;
+          cursor,
+          prevCatId,
+          i
+        );
+        cursor = next.nextCursor;
+        prevCatId = next.nextPrevCatId;
       }
 
       // (2) 第 11 抽：
@@ -212,7 +326,7 @@ export function simulateOnGraph(params: {
           cat_id: p.id,
           cat_name: p.name,
           cat_desc: p.desc,
-          to_pos_id: "-",
+          to_pos_id: gEdge.to,
           source_pick_id: gEdge.source_pick_id ?? null,
           note: gEdge.note || "guaranteed bonus",
         });
@@ -227,38 +341,108 @@ export function simulateOnGraph(params: {
 
         prevCatId = p.id;
       } else {
-        const node = graph.nodes?.[cursor.id];
-        if (!node) {
+        const next = runSingleDraw(
+          act.event_value,
+          method,
+          cursor,
+          prevCatId,
+          11
+        );
+        cursor = next.nextCursor;
+        prevCatId = next.nextPrevCatId;
+      }
+
+      advanceAgCursorWithMethod(act.event_value, method);
+      continue;
+    }
+
+    if (isStepUpMethod(method)) {
+      if (!isStepUpPool(graph)) {
+        throw new SimulationError(
+          `[${act.event_value}] ${method} 只能用在好康轉蛋池`
+        );
+      }
+
+      if (method === "step_up_3" && stepUpPhase !== "none") {
+        throw new SimulationError(
+          `[${act.event_value}] 好康轉蛋 3 抽只能在新鏈開始時使用`
+        );
+      }
+      if (method === "step_up_5" && stepUpPhase !== "after_3") {
+        throw new SimulationError(
+          `[${act.event_value}] 好康轉蛋 5 抽必須接在 3 抽之後`
+        );
+      }
+      if (method === "step_up_7" && stepUpPhase !== "after_5") {
+        throw new SimulationError(
+          `[${act.event_value}] 好康轉蛋 7 抽必須接在 5 抽之後`
+        );
+      }
+
+      if (method === "step_up_3") {
+        stepUpAgCursor = makeCursor(cursor.pos, cursor.track);
+        stepUpAgPrevCatId = prevCatId;
+      }
+
+      const singleDrawCount = stepUpSinglesBeforeGuaranteed(method);
+      for (let i = 1; i <= singleDrawCount; i += 1) {
+        const next = runSingleDraw(
+          act.event_value,
+          method,
+          cursor,
+          prevCatId,
+          i
+        );
+        cursor = next.nextCursor;
+        prevCatId = next.nextPrevCatId;
+      }
+
+      if (method === "step_up_7") {
+        if (!stepUpAgCursor) {
           throw new SimulationError(
-            `[${act.event_value}] graph.nodes 找不到位置 ${cursor.id}(count 不夠或資料缺漏)`
+            `[${act.event_value}] 好康轉蛋 AG cursor 缺失，無法完成 7 抽保底`
           );
         }
 
-        const { edge, used } = chooseEdgeForSingleDraw(node, prevCatId);
-        step += 1;
+        const guaranteed = getStepUpGuaranteedAt(graph, stepUpAgCursor.id);
+        if (!guaranteed) {
+          throw new SimulationError(
+            `[${act.event_value}] ${stepUpAgCursor.id} 沒有可用的好康轉蛋 AG 保底`
+          );
+        }
 
-        const p = catPayload(edge.cat);
+        step += 1;
+        const p = catPayload(guaranteed.cat);
         out.push({
           step,
           event_value: act.event_value,
           method,
-          within_action_index: 11,
-          from_pos_id: cursor.id,
-          used,
+          within_action_index: 7,
+          from_pos_id: guaranteed.cursor_id,
+          used: "guaranteed",
           cat_id: p.id,
           cat_name: p.name,
           cat_desc: p.desc,
-          to_pos_id: edge.to,
-          source_pick_id: edge.source_pick_id ?? null,
-          note: edge.note || "",
+          to_pos_id: guaranteed.to_pos_id,
+          source_pick_id: guaranteed.source_pick_id,
+          note: "step-up guaranteed bonus",
         });
 
-        cursor = parsePosId(edge.to);
+        cursor = parsePosId(guaranteed.to_pos_id);
         prevCatId = p.id;
+        stepUpPhase = "none";
+        stepUpAgCursor = null;
+        stepUpAgPrevCatId = null;
+      } else {
+        stepUpPhase = method === "step_up_3" ? "after_3" : "after_5";
       }
 
       continue;
     }
+
+    throw new SimulationError(
+      `不支援的 method=${formatUnknownMethod(method)}`
+    );
   }
 
   return { records: out, final_cursor: cursor };
@@ -279,9 +463,15 @@ export function parseActions(raw: unknown): SimAction[] {
     const ev = String(record.event_value || "").trim();
     if (!ev) throw new SimulationError(`actions[${i + 1}] 缺少 event_value`);
     const method = record.method;
-    if (method !== "single" && method !== "ten") {
+    if (
+      method !== "single" &&
+      method !== "ten" &&
+      method !== "step_up_3" &&
+      method !== "step_up_5" &&
+      method !== "step_up_7"
+    ) {
       throw new SimulationError(
-        `actions[${i + 1}].method 必須是 'single' 或 'ten', 但得到 ${formatUnknownMethod(method)}`
+        `actions[${i + 1}].method 必須是 'single'、'ten'、'step_up_3'、'step_up_5' 或 'step_up_7', 但得到 ${formatUnknownMethod(method)}`
       );
     }
     out.push({ event_value: ev, method });
@@ -298,6 +488,9 @@ export function estimateRequiredCounts(actions: SimAction[]): number {
   for (const a of actions) {
     if (a.method === "single") count += 1;
     else if (a.method === "ten") count += 13;
+    else if (a.method === "step_up_3") count += 3;
+    else if (a.method === "step_up_5") count += 5;
+    else if (a.method === "step_up_7") count += 7;
   }
   return count + 20;
 }

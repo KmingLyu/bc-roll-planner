@@ -6,13 +6,24 @@ import type {
 } from "@/types/models";
 import { parsePosId } from "./cursor";
 import { chooseEdgeForSingleDraw } from "@/features/simulator";
+import {
+  getStepUpGuaranteedAt,
+  isStepUpPool,
+} from "@/features/track-graph/step-up";
 
 export type ResourceType =
   | "ticket"
   | "platinum_ticket"
   | "legend_ticket"
   | "food";
-export type PlanMethod = "single" | "ten";
+export type PlanMethod =
+  | "single"
+  | "ten"
+  | "step_up_3"
+  | "step_up_5"
+  | "step_up_7";
+
+export type StepUpPhase = "none" | "after_3" | "after_5";
 
 /** pool_type 從 graph.event.pool_type 讀 */
 export type EventMeta = {
@@ -27,6 +38,9 @@ export type PlannerState = {
   legend_left: number;
   food_left: number;
   mask: number;
+  step_up_phase: StepUpPhase;
+  step_up_ag_cursor_id: string | null;
+  step_up_ag_prev_cat_id: number | null;
 };
 
 // (equiv_cost, food_used, ticket_used, platinum_used, legend_used)
@@ -95,7 +109,10 @@ export type PlannerConfig = {
       | "platinum_single"
       | "legend_single"
       | "food_single"
-      | "food_ten",
+      | "food_ten"
+      | "food_step_up_3"
+      | "food_step_up_5"
+      | "food_step_up_7",
       number
     >
   >;
@@ -127,11 +144,21 @@ function normalizeConfig(cfg?: PlannerConfig): Required<PlannerConfig> {
     legend_single: 300,
     food_single: 150,
     food_ten: 1500,
+    food_step_up_3: 300,
+    food_step_up_5: 750,
+    food_step_up_7: 1050,
     ...(cfg?.weights || {}),
   };
 
   const allowed_actions_by_pool: Record<PoolType, string[]> = {
-    normal: ["ticket_single", "food_single", "food_ten"],
+    normal: [
+      "ticket_single",
+      "food_single",
+      "food_ten",
+      "food_step_up_3",
+      "food_step_up_5",
+      "food_step_up_7",
+    ],
     platinum: ["platinum_single"],
     legend: ["legend_single"],
   };
@@ -175,6 +202,9 @@ function costIncForAction(
   const equiv = Number(cfg.weights[actionKey as keyof typeof cfg.weights] ?? 0);
   if (actionKey === "food_single") return [equiv, 150, 0, 0, 0];
   if (actionKey === "food_ten") return [equiv, 1500, 0, 0, 0];
+  if (actionKey === "food_step_up_3") return [equiv, 300, 0, 0, 0];
+  if (actionKey === "food_step_up_5") return [equiv, 750, 0, 0, 0];
+  if (actionKey === "food_step_up_7") return [equiv, 1050, 0, 0, 0];
   if (actionKey === "ticket_single") return [equiv, 0, 1, 0, 0];
   if (actionKey === "platinum_single") return [equiv, 0, 0, 1, 0];
   if (actionKey === "legend_single") return [equiv, 0, 0, 0, 1];
@@ -289,6 +319,30 @@ function simulateSingleTransition(params: {
   return { next_cursor_id, next_prev, hit };
 }
 
+function simulateSingleBundleTransition(params: {
+  graph: TrackGraph;
+  cursor_id: string;
+  prev_cat_id: number | null;
+  draw_count: number;
+}): { end_cursor_id: string; end_prev: number | null; draws: DrawHit[] } {
+  const draws: DrawHit[] = [];
+  let cur = params.cursor_id;
+  let prev = params.prev_cat_id;
+
+  for (let i = 0; i < params.draw_count; i += 1) {
+    const single = simulateSingleTransition({
+      graph: params.graph,
+      cursor_id: cur,
+      prev_cat_id: prev,
+    });
+    draws.push(single.hit);
+    cur = single.next_cursor_id;
+    prev = single.next_prev;
+  }
+
+  return { end_cursor_id: cur, end_prev: prev, draws };
+}
+
 function simulateTenTransition(params: {
   graph: TrackGraph;
   cursor_id: string;
@@ -305,34 +359,15 @@ function simulateTenTransition(params: {
 
   const gEdge = startNode.edges.guaranteed;
 
-  const draws: DrawHit[] = [];
-  let cur = params.cursor_id;
-  let prev = params.prev_cat_id;
-
-  for (let i = 0; i < 10; i++) {
-    const node = graph.nodes?.[cur] as PositionNode | undefined;
-    if (!node)
-      throw new PlannerError(
-        `[${graph.event.value}] 找不到位置 ${cur}（count 不夠或資料缺漏）`
-      );
-
-    const { edge, used } = chooseEdgeForSingleDraw(node, prev);
-    const p = catPayload(edge.cat);
-
-    draws.push({
-      cat_id: p.id,
-      cat_name: p.name,
-      cat_desc: p.desc,
-      used,
-      from_pos_id: cur,
-      to_pos_id: edge.to,
-      source_pick_id: edge.source_pick_id ?? null,
-      note: edge.note || "",
-    });
-
-    cur = parsePosId(edge.to).id;
-    prev = p.id;
-  }
+  const firstTen = simulateSingleBundleTransition({
+    graph,
+    cursor_id: params.cursor_id,
+    prev_cat_id: params.prev_cat_id,
+    draw_count: 10,
+  });
+  const draws = [...firstTen.draws];
+  let cur = firstTen.end_cursor_id;
+  let prev = firstTen.end_prev;
 
   if (gEdge?.cat) {
     const p = catPayload(gEdge.cat);
@@ -342,7 +377,7 @@ function simulateTenTransition(params: {
       cat_desc: p.desc,
       used: "guaranteed",
       from_pos_id: start_cursor_id,
-      to_pos_id: "-",
+      to_pos_id: gEdge.to,
       source_pick_id: gEdge.source_pick_id ?? null,
       note: gEdge.note || "guaranteed bonus",
     });
@@ -356,31 +391,84 @@ function simulateTenTransition(params: {
     cur = parsePosId(finalTo).id;
     prev = p.id;
   } else {
-    const node = graph.nodes?.[cur] as PositionNode | undefined;
-    if (!node)
-      throw new PlannerError(
-        `[${graph.event.value}] 找不到位置 ${cur}（count 不夠或資料缺漏）`
-      );
-
-    const { edge, used } = chooseEdgeForSingleDraw(node, prev);
-    const p = catPayload(edge.cat);
-
-    draws.push({
-      cat_id: p.id,
-      cat_name: p.name,
-      cat_desc: p.desc,
-      used,
-      from_pos_id: cur,
-      to_pos_id: edge.to,
-      source_pick_id: edge.source_pick_id ?? null,
-      note: edge.note || "",
+    const lastSingle = simulateSingleTransition({
+      graph,
+      cursor_id: cur,
+      prev_cat_id: prev,
     });
-
-    cur = parsePosId(edge.to).id;
-    prev = p.id;
+    draws.push(lastSingle.hit);
+    cur = lastSingle.next_cursor_id;
+    prev = lastSingle.next_prev;
   }
 
   return { end_cursor_id: cur, end_prev: prev, draws };
+}
+
+function simulateStepUpSevenTransition(params: {
+  graph: TrackGraph;
+  cursor_id: string;
+  prev_cat_id: number | null;
+  ag_cursor_id: string;
+}): { end_cursor_id: string; end_prev: number | null; draws: DrawHit[] } {
+  const firstSix = simulateSingleBundleTransition({
+    graph: params.graph,
+    cursor_id: params.cursor_id,
+    prev_cat_id: params.prev_cat_id,
+    draw_count: 6,
+  });
+  const guaranteed = getStepUpGuaranteedAt(params.graph, params.ag_cursor_id);
+  if (!guaranteed) {
+    throw new PlannerError(
+      `[${params.graph.event.value}] ${params.ag_cursor_id} 沒有可用的好康轉蛋 AG 保底`
+    );
+  }
+
+  const p = catPayload(guaranteed.cat);
+  const draws = [
+    ...firstSix.draws,
+    {
+      cat_id: p.id,
+      cat_name: p.name,
+      cat_desc: p.desc,
+      used: "guaranteed" as const,
+      from_pos_id: guaranteed.cursor_id,
+      to_pos_id: guaranteed.to_pos_id,
+      source_pick_id: guaranteed.source_pick_id,
+      note: "step-up guaranteed bonus",
+    },
+  ];
+
+  return {
+    end_cursor_id: parsePosId(guaranteed.to_pos_id).id,
+    end_prev: p.id,
+    draws,
+  };
+}
+
+function advanceAgCursorForAction(params: {
+  graph: TrackGraph;
+  method: Exclude<PlanMethod, "step_up_3" | "step_up_5" | "step_up_7">;
+  cursor_id: string;
+  prev_cat_id: number | null;
+}): { next_cursor_id: string; next_prev: number | null } {
+  if (params.method === "single") {
+    const single = simulateSingleTransition({
+      graph: params.graph,
+      cursor_id: params.cursor_id,
+      prev_cat_id: params.prev_cat_id,
+    });
+    return {
+      next_cursor_id: single.next_cursor_id,
+      next_prev: single.next_prev,
+    };
+  }
+
+  const ten = simulateTenTransition({
+    graph: params.graph,
+    cursor_id: params.cursor_id,
+    prev_cat_id: params.prev_cat_id,
+  });
+  return { next_cursor_id: ten.end_cursor_id, next_prev: ten.end_prev };
 }
 
 // -------------------------
@@ -452,6 +540,9 @@ function stateKey(s: PlannerState): string {
     s.legend_left,
     s.food_left,
     s.mask,
+    s.step_up_phase,
+    s.step_up_ag_cursor_id ?? "-",
+    s.step_up_ag_prev_cat_id == null ? "-" : String(s.step_up_ag_prev_cat_id),
   ].join("|");
 }
 
@@ -461,9 +552,10 @@ function stateKey(s: PlannerState): string {
  */
 function parseStateKey(k: string): PlannerState {
   const parts = k.split("|");
-  if (parts.length !== 7) throw new PlannerError(`stateKey 格式錯誤: ${k}`);
-  const [cursor, prevStr, t, p, l, f, m] = parts;
+  if (parts.length !== 10) throw new PlannerError(`stateKey 格式錯誤: ${k}`);
+  const [cursor, prevStr, t, p, l, f, m, phase, agCursor, agPrevStr] = parts;
   const prev = prevStr === "-" ? null : Number(prevStr);
+  const agPrev = agPrevStr === "-" ? null : Number(agPrevStr);
   return {
     cursor_id: cursor,
     prev_cat_id: prev != null && Number.isFinite(prev) ? prev : null,
@@ -472,6 +564,11 @@ function parseStateKey(k: string): PlannerState {
     legend_left: Number(l),
     food_left: Number(f),
     mask: Number(m),
+    step_up_phase:
+      phase === "after_3" || phase === "after_5" ? phase : "none",
+    step_up_ag_cursor_id: agCursor === "-" ? null : agCursor,
+    step_up_ag_prev_cat_id:
+      agPrev != null && Number.isFinite(agPrev) ? agPrev : null,
   };
 }
 
@@ -487,6 +584,9 @@ function physicalKeyFromState(s: PlannerState): string {
     s.platinum_left,
     s.legend_left,
     s.food_left,
+    s.step_up_phase,
+    s.step_up_ag_cursor_id ?? "-",
+    s.step_up_ag_prev_cat_id == null ? "-" : String(s.step_up_ag_prev_cat_id),
   ].join("|");
 }
 
@@ -538,6 +638,9 @@ export function planMinCost(params: {
     legend_left: Math.max(0, Math.floor(params.legend_tickets || 0)),
     food_left: Math.max(0, Math.floor(params.food || 0)),
     mask: 0,
+    step_up_phase: "none",
+    step_up_ag_cursor_id: null,
+    step_up_ag_prev_cat_id: null,
   };
 
   const INF: Cost = [10 ** 18, 10 ** 18, 10 ** 18, 10 ** 18, 10 ** 18];
@@ -574,6 +677,9 @@ export function planMinCost(params: {
       Number(w.legend_single ?? 0),
       // ten 平均每抽（含保底）更便宜也沒關係，做下界只會更保守
       Number(w.food_ten ?? 0) / 11,
+      Number(w.food_step_up_3 ?? 0) / 3,
+      Number(w.food_step_up_5 ?? 0) / 5,
+      Number(w.food_step_up_7 ?? 0) / 7,
     ].filter((x) => Number.isFinite(x) && x >= 0);
     return candidates.length ? Math.min(...candidates) : 0;
   })();
@@ -604,6 +710,137 @@ export function planMinCost(params: {
     string,
     { end_cursor_id: string; end_prev: number | null; draws: DrawHit[] }
   >();
+  const bundleCache = new Map<
+    string,
+    { end_cursor_id: string; end_prev: number | null; draws: DrawHit[] }
+  >();
+  const stepUpSevenCache = new Map<
+    string,
+    { end_cursor_id: string; end_prev: number | null; draws: DrawHit[] }
+  >();
+  const stepUpPoolByEvent = new Map<string, boolean>();
+  for (const [eventValue, graph] of Object.entries(params.graphs_by_event)) {
+    stepUpPoolByEvent.set(eventValue, isStepUpPool(graph));
+  }
+
+  function applyDrawHits(mask: number, draws: DrawHit[]): number {
+    let nextMask = mask;
+    for (const draw of draws) {
+      nextMask = applyHit(nextMask, targetIndex, draw.cat_id);
+    }
+    return nextMask;
+  }
+
+  function getSingleSimulation(
+    ev: string,
+    graph: TrackGraph,
+    cursor_id: string,
+    prev_cat_id: number | null
+  ) {
+    const key = `${ev}|${cursor_id}|${prev_cat_id == null ? "-" : prev_cat_id}`;
+    let single = singleCache.get(key);
+    if (!single) {
+      single = simulateSingleTransition({ graph, cursor_id, prev_cat_id });
+      singleCache.set(key, single);
+    }
+    return single;
+  }
+
+  function getBundleSimulation(
+    ev: string,
+    graph: TrackGraph,
+    cursor_id: string,
+    prev_cat_id: number | null,
+    draw_count: number
+  ) {
+    const key = `${ev}|${cursor_id}|${
+      prev_cat_id == null ? "-" : prev_cat_id
+    }|${draw_count}`;
+    let bundle = bundleCache.get(key);
+    if (!bundle) {
+      bundle = simulateSingleBundleTransition({
+        graph,
+        cursor_id,
+        prev_cat_id,
+        draw_count,
+      });
+      bundleCache.set(key, bundle);
+    }
+    return bundle;
+  }
+
+  function getTenSimulation(
+    ev: string,
+    graph: TrackGraph,
+    cursor_id: string,
+    prev_cat_id: number | null
+  ) {
+    const key = `${ev}|${cursor_id}|${prev_cat_id == null ? "-" : prev_cat_id}`;
+    let ten = tenCache.get(key);
+    if (!ten) {
+      ten = simulateTenTransition({ graph, cursor_id, prev_cat_id });
+      tenCache.set(key, ten);
+    }
+    return ten;
+  }
+
+  function getStepUpSevenSimulation(
+    ev: string,
+    graph: TrackGraph,
+    cursor_id: string,
+    prev_cat_id: number | null,
+    ag_cursor_id: string
+  ) {
+    const key = `${ev}|${cursor_id}|${
+      prev_cat_id == null ? "-" : prev_cat_id
+    }|${ag_cursor_id}`;
+    let stepUpSeven = stepUpSevenCache.get(key);
+    if (!stepUpSeven) {
+      stepUpSeven = simulateStepUpSevenTransition({
+        graph,
+        cursor_id,
+        prev_cat_id,
+        ag_cursor_id,
+      });
+      stepUpSevenCache.set(key, stepUpSeven);
+    }
+    return stepUpSeven;
+  }
+
+  function getAgContinuation(
+    state: PlannerState,
+    ev: string,
+    graph: TrackGraph,
+    method: Exclude<PlanMethod, "step_up_3" | "step_up_5" | "step_up_7">
+  ): Pick<
+    PlannerState,
+    "step_up_phase" | "step_up_ag_cursor_id" | "step_up_ag_prev_cat_id"
+  > | null {
+    if (state.step_up_phase === "none") {
+      return {
+        step_up_phase: "none",
+        step_up_ag_cursor_id: null,
+        step_up_ag_prev_cat_id: null,
+      };
+    }
+    if (!state.step_up_ag_cursor_id) return null;
+
+    try {
+      const next = advanceAgCursorForAction({
+        graph,
+        method,
+        cursor_id: state.step_up_ag_cursor_id,
+        prev_cat_id: state.step_up_ag_prev_cat_id,
+      });
+      return {
+        step_up_phase: state.step_up_phase,
+        step_up_ag_cursor_id: next.next_cursor_id,
+        step_up_ag_prev_cat_id: next.next_prev,
+      };
+    } catch {
+      return null;
+    }
+  }
 
   function betterPartial(
     aMask: number,
@@ -731,6 +968,7 @@ export function planMinCost(params: {
       if (!graph) continue;
 
       const pool: PoolType = graph.event.pool_type ?? "normal";
+      const isStepUpEvent = stepUpPoolByEvent.get(ev) === true;
 
       // ✅ 小剪枝：如果這個 pool 在目前資源下根本不可能做任何 action，直接略過
       //（避免不必要的 simulateSingleTransition/try-catch）
@@ -744,147 +982,154 @@ export function planMinCost(params: {
         s.legend_left >= 1 && isActionAllowed(cfg, pool, "legend_single");
       const canTenCost =
         s.food_left >= 1500 && isActionAllowed(cfg, pool, "food_ten");
+      const canStepUp3 =
+        isStepUpEvent &&
+        s.step_up_phase === "none" &&
+        s.food_left >= 300 &&
+        isActionAllowed(cfg, pool, "food_step_up_3");
+      const canStepUp5 =
+        isStepUpEvent &&
+        s.step_up_phase === "after_3" &&
+        s.food_left >= 750 &&
+        isActionAllowed(cfg, pool, "food_step_up_5");
+      const canStepUp7 =
+        isStepUpEvent &&
+        s.step_up_phase === "after_5" &&
+        !!s.step_up_ag_cursor_id &&
+        s.food_left >= 1050 &&
+        isActionAllowed(cfg, pool, "food_step_up_7");
       if (
         !canTicket &&
         !canFoodSingle &&
         !canPlatinum &&
         !canLegend &&
-        !canTenCost
+        !canTenCost &&
+        !canStepUp3 &&
+        !canStepUp5 &&
+        !canStepUp7
       ) {
         continue;
       }
 
       // ---- (A) 單抽 transition ----
-      const key1 = `${ev}|${s.cursor_id}|${
-        s.prev_cat_id == null ? "-" : s.prev_cat_id
-      }`;
-      let single = singleCache.get(key1);
-      if (!single) {
+      const needsSingleTransition =
+        canTicket || canFoodSingle || canPlatinum || canLegend;
+      let single:
+        | { next_cursor_id: string; next_prev: number | null; hit: DrawHit }
+        | null = null;
+      if (needsSingleTransition) {
         try {
-          single = simulateSingleTransition({
+          single = getSingleSimulation(
+            ev,
             graph,
-            cursor_id: s.cursor_id,
-            prev_cat_id: s.prev_cat_id,
-          });
-          singleCache.set(key1, single);
+            s.cursor_id,
+            s.prev_cat_id
+          );
         } catch {
-          continue; // 此 event 在此 cursor 不可用
+          single = null;
         }
       }
 
-      const nextMask = applyHit(s.mask, targetIndex, single.hit.cat_id);
-      const nextCursorId = single.next_cursor_id;
-      const nextPrev = single.next_prev;
+      if (single) {
+        const nextMask = applyHit(s.mask, targetIndex, single.hit.cat_id);
+        const nextCursorId = single.next_cursor_id;
+        const nextPrev = single.next_prev;
+        const agAfterSingle = getAgContinuation(s, ev, graph, "single");
 
-      // (A1) ticket single
-      if (canTicket) {
-        const inc = costIncForAction(cfg, "ticket_single");
-        const ns: PlannerState = {
-          cursor_id: nextCursorId,
-          prev_cat_id: nextPrev,
-          tickets_left: s.tickets_left - 1,
-          platinum_left: s.platinum_left,
-          legend_left: s.legend_left,
-          food_left: s.food_left,
-          mask: nextMask,
-        };
-        relax(ns, curKey, curCost, inc, {
-          event_value: ev,
-          pool_type: pool,
-          actionKey: "ticket_single",
-          method: "single",
-        });
-      }
+        if (canTicket && agAfterSingle) {
+          const inc = costIncForAction(cfg, "ticket_single");
+          const ns: PlannerState = {
+            cursor_id: nextCursorId,
+            prev_cat_id: nextPrev,
+            tickets_left: s.tickets_left - 1,
+            platinum_left: s.platinum_left,
+            legend_left: s.legend_left,
+            food_left: s.food_left,
+            mask: nextMask,
+            ...agAfterSingle,
+          };
+          relax(ns, curKey, curCost, inc, {
+            event_value: ev,
+            pool_type: pool,
+            actionKey: "ticket_single",
+            method: "single",
+          });
+        }
 
-      // (A2) platinum single
-      if (canPlatinum) {
-        const inc = costIncForAction(cfg, "platinum_single");
-        const ns: PlannerState = {
-          cursor_id: nextCursorId,
-          prev_cat_id: nextPrev,
-          tickets_left: s.tickets_left,
-          platinum_left: s.platinum_left - 1,
-          legend_left: s.legend_left,
-          food_left: s.food_left,
-          mask: nextMask,
-        };
-        relax(ns, curKey, curCost, inc, {
-          event_value: ev,
-          pool_type: pool,
-          actionKey: "platinum_single",
-          method: "single",
-        });
-      }
+        if (canPlatinum && agAfterSingle) {
+          const inc = costIncForAction(cfg, "platinum_single");
+          const ns: PlannerState = {
+            cursor_id: nextCursorId,
+            prev_cat_id: nextPrev,
+            tickets_left: s.tickets_left,
+            platinum_left: s.platinum_left - 1,
+            legend_left: s.legend_left,
+            food_left: s.food_left,
+            mask: nextMask,
+            ...agAfterSingle,
+          };
+          relax(ns, curKey, curCost, inc, {
+            event_value: ev,
+            pool_type: pool,
+            actionKey: "platinum_single",
+            method: "single",
+          });
+        }
 
-      // (A3) legend single
-      if (canLegend) {
-        const inc = costIncForAction(cfg, "legend_single");
-        const ns: PlannerState = {
-          cursor_id: nextCursorId,
-          prev_cat_id: nextPrev,
-          tickets_left: s.tickets_left,
-          platinum_left: s.platinum_left,
-          legend_left: s.legend_left - 1,
-          food_left: s.food_left,
-          mask: nextMask,
-        };
-        relax(ns, curKey, curCost, inc, {
-          event_value: ev,
-          pool_type: pool,
-          actionKey: "legend_single",
-          method: "single",
-        });
-      }
+        if (canLegend && agAfterSingle) {
+          const inc = costIncForAction(cfg, "legend_single");
+          const ns: PlannerState = {
+            cursor_id: nextCursorId,
+            prev_cat_id: nextPrev,
+            tickets_left: s.tickets_left,
+            platinum_left: s.platinum_left,
+            legend_left: s.legend_left - 1,
+            food_left: s.food_left,
+            mask: nextMask,
+            ...agAfterSingle,
+          };
+          relax(ns, curKey, curCost, inc, {
+            event_value: ev,
+            pool_type: pool,
+            actionKey: "legend_single",
+            method: "single",
+          });
+        }
 
-      // (A4) food single
-      if (canFoodSingle) {
-        const inc = costIncForAction(cfg, "food_single");
-        const ns: PlannerState = {
-          cursor_id: nextCursorId,
-          prev_cat_id: nextPrev,
-          tickets_left: s.tickets_left,
-          platinum_left: s.platinum_left,
-          legend_left: s.legend_left,
-          food_left: s.food_left - 150,
-          mask: nextMask,
-        };
-        relax(ns, curKey, curCost, inc, {
-          event_value: ev,
-          pool_type: pool,
-          actionKey: "food_single",
-          method: "single",
-        });
+        if (canFoodSingle && agAfterSingle) {
+          const inc = costIncForAction(cfg, "food_single");
+          const ns: PlannerState = {
+            cursor_id: nextCursorId,
+            prev_cat_id: nextPrev,
+            tickets_left: s.tickets_left,
+            platinum_left: s.platinum_left,
+            legend_left: s.legend_left,
+            food_left: s.food_left - 150,
+            mask: nextMask,
+            ...agAfterSingle,
+          };
+          relax(ns, curKey, curCost, inc, {
+            event_value: ev,
+            pool_type: pool,
+            actionKey: "food_single",
+            method: "single",
+          });
+        }
       }
 
       // ---- (B) ten：只允許 food ----
-      if (s.food_left >= 1500 && isActionAllowed(cfg, pool, "food_ten")) {
-        const key10 = `${ev}|${s.cursor_id}|${
-          s.prev_cat_id == null ? "-" : s.prev_cat_id
-        }`;
-        let ten = tenCache.get(key10);
-        if (!ten) {
-          try {
-            ten = simulateTenTransition({
-              graph,
-              cursor_id: s.cursor_id,
-              prev_cat_id: s.prev_cat_id,
-            });
-            tenCache.set(key10, ten);
-          } catch {
-            tenCache.set(key10, {
-              end_cursor_id: "",
-              end_prev: null,
-              draws: [],
-            });
-            ten = { end_cursor_id: "", end_prev: null, draws: [] };
-          }
+      if (canTenCost) {
+        let ten:
+          | { end_cursor_id: string; end_prev: number | null; draws: DrawHit[] }
+          | null = null;
+        try {
+          ten = getTenSimulation(ev, graph, s.cursor_id, s.prev_cat_id);
+        } catch {
+          ten = null;
         }
 
-        if (ten.draws.length && ten.end_cursor_id) {
-          let tenMask = s.mask;
-          for (const d of ten.draws)
-            tenMask = applyHit(tenMask, targetIndex, d.cat_id);
-
+        const agAfterTen = getAgContinuation(s, ev, graph, "ten");
+        if (ten && agAfterTen) {
           const inc = costIncForAction(cfg, "food_ten");
           const ns: PlannerState = {
             cursor_id: ten.end_cursor_id,
@@ -893,7 +1138,8 @@ export function planMinCost(params: {
             platinum_left: s.platinum_left,
             legend_left: s.legend_left,
             food_left: s.food_left - 1500,
-            mask: tenMask,
+            mask: applyDrawHits(s.mask, ten.draws),
+            ...agAfterTen,
           };
 
           relax(ns, curKey, curCost, inc, {
@@ -902,6 +1148,105 @@ export function planMinCost(params: {
             actionKey: "food_ten",
             method: "ten",
           });
+        }
+      }
+
+      if (canStepUp3) {
+        try {
+          const stepUpThree = getBundleSimulation(
+            ev,
+            graph,
+            s.cursor_id,
+            s.prev_cat_id,
+            3
+          );
+          const inc = costIncForAction(cfg, "food_step_up_3");
+          const ns: PlannerState = {
+            cursor_id: stepUpThree.end_cursor_id,
+            prev_cat_id: stepUpThree.end_prev,
+            tickets_left: s.tickets_left,
+            platinum_left: s.platinum_left,
+            legend_left: s.legend_left,
+            food_left: s.food_left - 300,
+            mask: applyDrawHits(s.mask, stepUpThree.draws),
+            step_up_phase: "after_3",
+            step_up_ag_cursor_id: s.cursor_id,
+            step_up_ag_prev_cat_id: s.prev_cat_id,
+          };
+          relax(ns, curKey, curCost, inc, {
+            event_value: ev,
+            pool_type: pool,
+            actionKey: "food_step_up_3",
+            method: "step_up_3",
+          });
+        } catch {
+          // ignore invalid step-up_3 at this cursor
+        }
+      }
+
+      if (canStepUp5 && s.step_up_ag_cursor_id) {
+        try {
+          const stepUpFive = getBundleSimulation(
+            ev,
+            graph,
+            s.cursor_id,
+            s.prev_cat_id,
+            5
+          );
+          const inc = costIncForAction(cfg, "food_step_up_5");
+          const ns: PlannerState = {
+            cursor_id: stepUpFive.end_cursor_id,
+            prev_cat_id: stepUpFive.end_prev,
+            tickets_left: s.tickets_left,
+            platinum_left: s.platinum_left,
+            legend_left: s.legend_left,
+            food_left: s.food_left - 750,
+            mask: applyDrawHits(s.mask, stepUpFive.draws),
+            step_up_phase: "after_5",
+            step_up_ag_cursor_id: s.step_up_ag_cursor_id,
+            step_up_ag_prev_cat_id: s.step_up_ag_prev_cat_id,
+          };
+          relax(ns, curKey, curCost, inc, {
+            event_value: ev,
+            pool_type: pool,
+            actionKey: "food_step_up_5",
+            method: "step_up_5",
+          });
+        } catch {
+          // ignore invalid step-up_5 at this cursor
+        }
+      }
+
+      if (canStepUp7 && s.step_up_ag_cursor_id) {
+        try {
+          const stepUpSeven = getStepUpSevenSimulation(
+            ev,
+            graph,
+            s.cursor_id,
+            s.prev_cat_id,
+            s.step_up_ag_cursor_id
+          );
+          const inc = costIncForAction(cfg, "food_step_up_7");
+          const ns: PlannerState = {
+            cursor_id: stepUpSeven.end_cursor_id,
+            prev_cat_id: stepUpSeven.end_prev,
+            tickets_left: s.tickets_left,
+            platinum_left: s.platinum_left,
+            legend_left: s.legend_left,
+            food_left: s.food_left - 1050,
+            mask: applyDrawHits(s.mask, stepUpSeven.draws),
+            step_up_phase: "none",
+            step_up_ag_cursor_id: null,
+            step_up_ag_prev_cat_id: null,
+          };
+          relax(ns, curKey, curCost, inc, {
+            event_value: ev,
+            pool_type: pool,
+            actionKey: "food_step_up_7",
+            method: "step_up_7",
+          });
+        } catch {
+          // ignore invalid step-up_7 at this AG cursor
         }
       }
     }
@@ -936,7 +1281,15 @@ export function planMinCost(params: {
     if (actionKey === "ticket_single") return "ticket";
     if (actionKey === "platinum_single") return "platinum_ticket";
     if (actionKey === "legend_single") return "legend_ticket";
-    if (actionKey === "food_single" || actionKey === "food_ten") return "food";
+    if (
+      actionKey === "food_single" ||
+      actionKey === "food_ten" ||
+      actionKey === "food_step_up_3" ||
+      actionKey === "food_step_up_5" ||
+      actionKey === "food_step_up_7"
+    ) {
+      return "food";
+    }
     throw new PlannerError(`未知 actionKey=${actionKey}`);
   }
 
@@ -957,16 +1310,6 @@ export function planMinCost(params: {
         prev_cat_id: fromState.prev_cat_id,
       });
 
-      // 保守檢查（不一致通常代表轉移規則/資料變動）
-      if (
-        single.next_cursor_id !== toState.cursor_id ||
-        single.next_prev !== toState.prev_cat_id
-      ) {
-        // 不直接 throw，避免少數資料不一致就全崩；但會讓你看到異常
-        // 你想嚴格也可以改成 throw
-        // throw new PlannerError(`回放 single 不一致: ${move.event_value}`);
-      }
-
       planSteps.push({
         event_value: move.event_value,
         pool_type: move.pool_type,
@@ -979,7 +1322,10 @@ export function planMinCost(params: {
         start_prev_cat_id: fromState.prev_cat_id,
         end_prev_cat_id: single.next_prev,
       });
-    } else {
+      continue;
+    }
+
+    if (move.method === "ten") {
       const ten = simulateTenTransition({
         graph,
         cursor_id: fromState.cursor_id,
@@ -998,7 +1344,58 @@ export function planMinCost(params: {
         start_prev_cat_id: fromState.prev_cat_id,
         end_prev_cat_id: ten.end_prev,
       });
+      continue;
     }
+
+    if (move.method === "step_up_3" || move.method === "step_up_5") {
+      const draw_count = move.method === "step_up_3" ? 3 : 5;
+      const bundle = simulateSingleBundleTransition({
+        graph,
+        cursor_id: fromState.cursor_id,
+        prev_cat_id: fromState.prev_cat_id,
+        draw_count,
+      });
+
+      planSteps.push({
+        event_value: move.event_value,
+        pool_type: move.pool_type,
+        resource: actionKeyToResource(move.actionKey),
+        method: move.method,
+        cost_inc: inc,
+        draws: bundle.draws,
+        start_cursor_id: fromState.cursor_id,
+        end_cursor_id: bundle.end_cursor_id,
+        start_prev_cat_id: fromState.prev_cat_id,
+        end_prev_cat_id: bundle.end_prev,
+      });
+      continue;
+    }
+
+    const agCursorId = fromState.step_up_ag_cursor_id;
+    if (!agCursorId) {
+      throw new PlannerError(
+        `[${move.event_value}] reconstruct step_up_7 缺少 AG cursor`
+      );
+    }
+    const stepUpSeven = simulateStepUpSevenTransition({
+      graph,
+      cursor_id: fromState.cursor_id,
+      prev_cat_id: fromState.prev_cat_id,
+      ag_cursor_id: agCursorId,
+    });
+
+    planSteps.push({
+      event_value: move.event_value,
+      pool_type: move.pool_type,
+      resource: actionKeyToResource(move.actionKey),
+      method: "step_up_7",
+      cost_inc: inc,
+      draws: stepUpSeven.draws,
+      start_cursor_id: fromState.cursor_id,
+      end_cursor_id: stepUpSeven.end_cursor_id,
+      start_prev_cat_id: fromState.prev_cat_id,
+      end_prev_cat_id: stepUpSeven.end_prev,
+    });
   }
 
   // 統計

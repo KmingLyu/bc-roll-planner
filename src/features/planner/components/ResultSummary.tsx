@@ -4,12 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { PlanResult } from "@/features/planner/logic/core";
 import type { TrackGraph } from "@/types/models";
-import { ACTIONS, actionLabelFromStep } from "../logic/view-model";
 import type { ActionLabel } from "../logic/view-model";
 import { ResourceImg } from "./ResourceImg";
 
 type ResultSummaryModel = {
-  byAction: Map<ActionLabel, number>;
   hitTargets: Array<{
     id: number;
     name: string;
@@ -22,9 +20,10 @@ type ResultSummaryModel = {
 };
 
 type ResourceUsageItem = {
-  key: ActionLabel;
+  key: string;
   label: ActionLabel;
   value: number;
+  subtitle?: string | null;
 };
 
 function getHitStatValueClass(params: {
@@ -72,17 +71,6 @@ function useResultSummaryModel(params: {
   const { result, catNameById } = params;
 
   return useMemo(() => {
-    const byAction = new Map<ActionLabel, number>();
-
-    for (const action of ACTIONS) {
-      byAction.set(action, 0);
-    }
-
-    for (const step of result.plan || []) {
-      const action = actionLabelFromStep(step);
-      byAction.set(action, (byAction.get(action) || 0) + 1);
-    }
-
     const hitSet = new Set(result.targets_hit_ids || []);
     const drawCountById = new Map<number, number>();
     for (const draw of result.all_draws || []) {
@@ -92,7 +80,6 @@ function useResultSummaryModel(params: {
     }
 
     return {
-      byAction,
       hitTargets: [...hitSet].map((id) => ({
         id,
         name: catNameById.get(id) ?? `#${id}`,
@@ -163,27 +150,63 @@ export function ResultSummary(props: {
   });
   const ResultStatusIcon = resultStatusMeta.icon;
   const resourceUsage = useMemo<ResourceUsageItem[]>(() => {
-    const singleFood = stats.byAction.get("罐頭") || 0;
-    const tenFood = stats.byAction.get("10連抽") || 0;
-    const totalFood = singleFood * 150 + tenFood * 1500;
+    const counts = new Map<string, number>();
 
-    return ACTIONS.reduce<ResourceUsageItem[]>((items, action) => {
-      if (action === "10連抽") return items;
+    for (const step of result.plan || []) {
+      const key =
+        step.method === "step_up_3" ||
+        step.method === "step_up_5" ||
+        step.method === "step_up_7"
+          ? step.method
+          : `${step.resource}:${step.method}`;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
 
-      if (action === "罐頭") {
-        if (totalFood > 0) {
-          items.push({ key: action, label: action, value: totalFood });
-        }
-        return items;
-      }
+    const items: ResourceUsageItem[] = [];
+    const ticketCount = counts.get("ticket:single") || 0;
+    if (ticketCount > 0) {
+      items.push({ key: "ticket", label: "稀有券", value: ticketCount });
+    }
 
-      const count = stats.byAction.get(action) || 0;
-      if (count > 0) {
-        items.push({ key: action, label: action, value: count });
-      }
-      return items;
-    }, []);
-  }, [stats.byAction]);
+    const platinumCount = counts.get("platinum_ticket:single") || 0;
+    if (platinumCount > 0) {
+      items.push({ key: "platinum", label: "白金券", value: platinumCount });
+    }
+
+    const legendCount = counts.get("legend_ticket:single") || 0;
+    if (legendCount > 0) {
+      items.push({ key: "legend", label: "傳說券", value: legendCount });
+    }
+
+    const singleFoodCount = counts.get("food:single") || 0;
+    if (singleFoodCount > 0) {
+      items.push({ key: "food-single", label: "罐頭", value: singleFoodCount * 150 });
+    }
+
+    const tenFoodCount = counts.get("food:ten") || 0;
+    if (tenFoodCount > 0) {
+      items.push({ key: "food-ten", label: "10連抽", value: tenFoodCount * 1500 });
+    }
+
+    const stepUpConfigs = [
+      { key: "step_up_3", value: 300 },
+      { key: "step_up_5", value: 750 },
+      { key: "step_up_7", value: 1050 },
+    ] as const;
+
+    for (const config of stepUpConfigs) {
+      const count = counts.get(config.key) || 0;
+      if (count <= 0) continue;
+      items.push({
+        key: config.key,
+        label: "罐頭",
+        value: config.value * count,
+        subtitle: "好康轉蛋",
+      });
+    }
+
+    return items;
+  }, [result.plan]);
   return (
     <div className="space-y-4">
       <div
@@ -220,7 +243,12 @@ export function ResultSummary(props: {
                 key={item.key}
                 className="inline-flex items-center gap-2 rounded-md bg-muted/40 px-2.5 py-1.5 text-sm"
               >
-                <ResourceImg label={item.label} height={18} showCount={false} />
+                <ResourceImg
+                  label={item.label}
+                  height={18}
+                  showCount={false}
+                  subtitle={item.subtitle}
+                />
                 <span>× {item.value}</span>
               </div>
             ))}

@@ -18,15 +18,19 @@ export function ResourceImg({
   label,
   height = 20,
   showCount = true,
+  countOverride,
+  subtitle,
   className,
 }: {
   label: ActionLabel;
   height?: number;
   showCount?: boolean;
+  countOverride?: number | null;
+  subtitle?: string | null;
   className?: string;
 }) {
   const src = ACTION_IMAGE[label];
-  const count = showCount ? ACTION_COUNT[label] : undefined;
+  const count = showCount ? countOverride ?? ACTION_COUNT[label] : undefined;
   return (
     <span className={cn("inline-flex items-center gap-1.5", className)}>
       <img
@@ -36,11 +40,20 @@ export function ResourceImg({
         height={height}
         style={{ display: "block" }}
       />
-      {count != null && (
-        <span className="text-[0.65rem] font-black leading-none text-muted-foreground">
-          x{count}
+      {count != null || subtitle ? (
+        <span className="inline-flex min-w-0 flex-col gap-0.5">
+          {count != null ? (
+            <span className="text-[0.82rem] font-black leading-none text-muted-foreground">
+              x{count}
+            </span>
+          ) : null}
+          {subtitle ? (
+            <span className="text-[0.6rem] font-semibold leading-none text-muted-foreground">
+              {subtitle}
+            </span>
+          ) : null}
         </span>
-      )}
+      ) : null}
     </span>
   );
 }

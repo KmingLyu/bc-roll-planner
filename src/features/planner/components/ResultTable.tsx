@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 
 type ResultRowBlock =
   | { key: string; kind: "single"; row: DrawRow }
-  | { key: string; kind: "ten"; summary: DrawRow; children: DrawRow[] };
+  | { key: string; kind: "bundle"; summary: DrawRow; children: DrawRow[] };
 
 type ResultFilterMode = "all" | "targets";
 export type { ResultFilterMode };
@@ -69,13 +69,13 @@ function groupRowsByStep(rows: DrawRow[]): ResultRowBlock[] {
   for (let index = 0; index < rows.length; ) {
     const row = rows[index];
 
-    if (row.isTen && row.isHeader) {
+    if (row.isBundle && row.isHeader) {
       const children: DrawRow[] = [];
       index += 1;
 
       while (
         index < rows.length &&
-        rows[index].isTen &&
+        rows[index].isBundle &&
         rows[index].stepIndex === row.stepIndex &&
         !rows[index].isHeader
       ) {
@@ -85,7 +85,7 @@ function groupRowsByStep(rows: DrawRow[]): ResultRowBlock[] {
 
       blocks.push({
         key: row.key,
-        kind: "ten",
+        kind: "bundle",
         summary: row,
         children,
       });
@@ -184,7 +184,7 @@ function buildHitStepStats(params: {
 }
 
 function trackPositionLabel(row: DrawRow, track: "A" | "B") {
-  if (row.isTen && row.isHeader) return `${track}摘要`;
+  if (row.isBundle && row.isHeader) return `${track}摘要`;
   if (row.isGuaranteedRow) {
     return row.track === track ? "保底" : "-";
   }
@@ -314,9 +314,13 @@ function buildMobileTenRollCombinedRangeLabel(
 
 function ActionVisual({
   label,
+  countOverride,
+  subtitle,
   compact = false,
 }: {
   label: DrawRow["actionText"];
+  countOverride?: number | null;
+  subtitle?: string | null;
   compact?: boolean;
 }) {
   return (
@@ -329,12 +333,9 @@ function ActionVisual({
       <ResourceImg
         label={label}
         height={compact ? 28 : 36}
-        className={cn(
-          "justify-start",
-          compact
-            ? "[&_span]:text-[13px] [&_span]:font-bold"
-            : "[&_span]:text-[15px] xl:[&_span]:text-[16px] [&_span]:font-bold",
-        )}
+        countOverride={countOverride}
+        subtitle={subtitle}
+        className="justify-start"
       />
     </div>
   );
@@ -662,7 +663,7 @@ function ResultActionCell(props: { row: DrawRow; compact?: boolean }) {
     return <div className={compact ? "h-0" : "h-0"} />;
   }
 
-  if (row.isTen && !row.isHeader) {
+  if (row.isBundle && !row.isHeader) {
     return <div className="h-5" />;
   }
 
@@ -685,7 +686,12 @@ function ResultActionCell(props: { row: DrawRow; compact?: boolean }) {
           {row.stepText}
         </Badge>
       ) : null}
-      <ActionVisual label={row.actionText} compact={compact} />
+      <ActionVisual
+        label={row.actionText}
+        countOverride={row.actionCountOverride}
+        subtitle={row.actionSubtitle}
+        compact={compact}
+      />
     </div>
   );
 }
@@ -706,7 +712,7 @@ function ResultTenRollToggle(props: {
         compact ? "text-[13px]" : "text-[15px] font-medium",
       )}
       aria-expanded={expanded}
-      aria-label={expanded ? "收合 10 連抽明細" : "展開 10 連抽明細"}
+      aria-label={expanded ? "收合抽卡明細" : "展開抽卡明細"}
     >
       <span className="whitespace-nowrap">{expanded ? "收合" : "展開"}</span>
       {expanded ? (

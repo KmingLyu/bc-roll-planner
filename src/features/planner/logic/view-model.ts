@@ -38,6 +38,21 @@ export function formatStepText(stepIndex1Based: number): string {
 export function formatTenRollHead(i1Based: number): string {
   return `${UI_TEXT.tenRollPrefix}#${i1Based}`;
 }
+
+function bundleLabelFromMethod(method: PlanStep["method"]): string {
+  if (method === "ten") return UI_TEXT.tenRollPrefix;
+  if (method === "step_up_3") return "3連";
+  if (method === "step_up_5") return "5連";
+  if (method === "step_up_7") return "7連";
+  return UI_TEXT.singleRollLabel;
+}
+
+export function formatBundleRollHead(
+  method: PlanStep["method"],
+  i1Based: number,
+): string {
+  return `${bundleLabelFromMethod(method)}#${i1Based}`;
+}
 /**
  * 將命中目標的 Map<catId, count> 格式化為 "貓名A、貓名Bx2" 格式
  * count === 1 不加 x1，count >= 2 加 xN
@@ -56,6 +71,11 @@ export function formatHitCatNames(
 
 export const ACTIONS = ["稀有券", "白金券", "傳說券", "罐頭", "10連抽"] as const;
 export type ActionLabel = (typeof ACTIONS)[number];
+export type ActionDisplay = {
+  label: ActionLabel;
+  countOverride?: number | null;
+  subtitle?: string | null;
+};
 
 export type StatusKey = "normal" | "hit" | "guaranteed";
 export const STATUS_STYLE: Record<
@@ -145,9 +165,39 @@ export function actionLabelFromStep(step: PlanStep): ActionLabel {
     return "白金券";
   if (step.resource === "legend_ticket" && step.method === "single")
     return "傳說券";
-  if (step.resource === "food" && step.method === "single") return "罐頭";
+  if (
+    step.resource === "food" &&
+    (step.method === "single" ||
+      step.method === "step_up_3" ||
+      step.method === "step_up_5" ||
+      step.method === "step_up_7")
+  ) {
+    return "罐頭";
+  }
   if (step.resource === "food" && step.method === "ten") return "10連抽";
   return "稀有券";
+}
+
+export function actionDisplayFromStep(step: PlanStep): ActionDisplay {
+  if (step.method === "step_up_3") {
+    return { label: "罐頭", countOverride: 300, subtitle: "好康轉蛋" };
+  }
+  if (step.method === "step_up_5") {
+    return { label: "罐頭", countOverride: 750, subtitle: "好康轉蛋" };
+  }
+  if (step.method === "step_up_7") {
+    return { label: "罐頭", countOverride: 1050, subtitle: "好康轉蛋" };
+  }
+  return { label: actionLabelFromStep(step) };
+}
+
+function isBundleMethod(method: PlanStep["method"]): boolean {
+  return (
+    method === "ten" ||
+    method === "step_up_3" ||
+    method === "step_up_5" ||
+    method === "step_up_7"
+  );
 }
 
 export function safeGetNormalCat(
@@ -189,6 +239,8 @@ export type DrawRow = {
 
   stepText: string;
   actionText: ActionLabel;
+  actionCountOverride?: number | null;
+  actionSubtitle?: string | null;
   eventValue: string;
   eventName: string;
   eventRawName: string;
@@ -223,7 +275,8 @@ export type DrawRow = {
   stepIndex: number;
   withinStepIndex: number;
   isHeader: boolean;
-  isTen: boolean;
+  isBundle: boolean;
+  bundleMethod: PlanStep["method"] | null;
   isGuaranteedRow: boolean;
   isVirtual: boolean;
 
@@ -233,7 +286,7 @@ export type DrawRow = {
 function buildSkippedPositionRows(params: {
   graph: TrackGraph | undefined;
   step: PlanStep;
-  action: ActionLabel;
+  action: ActionDisplay;
   eventName: string;
   eventRawName: string;
   eventStartDate: string | null;
@@ -269,7 +322,9 @@ function buildSkippedPositionRows(params: {
       key: `s${stepIndex}-gap-${withinStepIndex}-${pos}`,
       countText: String(pos),
       stepText: UI_TEXT.dash,
-      actionText: action,
+      actionText: action.label,
+      actionCountOverride: action.countOverride ?? null,
+      actionSubtitle: action.subtitle ?? null,
       eventValue: step.event_value,
       eventName,
       eventRawName,
@@ -295,7 +350,8 @@ function buildSkippedPositionRows(params: {
       stepIndex,
       withinStepIndex,
       isHeader: false,
-      isTen: step.method === "ten",
+      isBundle: isBundleMethod(step.method),
+      bundleMethod: isBundleMethod(step.method) ? step.method : null,
       isGuaranteedRow: false,
       isVirtual: true,
       isTarget: false,
@@ -320,7 +376,7 @@ export function buildDrawRows(params: {
 
   for (let si = 0; si < plan.length; si++) {
     const st = plan[si];
-    const action = actionLabelFromStep(st);
+    const action = actionDisplayFromStep(st);
     const g = graphsByEvent[st.event_value];
     const eventMeta = g?.event;
     const eventName = eventMeta?.name || st.event_value;
@@ -328,13 +384,13 @@ export function buildDrawRows(params: {
     const eventStartDate = eventMeta?.start_date ?? null;
     const eventEndDate = eventMeta?.end_date ?? null;
 
-    const isTen = st.method === "ten";
+    const isBundle = isBundleMethod(st.method);
     const draws = (st.draws || []) as DrawHit[];
 
     // -------------------------
-    // ten：摘要 header
+    // bundle：摘要 header
     // -------------------------
-    if (isTen) {
+    if (isBundle) {
       // ✅ 依 lane 統計 target 命中（用 Map 記錄每隻目標貓的命中次數）
       const hitMapA = new Map<number, number>();
       const hitMapB = new Map<number, number>();
@@ -357,10 +413,12 @@ export function buildDrawRows(params: {
       const ep = posTrackFromPosId(st.end_cursor_id);
 
       out.push({
-        key: `s${si}-ten-summary`,
+        key: `s${si}-bundle-summary`,
         countText: sp.ok ? String(sp.pos) : UI_TEXT.dash,
         stepText: formatStepText(si + 1),
-        actionText: action,
+        actionText: action.label,
+        actionCountOverride: action.countOverride ?? null,
+        actionSubtitle: action.subtitle ?? null,
         eventValue: st.event_value,
         eventName,
         eventRawName,
@@ -388,7 +446,8 @@ export function buildDrawRows(params: {
         stepIndex: si,
         withinStepIndex: 0,
         isHeader: true,
-        isTen: true,
+        isBundle: true,
+        bundleMethod: st.method,
         isGuaranteedRow: false,
         isVirtual: false,
 
@@ -400,7 +459,7 @@ export function buildDrawRows(params: {
     }
 
     // -------------------------
-    // draws 列（single/ten 展開列）
+    // draws 列（single/bundle 展開列）
     // -------------------------
     for (let di = 0; di < draws.length; di++) {
       const d = draws[di];
@@ -488,13 +547,13 @@ export function buildDrawRows(params: {
       }
 
       const countText =
-        isGuaranteed && isTen
+        isGuaranteed && isBundle
           ? UI_TEXT.guaranteedCountText
           : pos != null
             ? String(pos)
             : UI_TEXT.dash;
 
-      const stepText = isTen
+      const stepText = isBundle
         ? UI_TEXT.dash
         : di === 0
           ? formatStepText(si + 1)
@@ -504,7 +563,9 @@ export function buildDrawRows(params: {
         key: `s${si}-d${di}-${d.from_pos_id}-${d.cat_id ?? "x"}`,
         countText,
         stepText,
-        actionText: action,
+        actionText: action.label,
+        actionCountOverride: action.countOverride ?? null,
+        actionSubtitle: action.subtitle ?? null,
         eventValue: st.event_value,
         eventName,
         eventRawName,
@@ -519,8 +580,8 @@ export function buildDrawRows(params: {
         isTargetA,
         isTargetB,
         note: (() => {
-          const head = isTen
-            ? formatTenRollHead(di + 1)
+          const head = isBundle
+            ? formatBundleRollHead(st.method, di + 1)
             : UI_TEXT.singleRollLabel;
 
           const used = d.used;
@@ -548,8 +609,9 @@ export function buildDrawRows(params: {
         catId: d.cat_id ?? null,
         stepIndex: si,
         withinStepIndex: di + 1,
-        isHeader: !isTen && di === 0,
-        isTen,
+        isHeader: !isBundle && di === 0,
+        isBundle,
+        bundleMethod: isBundle ? st.method : null,
         isGuaranteedRow: isGuaranteed,
         isVirtual: false,
         isTarget,
@@ -558,19 +620,21 @@ export function buildDrawRows(params: {
       });
 
       out.push(
-        ...buildSkippedPositionRows({
-          graph: g,
-          step: st,
-          action,
-          eventName,
-          eventRawName,
-          eventStartDate,
-          eventEndDate,
-          stepIndex: si,
-          withinStepIndex: di + 1,
-          fromPos: pos,
-          toPos: to.ok ? to.pos : null,
-        }),
+        ...(isGuaranteed
+          ? []
+          : buildSkippedPositionRows({
+              graph: g,
+              step: st,
+              action,
+              eventName,
+              eventRawName,
+              eventStartDate,
+              eventEndDate,
+              stepIndex: si,
+              withinStepIndex: di + 1,
+              fromPos: pos,
+              toPos: to.ok ? to.pos : null,
+            })),
       );
     }
   }

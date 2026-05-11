@@ -4,9 +4,12 @@ import { cn } from "@/lib/utils";
 
 // ── 公告 / 注意事項 ──────────────────────────────────────────────────────────
 // 新增公告在這裡，最新的放最上面。
-const ANNOUNCEMENTS = ["破壞者系列卡池目前僅支援單抽，特殊抽卡機制尚未實作。"];
+const ANNOUNCEMENTS: string[] = [];
 
 export function Announcements({ className }: { className?: string }) {
+  // 過濾掉空白公告
+  const announcements = ANNOUNCEMENTS.filter((item) => item.trim().length > 0);
+
   return (
     <ul
       className={cn(
@@ -29,7 +32,7 @@ export function Announcements({ className }: { className?: string }) {
           ），可能因來源變動而不完整或延遲，規劃結果需自行驗證。
         </span>
       </li>
-      {ANNOUNCEMENTS.map((item, i) => (
+      {announcements.map((item, i) => (
         <li key={i} className="flex items-start gap-2 text-warning">
           <AlertTriangle className="mt-0.5 size-3.5 shrink-0 opacity-75" />
           <span>{item}</span>

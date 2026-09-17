@@ -97,8 +97,9 @@ export function nextPosId(pos: number, track: Track): string {
 }
 
 export function inferGuaranteedTo(pos: number, track: Track): string {
-  // bc.godfat 的 11 連（含保底）通常前進 10 格並換線
+  // bc.godfat 的 11 連（含保底）會換線：
   // nA -> (n+10)B
-  // nB -> (n+10)A
-  return `${pos + 10}${otherTrack(track)}`;
+  // nB -> (n+11)A（切回 A 線時多一格）
+  const advance = track === "B" ? 11 : 10;
+  return `${pos + advance}${otherTrack(track)}`;
 }

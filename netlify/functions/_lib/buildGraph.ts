@@ -30,6 +30,7 @@ export function buildTrackGraphFromCells(args: {
   raw_cells: Record<string, PickCell>;
 }): TrackGraph {
   const { seed, count, event, raw_cells } = args;
+  const isStepUpPool = event.name.includes("好康轉蛋活動中");
 
   const baseIds = Object.keys(raw_cells)
     .filter((pid) => {
@@ -67,30 +68,24 @@ export function buildTrackGraphFromCells(args: {
     // guaranteed (G)
     const gId = `${baseId}G`;
     const gCell = raw_cells[gId];
-    if (gCell?.cat) {
+    if (gCell?.cat && !isStepUpPool) {
       const to = (
         gCell.jump_to || inferGuaranteedTo(pos, track)
       ).trim();
 
-      // 只有標準十連抽（前進恰好 10 格）才建立 guaranteed edge；
-      // 好康轉蛋等特殊卡池的 AG 跳躍距離 ≠ 10，暫時略過。
-      const toPos = Number((/^(\d+)/.exec(to) ?? [])[1]);
-      const isStandardTenRoll = Number.isFinite(toPos) && toPos - pos === 10;
-
-      if (isStandardTenRoll) {
-        edges.guaranteed = {
-          action: "guaranteed",
-          to,
-          cat: gCell.cat,
-          rolls: 11,
-          advance: 10,
-          cost_rolls: 11,
-          note: gCell.jump_to
-            ? `guaranteed ${gCell.jump_to}`
-            : "guaranteed (inferred)",
-          source_pick_id: gId,
-        };
-      }
+      // 一般卡池只要有 G 格就使用一般十連保底；好康轉蛋由 step-up 流程處理。
+      edges.guaranteed = {
+        action: "guaranteed",
+        to,
+        cat: gCell.cat,
+        rolls: 11,
+        advance: 10,
+        cost_rolls: 11,
+        note: gCell.jump_to
+          ? `guaranteed ${gCell.jump_to}`
+          : "guaranteed (inferred)",
+        source_pick_id: gId,
+      };
     }
 
     // switch_track (R)

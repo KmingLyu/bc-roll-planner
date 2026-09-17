@@ -8,20 +8,6 @@ export type StepUpGuaranteedInfo = {
   to_pos_id: string;
 };
 
-function parseTargetPos(posId: string): number | null {
-  const match = /^(\d+)/.exec(String(posId || "").trim());
-  if (!match) return null;
-  const pos = Number(match[1]);
-  return Number.isFinite(pos) ? pos : null;
-}
-
-function isNonStandardGuaranteedJump(cursorId: string, jumpTo: string): boolean {
-  const from = parsePosId(cursorId);
-  const toPos = parseTargetPos(jumpTo);
-  if (toPos == null) return false;
-  return toPos - from.pos !== 10;
-}
-
 export function getStepUpGuaranteedAt(
   graph: TrackGraph,
   cursorId: string,
@@ -33,7 +19,6 @@ export function getStepUpGuaranteedAt(
   const cat = cell?.cat ?? null;
 
   if (!cat || !jumpTo) return null;
-  if (!isNonStandardGuaranteedJump(baseCursorId, jumpTo)) return null;
 
   return {
     cursor_id: baseCursorId,
@@ -44,11 +29,5 @@ export function getStepUpGuaranteedAt(
 }
 
 export function isStepUpPool(graph: TrackGraph): boolean {
-  const cells = graph.raw_cells || {};
-  for (const pickId of Object.keys(cells)) {
-    const cell = cells[pickId];
-    if (!cell || cell.suffix !== "") continue;
-    if (getStepUpGuaranteedAt(graph, pickId)) return true;
-  }
-  return false;
+  return graph.event.name.includes("好康轉蛋活動中");
 }

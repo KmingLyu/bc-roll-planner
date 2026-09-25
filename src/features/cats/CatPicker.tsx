@@ -29,7 +29,6 @@ export function CatPicker(props: {
   hideSearchInput?: boolean;
   minColWidth?: number;
   dense?: boolean;
-  getCatHref?: (catId: number) => string | undefined;
   getCatImageUrl?: (catId: number) => string | undefined;
   renderCatSecondary?: (catId: number) => React.ReactNode;
 }) {
@@ -45,7 +44,6 @@ export function CatPicker(props: {
     hideSearchInput = false,
     minColWidth = 176,
     dense = true,
-    getCatHref,
     getCatImageUrl,
     renderCatSecondary,
   } = props;
@@ -158,7 +156,6 @@ export function CatPicker(props: {
                       disabled={atSelectionLimit && !selectedSet.has(cat.id)}
                       onToggle={(checked) => toggle(cat.id, checked)}
                       imageUrl={getCatImageUrl?.(cat.id)}
-                      href={getCatHref?.(cat.id)}
                       dense={dense}
                       secondary={renderCatSecondary?.(cat.id)}
                     />

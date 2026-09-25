@@ -1,1 +1,1 @@
-export { useTrackGraphs } from "./useTrackGraphs";
+export { fetchTrackGraphs } from "./fetchTrackGraphs";

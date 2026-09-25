@@ -58,10 +58,7 @@ export const handler: Handler = async (event) => {
 
     const lang = String(qs.lang ?? "").trim() || env.lang;
     const ui = String(qs.ui ?? "").trim() || env.ui;
-    const baseUrl = (String(qs.base_url ?? "").trim() || env.baseUrl).replace(
-      /\/+$/,
-      ""
-    );
+    const baseUrl = env.baseUrl;
 
     // 不從 env 讀 limit：只看前端 qs.limit
     const limit = parseLimit(qs.limit); // null = 不限制

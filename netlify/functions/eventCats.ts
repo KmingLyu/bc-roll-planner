@@ -49,10 +49,7 @@ export const handler: Handler = async (evt) => {
 
     const lang = String(qs.lang ?? "").trim() || env.lang;
     const ui = String(qs.ui ?? "").trim() || env.ui;
-    const baseUrl = (String(qs.base_url ?? "").trim() || env.baseUrl).replace(
-      /\/+$/,
-      ""
-    );
+    const baseUrl = env.baseUrl;
 
     const url =
       `${baseUrl}/?event=${encodeURIComponent(eventValue)}` +

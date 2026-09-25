@@ -23,7 +23,7 @@ export function findTracksTable(html: string): { tableHtml: string | null } {
     const headers = $(t)
       .find("th")
       .toArray()
-      .map((th) => normalizeText($(th as any).text()).toLowerCase());
+      .map((th) => normalizeText($(th).text()).toLowerCase());
 
     const headerLine = headers.join(" ");
     if (headerLine.includes("guaranteed") && headerLine.includes("alt")) {
@@ -38,7 +38,7 @@ export function findTracksTable(html: string): { tableHtml: string | null } {
     if (first.length > 0) bestEl = (first.get(0) as unknown as AnyNode) ?? null;
   }
 
-  return { tableHtml: bestEl ? $.html(bestEl as any) : null };
+  return { tableHtml: bestEl ? $.html(bestEl) : null };
 }
 
 function parsePickId(
@@ -78,7 +78,7 @@ function parseCatFromTd($: CheerioAPI, $td: Cheerio<DomElement>): Cat | null {
   let desc = "";
 
   for (const a of links) {
-    const $a = $(a as any);
+    const $a = $(a);
     const txt = normalizeText($a.text());
     if (!txt || txt === "🐾") continue;
     name = txt;
@@ -88,7 +88,7 @@ function parseCatFromTd($: CheerioAPI, $td: Cheerio<DomElement>): Cat | null {
 
   let id: number | null = null;
   for (const a of links) {
-    const href = normalizeText($(a as any).attr("href"));
+    const href = normalizeText($(a).attr("href"));
     const m = CATS_ID_RE.exec(href);
     if (m) {
       id = Number(m[1]);
@@ -109,7 +109,7 @@ export function parseTrackCellsFromTableHtml(
   const cells: Record<string, PickCell> = {};
 
   $("td[onclick]").each((_, td) => {
-    const $td = $(td as any) as Cheerio<DomElement>;
+    const $td = $(td) as Cheerio<DomElement>;
 
     const onclick = normalizeText($td.attr("onclick"));
     const m = ONCLICK_RE.exec(onclick || "");

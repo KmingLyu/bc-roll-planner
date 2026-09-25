@@ -641,3 +641,158 @@ export function buildDrawRows(params: {
 
   return out;
 }
+
+export type ResultRowBlock =
+  | { key: string; kind: "single"; row: DrawRow }
+  | { key: string; kind: "bundle"; summary: DrawRow; children: DrawRow[] };
+
+export type ResultFilterMode = "all" | "targets";
+
+export type ResultEventGroup = {
+  key: string;
+  eventValue: string;
+  anchorRow: DrawRow;
+  blocks: ResultRowBlock[];
+};
+
+
+function groupRowsByEvent(rows: DrawRow[]) {
+  const groups: Array<{ eventValue: string; rows: DrawRow[] }> = [];
+  for (const row of rows) {
+    const lastGroup = groups.at(-1);
+    if (lastGroup?.eventValue === row.eventValue) {
+      lastGroup.rows.push(row);
+      continue;
+    }
+    groups.push({ eventValue: row.eventValue, rows: [row] });
+  }
+  return groups;
+}
+
+function groupRowsByStep(rows: DrawRow[]): ResultRowBlock[] {
+  const blocks: ResultRowBlock[] = [];
+
+  for (let index = 0; index < rows.length; ) {
+    const row = rows[index];
+
+    if (row.isBundle && row.isHeader) {
+      const children: DrawRow[] = [];
+      index += 1;
+
+      while (
+        index < rows.length &&
+        rows[index].isBundle &&
+        rows[index].stepIndex === row.stepIndex &&
+        !rows[index].isHeader
+      ) {
+        children.push(rows[index]);
+        index += 1;
+      }
+
+      blocks.push({
+        key: row.key,
+        kind: "bundle",
+        summary: row,
+        children,
+      });
+      continue;
+    }
+
+    blocks.push({
+      key: row.key,
+      kind: "single",
+      row,
+    });
+    index += 1;
+  }
+
+  return blocks;
+}
+
+function blockHasTarget(block: ResultRowBlock) {
+  if (block.kind === "single") return block.row.isTarget;
+  return block.summary.isTarget || block.children.some((row) => row.isTarget);
+}
+
+function getVisibleBlock(block: ResultRowBlock, filterMode: ResultFilterMode) {
+  if (filterMode === "all") return block;
+
+  if (block.kind === "single") {
+    return block.row.isTarget ? block : null;
+  }
+
+  if (!blockHasTarget(block)) return null;
+
+  return {
+    ...block,
+    children: block.children.filter((row) => row.isTarget),
+  };
+}
+
+function filterResultBlocks(
+  blocks: ResultRowBlock[],
+  filterMode: ResultFilterMode,
+) {
+  return blocks.reduce<ResultRowBlock[]>((visibleBlocks, block) => {
+    const visibleBlock = getVisibleBlock(block, filterMode);
+    if (visibleBlock) visibleBlocks.push(visibleBlock);
+    return visibleBlocks;
+  }, []);
+}
+
+export function buildVisibleEventGroups(params: {
+  rows: DrawRow[];
+  filterMode: ResultFilterMode;
+}) {
+  const { rows, filterMode } = params;
+
+  return groupRowsByEvent(rows).reduce<ResultEventGroup[]>(
+    (groups, group, gi) => {
+      const blocks = filterResultBlocks(
+        groupRowsByStep(group.rows),
+        filterMode,
+      );
+      if (!blocks.length) return groups;
+
+      groups.push({
+        key: `${group.eventValue}__${gi}`,
+        eventValue: group.eventValue,
+        anchorRow: group.rows[0],
+        blocks,
+      });
+      return groups;
+    },
+    [],
+  );
+}
+
+export function buildHitStepStats(params: {
+  result: PlanResult;
+  targetCatIds: number[];
+}) {
+  const { result, targetCatIds } = params;
+  const targetIdSet = new Set(targetCatIds);
+  const plan = result.plan || [];
+  let hitSteps = 0;
+
+  for (const step of plan) {
+    const hasHit = (step.draws || []).some(
+      (draw) => draw.cat_id != null && targetIdSet.has(draw.cat_id),
+    );
+
+    if (hasHit) hitSteps += 1;
+  }
+
+  return {
+    hitSteps,
+    totalSteps: plan.length,
+  };
+}
+
+
+export function buildResultGroups(rows: DrawRow[], filterMode: ResultFilterMode) {
+  return {
+    desktopGroups: buildVisibleEventGroups({ rows, filterMode }),
+    mobileGroups: buildVisibleEventGroups({ rows: rows.filter((row) => !row.isVirtual), filterMode }),
+  };
+}

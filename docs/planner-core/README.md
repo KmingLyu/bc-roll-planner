@@ -1,6 +1,6 @@
 # Planner Core Notes
 
-這個資料夾用來整理 `bc-roll-planner-react/src/features/planner/logic/core.ts` 的學習筆記。
+這個資料夾用來整理 `src/features/planner/logic/core.ts` 的學習筆記。
 
 ## 目標
 
@@ -12,8 +12,8 @@
 
 1. [core-overview.md](./core-overview.md)
 2. [core-reading-guide.md](./core-reading-guide.md)
-3. 打開 [`core.ts`](/Users/keming/Workspace/bc-roll-planner/bc-roll-planner-react/src/features/planner/logic/core.ts) 對照閱讀
-4. 把自己的理解與疑問寫進 [study-log.md](./study-log.md)
+3. 打開 [`core.ts`](../../src/features/planner/logic/core.ts) 對照閱讀
+4. 對照 [`rollRules.ts`](../../src/features/roll-rules/rollRules.ts) 理解抽卡規則與搜尋的分工
 
 ## 核心問題
 
@@ -29,5 +29,5 @@
   - 用高層次語言整理 planner 在做什麼
 - `core-reading-guide.md`
   - 把 `core.ts` 拆成幾個區塊，方便逐段閱讀
-- `study-log.md`
-  - 你的學習紀錄與筆記模板
+- `../../src/features/roll-rules/rollRules.ts`
+  - 單抽、十連及好康轉蛋的共用轉移規則

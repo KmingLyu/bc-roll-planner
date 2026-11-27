@@ -7,7 +7,7 @@ import type { Cat, PickCell } from "../../../shared/models";
 import { normalizeText } from "./normalize";
 
 const PICK_ID_RE = /^(\d+)([AB])(.*)$/; // 1A, 1AG, 1BR
-const ONCLICK_RE = /pick\('([^']+)'\)/; // pick('3A')
+const ONCLICK_RE = /pick\('([^']+)'/; // pick('3A') 或 pick('3A', event)
 const JUMP_TO_B_RE = /->\s*([0-9]+[AB])/; // -> 13B
 const JUMP_TO_A_RE = /<-\s*([0-9]+[AB])/; // <- 12A
 const CATS_ID_RE = /\/cats\/(\d+)/; // /cats/123
@@ -52,10 +52,15 @@ function parsePickId(
   return { pos, track, suffix };
 }
 
+// 舊版 class 為 "rare"；2026-11 起改為 "minor_rare major_rare"
+const RARITY_CLASS_PREFIXES = ["", "major_", "minor_"];
+
 function detectRarityFromClasses(classes: string[]): string | null {
   const s = new Set(classes || []);
-  for (const r of RARITY_CLASSES) {
-    if (s.has(r)) return r;
+  for (const prefix of RARITY_CLASS_PREFIXES) {
+    for (const r of RARITY_CLASSES) {
+      if (s.has(`${prefix}${r}`)) return r;
+    }
   }
   return null;
 }
@@ -123,6 +128,9 @@ export function parseTrackCellsFromTableHtml(
       .split(/\s+/)
       .map((c) => c.trim())
       .filter(Boolean);
+
+    // 新版每格多一個 score 欄（pick id 以 X 結尾），沒有貓咪資料，略過
+    if (parsed.suffix.endsWith("X") || classes.includes("score")) return;
 
     const rarity = detectRarityFromClasses(classes);
 

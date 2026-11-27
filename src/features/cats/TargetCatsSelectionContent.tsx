@@ -12,7 +12,6 @@ export function TargetCatsSelectionContent(props: {
   selectedIds: number[];
   maxSelection: number;
   onChange: (next: number[]) => void;
-  getCatHref?: (catId: number) => string | undefined;
   getCatImageUrl?: (catId: number) => string | undefined;
   query?: string;
   onQueryChange?: (value: string) => void;
@@ -27,7 +26,6 @@ export function TargetCatsSelectionContent(props: {
     selectedIds,
     maxSelection,
     onChange,
-    getCatHref,
     getCatImageUrl,
     query,
     onQueryChange,
@@ -50,7 +48,6 @@ export function TargetCatsSelectionContent(props: {
       selectedIds={selectedIds}
       maxSelection={maxSelection}
       onChange={onChange}
-      getCatHref={getCatHref}
       getCatImageUrl={getCatImageUrl}
       query={query}
       onQueryChange={onQueryChange}

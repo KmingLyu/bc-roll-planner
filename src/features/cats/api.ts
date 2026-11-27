@@ -15,7 +15,6 @@ export async function fetchEventCats(params: {
   event: string;
   lang?: string;
   ui?: string;
-  base_url?: string;
 
   name?: string;
   raw_name?: string;
@@ -27,7 +26,6 @@ export async function fetchEventCats(params: {
     event: params.event,
     lang: params.lang ?? "tw",
     ui: params.ui ?? "tw",
-    base_url: params.base_url,
 
     name: params.name,
     raw_name: params.raw_name,

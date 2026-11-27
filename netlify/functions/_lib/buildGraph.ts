@@ -17,7 +17,7 @@ import {
 function normalizeRarity(r: string | null | undefined): Rarity | null {
   if (!r) return null;
   return (["rare", "supa", "uber_fest", "supa_fest"] as const).includes(
-    r as any
+    r as Rarity
   )
     ? (r as Rarity)
     : null;

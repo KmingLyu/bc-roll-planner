@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { TargetCatsSelectionContent } from "@/features/cats";
 import {
-  buildGodfatCatHref,
   buildGodfatCatImageUrl,
 } from "@/features/cats/urls";
 import { Badge } from "@/components/ui/badge";
@@ -163,12 +162,6 @@ export function TargetPanel() {
           query={catQuery}
           onQueryChange={setCatQuery}
           hideSearchInput
-          getCatHref={(catId) =>
-            buildGodfatCatHref(catId, {
-              lang: BC_ENV.lang,
-              ui: BC_ENV.ui,
-            })
-          }
           getCatImageUrl={(catId) =>
             buildGodfatCatImageUrl(catId, { lang: BC_ENV.lang })
           }

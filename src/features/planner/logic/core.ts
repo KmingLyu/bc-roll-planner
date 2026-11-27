@@ -1,13 +1,18 @@
 import type {
   TrackGraph,
-  PositionNode,
   Cat,
   PoolType,
 } from "@/types/models";
 import { parsePosId } from "./cursor";
-import { chooseEdgeForSingleDraw } from "@/features/simulator";
 import {
-  getStepUpGuaranteedAt,
+  rollSingle as simulateSingleTransition,
+  rollSingles as simulateSingleBundleTransition,
+  rollTen as simulateTenTransition,
+  rollStepUpSeven as simulateStepUpSevenTransition,
+  advanceAgCursor as advanceAgCursorForAction,
+  type RollDraw,
+} from "@/features/roll-rules/rollRules";
+import {
   isStepUpPool,
 } from "@/features/track-graph/step-up";
 
@@ -46,16 +51,7 @@ export type PlannerState = {
 // (equiv_cost, food_used, ticket_used, platinum_used, legend_used)
 export type Cost = [number, number, number, number, number];
 
-export type DrawHit = {
-  cat_id: number | null;
-  cat_name: string;
-  cat_desc: string;
-  used: "normal" | "switch_track" | "guaranteed";
-  from_pos_id: string;
-  to_pos_id: string;
-  source_pick_id?: string | null;
-  note?: string;
-};
+export type DrawHit = RollDraw;
 
 export type PlanStep = {
   event_value: string;
@@ -273,202 +269,6 @@ function bitCount32(n: number): number {
     c++;
   }
   return c;
-}
-
-// -------------------------
-// Draw simulation (single / ten)
-// -------------------------
-function catPayload(cat?: Cat | null): {
-  id: number | null;
-  name: string;
-  desc: string;
-} {
-  if (!cat) return { id: null, name: "-", desc: "" };
-  return { id: cat.id, name: cat.name, desc: cat.desc || "" };
-}
-
-function simulateSingleTransition(params: {
-  graph: TrackGraph;
-  cursor_id: string;
-  prev_cat_id: number | null;
-}): { next_cursor_id: string; next_prev: number | null; hit: DrawHit } {
-  const { graph, cursor_id, prev_cat_id } = params;
-  const node = graph.nodes?.[cursor_id] as PositionNode | undefined;
-  if (!node) {
-    throw new PlannerError(
-      `[${graph.event.value}] 找不到位置 ${cursor_id}（count 不夠或資料缺漏）`
-    );
-  }
-
-  const { edge, used } = chooseEdgeForSingleDraw(node, prev_cat_id);
-  const p = catPayload(edge.cat);
-
-  const hit: DrawHit = {
-    cat_id: p.id,
-    cat_name: p.name,
-    cat_desc: p.desc,
-    used,
-    from_pos_id: cursor_id,
-    to_pos_id: edge.to,
-    source_pick_id: edge.source_pick_id ?? null,
-    note: edge.note || "",
-  };
-
-  const next_cursor_id = parsePosId(edge.to).id;
-  const next_prev = p.id;
-  return { next_cursor_id, next_prev, hit };
-}
-
-function simulateSingleBundleTransition(params: {
-  graph: TrackGraph;
-  cursor_id: string;
-  prev_cat_id: number | null;
-  draw_count: number;
-}): { end_cursor_id: string; end_prev: number | null; draws: DrawHit[] } {
-  const draws: DrawHit[] = [];
-  let cur = params.cursor_id;
-  let prev = params.prev_cat_id;
-
-  for (let i = 0; i < params.draw_count; i += 1) {
-    const single = simulateSingleTransition({
-      graph: params.graph,
-      cursor_id: cur,
-      prev_cat_id: prev,
-    });
-    draws.push(single.hit);
-    cur = single.next_cursor_id;
-    prev = single.next_prev;
-  }
-
-  return { end_cursor_id: cur, end_prev: prev, draws };
-}
-
-function simulateTenTransition(params: {
-  graph: TrackGraph;
-  cursor_id: string;
-  prev_cat_id: number | null;
-}): { end_cursor_id: string; end_prev: number | null; draws: DrawHit[] } {
-  const { graph } = params;
-  const start_cursor_id = params.cursor_id;
-
-  const startNode = graph.nodes?.[start_cursor_id] as PositionNode | undefined;
-  if (!startNode)
-    throw new PlannerError(
-      `[${graph.event.value}] 找不到十連起點 ${start_cursor_id}`
-    );
-
-  const gEdge = startNode.edges.guaranteed;
-
-  const firstTen = simulateSingleBundleTransition({
-    graph,
-    cursor_id: params.cursor_id,
-    prev_cat_id: params.prev_cat_id,
-    draw_count: 10,
-  });
-  const draws = [...firstTen.draws];
-  let cur = firstTen.end_cursor_id;
-  let prev = firstTen.end_prev;
-
-  if (gEdge?.cat) {
-    const p = catPayload(gEdge.cat);
-    draws.push({
-      cat_id: p.id,
-      cat_name: p.name,
-      cat_desc: p.desc,
-      used: "guaranteed",
-      from_pos_id: start_cursor_id,
-      to_pos_id: gEdge.to,
-      source_pick_id: gEdge.source_pick_id ?? null,
-      note: gEdge.note || "guaranteed bonus",
-    });
-
-    const finalTo = String(gEdge.to || "").trim();
-    if (!finalTo) {
-      throw new PlannerError(
-        `[${graph.event.value}] guaranteed edge 沒有 to，無法結算十連落點`
-      );
-    }
-    cur = parsePosId(finalTo).id;
-    prev = p.id;
-  } else {
-    const lastSingle = simulateSingleTransition({
-      graph,
-      cursor_id: cur,
-      prev_cat_id: prev,
-    });
-    draws.push(lastSingle.hit);
-    cur = lastSingle.next_cursor_id;
-    prev = lastSingle.next_prev;
-  }
-
-  return { end_cursor_id: cur, end_prev: prev, draws };
-}
-
-function simulateStepUpSevenTransition(params: {
-  graph: TrackGraph;
-  cursor_id: string;
-  prev_cat_id: number | null;
-  ag_cursor_id: string;
-}): { end_cursor_id: string; end_prev: number | null; draws: DrawHit[] } {
-  const firstSix = simulateSingleBundleTransition({
-    graph: params.graph,
-    cursor_id: params.cursor_id,
-    prev_cat_id: params.prev_cat_id,
-    draw_count: 6,
-  });
-  const guaranteed = getStepUpGuaranteedAt(params.graph, params.ag_cursor_id);
-  if (!guaranteed) {
-    throw new PlannerError(
-      `[${params.graph.event.value}] ${params.ag_cursor_id} 沒有可用的好康轉蛋 AG 保底`
-    );
-  }
-
-  const p = catPayload(guaranteed.cat);
-  const draws = [
-    ...firstSix.draws,
-    {
-      cat_id: p.id,
-      cat_name: p.name,
-      cat_desc: p.desc,
-      used: "guaranteed" as const,
-      from_pos_id: guaranteed.cursor_id,
-      to_pos_id: guaranteed.to_pos_id,
-      source_pick_id: guaranteed.source_pick_id,
-      note: "step-up guaranteed bonus",
-    },
-  ];
-
-  return {
-    end_cursor_id: parsePosId(guaranteed.to_pos_id).id,
-    end_prev: p.id,
-    draws,
-  };
-}
-
-function advanceAgCursorForAction(params: {
-  graph: TrackGraph;
-  method: Exclude<PlanMethod, "step_up_3" | "step_up_5" | "step_up_7">;
-  cursor_id: string;
-  prev_cat_id: number | null;
-}): { next_cursor_id: string; next_prev: number | null } {
-  if (params.method === "single") {
-    const single = simulateSingleTransition({
-      graph: params.graph,
-      cursor_id: params.cursor_id,
-      prev_cat_id: params.prev_cat_id,
-    });
-    return {
-      next_cursor_id: single.next_cursor_id,
-      next_prev: single.next_prev,
-    };
-  }
-
-  const ten = simulateTenTransition({
-    graph: params.graph,
-    cursor_id: params.cursor_id,
-    prev_cat_id: params.prev_cat_id,
-  });
-  return { next_cursor_id: ten.end_cursor_id, next_prev: ten.end_prev };
 }
 
 // -------------------------
@@ -1296,7 +1096,6 @@ export function planMinCost(params: {
   const planSteps: PlanStep[] = [];
   for (const seg of segments) {
     const fromState = parseStateKey(seg.fromKey);
-    const toState = parseStateKey(seg.toKey);
     const move = seg.move!;
     const graph = params.graphs_by_event[move.event_value];
     if (!graph) throw new PlannerError(`找不到 graph: ${move.event_value}`);

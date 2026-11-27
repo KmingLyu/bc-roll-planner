@@ -2,8 +2,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Event } from "@/types/models";
 import { fetchEventCats } from "./api";
-import { ApiError } from "@/lib/api-client";
+import { safeErrText } from "@/lib/error";
 import { tierOrder } from "./types";
+import { eventRequestMetadata } from "@/features/events";
 import type { CatTier, TierGroup, UiCat } from "./types";
 
 import type { LoadState } from "@/lib/loadState";
@@ -42,16 +43,10 @@ export function useEventCats(params: {
         // 多事件：逐一抓，最後做聯集
         const results = await Promise.all(
           selectedEventValues.map(async (ev) => {
-            const meta = eventsByValue.get(ev) || null;
             return fetchEventCats({
-              event: ev,
+              ...eventRequestMetadata(ev, eventsByValue),
               lang,
               ui,
-              name: meta?.name ?? ev,
-              raw_name: meta?.raw_name ?? meta?.name ?? ev,
-              start_date: meta?.start_date ?? null,
-              end_date: meta?.end_date ?? null,
-              pool_type: meta?.pool_type ?? "normal",
             });
           })
         );
@@ -110,14 +105,10 @@ export function useEventCats(params: {
 
         setTierGroups(out);
         setCatsState("ok");
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (cancelled) return;
         setCatsState("error");
-        setCatsErr(
-          e instanceof ApiError
-            ? `${e.message} (HTTP ${e.status})`
-            : String(e?.message || e)
-        );
+        setCatsErr(safeErrText(e));
       }
     }
 
@@ -125,7 +116,7 @@ export function useEventCats(params: {
     return () => {
       cancelled = true;
     };
-  }, [selectedEventValues.join("|"), eventsByValue, lang, ui]);
+  }, [selectedEventValues, eventsByValue, lang, ui]);
 
   const allowedCatIdSet = useMemo(() => {
     if (!tierGroups.length) return null;

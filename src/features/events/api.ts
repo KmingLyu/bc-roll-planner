@@ -15,14 +15,12 @@ export async function fetchEvents(params: {
   limit?: number | null;
   lang?: string;
   ui?: string;
-  base_url?: string;
 }): Promise<EventsResponse> {
   return netlifyGet<EventsResponse>("events", {
     type: params.type ?? "upcoming",
     limit: params.limit ?? null,
     lang: params.lang ?? "tw",
     ui: params.ui ?? "tw",
-    base_url: params.base_url, // optional
   });
 }
 
@@ -35,7 +33,6 @@ export async function fetchEventsBoth(params: {
   pastLimit?: number | null;
   lang?: string;
   ui?: string;
-  base_url?: string;
 }): Promise<EventsBothResponse> {
   const lang = params.lang ?? "tw";
   const ui = params.ui ?? "tw";
@@ -46,14 +43,12 @@ export async function fetchEventsBoth(params: {
       limit: null, // upcoming 通常不需要限制
       lang,
       ui,
-      base_url: params.base_url,
     }),
     fetchEvents({
       type: "past",
       limit: params.pastLimit ?? null,
       lang,
       ui,
-      base_url: params.base_url,
     }),
   ]);
 

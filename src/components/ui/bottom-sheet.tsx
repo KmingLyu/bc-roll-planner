@@ -58,17 +58,23 @@ export function BottomSheet({
 
   // Mount/unmount + enter animation
   useEffect(() => {
+    let nextFrame = 0;
+    let followingFrame = 0;
+    let exitTimer: ReturnType<typeof setTimeout> | undefined;
     if (open) {
-      setMounted(true);
-      // Trigger enter animation on next frame
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => setVisible(true));
+      nextFrame = requestAnimationFrame(() => {
+        setMounted(true);
+        followingFrame = requestAnimationFrame(() => setVisible(true));
       });
     } else {
-      setVisible(false);
-      const timer = setTimeout(() => setMounted(false), 300);
-      return () => clearTimeout(timer);
+      nextFrame = requestAnimationFrame(() => setVisible(false));
+      exitTimer = setTimeout(() => setMounted(false), 300);
     }
+    return () => {
+      cancelAnimationFrame(nextFrame);
+      cancelAnimationFrame(followingFrame);
+      if (exitTimer) clearTimeout(exitTimer);
+    };
   }, [open]);
 
   // Lock body scroll when open

@@ -5,12 +5,11 @@ import type { Handler } from "@netlify/functions";
 import type { Event, PoolType } from "../../shared/models";
 
 import { buildTrackGraphFromCells } from "./_lib/buildGraph";
-import { fetchTextWithRetry } from "./_lib/http";
+import { fetchBcHtml } from "./_lib/bcClient";
 import {
   findTracksTable,
   parseTrackCellsFromTableHtml,
 } from "./_lib/parseTrackTable";
-import { getBcServerEnv } from "./_lib/env";
 
 function json(statusCode: number, body: unknown, cacheSeconds = 0) {
   const cache =
@@ -45,7 +44,6 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    const env = getBcServerEnv();
     const qs = event.queryStringParameters || {};
 
     const seed = (qs.seed || "").trim();
@@ -58,23 +56,10 @@ export const handler: Handler = async (event) => {
       return json(400, { error: "count 必須是正整數" });
     }
 
-    const lang = String(qs.lang ?? "").trim() || env.lang;
-    const ui = String(qs.ui ?? "").trim() || env.ui;
-    const baseUrl = (String(qs.base_url ?? "").trim() || env.baseUrl).replace(
-      /\/+$/,
-      "",
-    );
-
-    const url =
-      `${baseUrl}/?lang=${encodeURIComponent(lang)}` +
-      `&ui=${encodeURIComponent(ui)}` +
-      `&seed=${encodeURIComponent(seed)}` +
-      `&count=${encodeURIComponent(String(count))}` +
-      `&event=${encodeURIComponent(eventValue)}`;
-
-    const html = await fetchTextWithRetry(url, {
-      timeoutMs: 30_000,
-      retries: 3,
+    const html = await fetchBcHtml({
+      query: { seed, count: String(count), event: eventValue },
+      lang: qs.lang,
+      ui: qs.ui,
     });
 
     const { tableHtml } = findTracksTable(html);
@@ -105,10 +90,10 @@ export const handler: Handler = async (event) => {
     });
 
     return json(200, { graph }, 60);
-  } catch (e: any) {
+  } catch (e: unknown) {
     return json(500, {
       error: "trackGraph function failed",
-      details: String(e?.message || e),
+      details: e instanceof Error ? e.message : String(e),
     });
   }
 };

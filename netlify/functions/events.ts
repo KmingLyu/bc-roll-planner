@@ -3,9 +3,8 @@
  */
 import type { Handler } from "@netlify/functions";
 
-import { fetchTextWithRetry } from "./_lib/http";
+import { fetchBcHtml } from "./_lib/bcClient";
 import { parseEventsFromHomeHtml } from "./_lib/parseEvents";
-import { getBcServerEnv } from "./_lib/env";
 
 function json(statusCode: number, body: unknown) {
   return {
@@ -48,7 +47,6 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    const env = getBcServerEnv();
     const qs = event.queryStringParameters || {};
 
     const type = (qs.type || "upcoming").toLowerCase() as "upcoming" | "past";
@@ -56,30 +54,16 @@ export const handler: Handler = async (event) => {
       return json(400, { error: "type 必須是 upcoming 或 past" });
     }
 
-    const lang = String(qs.lang ?? "").trim() || env.lang;
-    const ui = String(qs.ui ?? "").trim() || env.ui;
-    const baseUrl = (String(qs.base_url ?? "").trim() || env.baseUrl).replace(
-      /\/+$/,
-      ""
-    );
-
     // 不從 env 讀 limit：只看前端 qs.limit
     const limit = parseLimit(qs.limit); // null = 不限制
-
-    const url = `${baseUrl}/?lang=${encodeURIComponent(
-      lang
-    )}&ui=${encodeURIComponent(ui)}`;
-    const html = await fetchTextWithRetry(url, {
-      timeoutMs: 30_000,
-      retries: 3,
-    });
+    const html = await fetchBcHtml({ query: {}, lang: qs.lang, ui: qs.ui });
 
     const events = parseEventsFromHomeHtml(html, type, limit);
     return json(200, { type, count: events.length, events });
-  } catch (e: any) {
+  } catch (e: unknown) {
     return json(500, {
       error: "events function failed",
-      details: String(e?.message || e),
+      details: e instanceof Error ? e.message : String(e),
     });
   }
 };

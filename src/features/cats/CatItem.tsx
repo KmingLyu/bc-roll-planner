@@ -8,7 +8,6 @@ export function CatItem(props: {
   disabled?: boolean;
   onToggle: (next: boolean) => void;
   imageUrl?: string;
-  href?: string;
   dense?: boolean;
   secondary?: React.ReactNode;
 }) {
@@ -19,7 +18,6 @@ export function CatItem(props: {
     disabled = false,
     onToggle,
     imageUrl,
-    href,
     dense = true,
     secondary,
   } = props;

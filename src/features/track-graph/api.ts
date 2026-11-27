@@ -13,7 +13,6 @@ export async function fetchTrackGraph(params: {
   signal?: AbortSignal;
   lang?: string;
   ui?: string;
-  base_url?: string;
 
   // 這些只是寫進 graph.event 方便顯示
   name?: string;
@@ -28,7 +27,6 @@ export async function fetchTrackGraph(params: {
     count: params.count,
     lang: params.lang ?? "tw",
     ui: params.ui ?? "tw",
-    base_url: params.base_url,
 
     name: params.name,
     raw_name: params.raw_name,

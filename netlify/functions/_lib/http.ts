@@ -9,6 +9,12 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+class HttpResponseError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
+}
+
 export async function fetchTextWithRetry(
   url: string,
   opt: FetchOptions = {}
@@ -48,12 +54,15 @@ export async function fetchTextWithRetry(
           await sleep(backoffMs * Math.pow(2, attempt));
           continue;
         }
-        throw new Error(msg);
+        throw new HttpResponseError(msg, resp.status);
       }
 
       return await resp.text();
     } catch (e) {
       lastErr = e;
+      if (e instanceof HttpResponseError && e.status !== 429 && e.status < 500) {
+        throw e;
+      }
       if (attempt < retries) {
         await sleep(backoffMs * Math.pow(2, attempt));
         continue;

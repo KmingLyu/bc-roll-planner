@@ -4,9 +4,8 @@
 import type { Handler } from "@netlify/functions";
 import type { Event, PoolType } from "../../shared/models";
 
-import { fetchTextWithRetry } from "./_lib/http";
+import { fetchBcHtml } from "./_lib/bcClient";
 import { parseEventCatsFromHtml } from "./_lib/parseEventCats";
-import { getBcServerEnv } from "./_lib/env";
 
 function json(statusCode: number, body: unknown, cacheSeconds = 0) {
   const cache =
@@ -41,28 +40,12 @@ export const handler: Handler = async (evt) => {
   }
 
   try {
-    const env = getBcServerEnv();
     const qs = evt.queryStringParameters || {};
 
     const eventValue = (qs.event || "").trim();
     if (!eventValue) return json(400, { error: "缺少 event" });
 
-    const lang = String(qs.lang ?? "").trim() || env.lang;
-    const ui = String(qs.ui ?? "").trim() || env.ui;
-    const baseUrl = (String(qs.base_url ?? "").trim() || env.baseUrl).replace(
-      /\/+$/,
-      ""
-    );
-
-    const url =
-      `${baseUrl}/?event=${encodeURIComponent(eventValue)}` +
-      `&lang=${encodeURIComponent(lang)}` +
-      `&ui=${encodeURIComponent(ui)}`;
-
-    const html = await fetchTextWithRetry(url, {
-      timeoutMs: 30_000,
-      retries: 3,
-    });
+    const html = await fetchBcHtml({ query: { event: eventValue }, lang: qs.lang, ui: qs.ui });
 
     const parsed = parseEventCatsFromHtml(html);
 
@@ -90,10 +73,10 @@ export const handler: Handler = async (evt) => {
       },
       60
     );
-  } catch (e: any) {
+  } catch (e: unknown) {
     return json(500, {
       error: "eventCats function failed",
-      details: String(e?.message || e),
+      details: e instanceof Error ? e.message : String(e),
     });
   }
 };

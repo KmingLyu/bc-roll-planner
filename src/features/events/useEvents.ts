@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Event } from "@/types/models";
 import { fetchEventsBoth } from "./api";
-import { ApiError } from "@/lib/api-client";
+import { safeErrText } from "@/lib/error";
 
 import type { LoadState } from "@/lib/loadState";
 
@@ -49,15 +49,11 @@ export function useEvents(params: {
       setUpcomingEvents(res.upcoming.events || []);
       setPastEvents(res.past.events || []);
       setEventsState("ok");
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (seq !== seqRef.current) return;
 
       setEventsState("error");
-      setEventsErr(
-        e instanceof ApiError
-          ? `${e.message} (HTTP ${e.status})`
-          : String(e?.message || e)
-      );
+      setEventsErr(safeErrText(e));
     }
   }
 

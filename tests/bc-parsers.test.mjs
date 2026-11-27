@@ -57,3 +57,25 @@ test("固定 HTML 的軌道解析選取正確表格並保留貓咪與跳轉", ()
   const cells = parseTrackCellsFromTableHtml(tableHtml);
   assert.deepEqual([cells["1A"].cat.id, cells["1A"].rarity, cells["1A"].jump_to], [38, "rare", "2A"]);
 });
+
+test("2026-11 改版後的軌道 HTML（pick 帶 event 參數、minor/major 稀有度、score 欄）仍可解析", () => {
+  const tableHtml = `
+    <table><tr><th>No.</th><th>Result</th><th>Guaranteed</th><th>Alt. result</th><th>Alt. guaranteed</th></tr>
+      <tr>
+        <td class="position score pick minor_rare major_rare" onclick="pick('1AX', event)"></td>
+        <td class="position score pick minor_rare major_rare" onclick="pick('1AGX', event)"></td>
+      </tr>
+      <tr>
+        <td class="position cat pick minor_supa_fest major_supa_fest" onclick="pick('1A', event)">
+          <span><a href="//bc.godfat.org/tracks?seed=1&amp;last=84" title="說明">地龍索多姆</a> <a href="//bc.godfat.org/cats/84?seed=1">🐾</a></span>
+        </td>
+        <td class="position cat pick minor_rare major_rare" onclick="pick('1AG', event)">
+          <span><a href="//bc.godfat.org/tracks?seed=2&amp;last=43">冰雪貓</a> <a href="//bc.godfat.org/cats/43?seed=1">🐾</a> -&gt; 11B</span>
+        </td>
+      </tr>
+    </table>`;
+  const cells = parseTrackCellsFromTableHtml(tableHtml);
+  assert.deepEqual(Object.keys(cells).sort(), ["1A", "1AG"]);
+  assert.deepEqual([cells["1A"].cat.id, cells["1A"].cat.name, cells["1A"].rarity], [84, "地龍索多姆", "supa_fest"]);
+  assert.deepEqual([cells["1AG"].cat.id, cells["1AG"].rarity, cells["1AG"].jump_to], [43, "rare", "11B"]);
+});
